@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Development plan
+    url: https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/blob/main/DEVELOPMENT.MD
+    about: Check the canonical plan for milestone steps before filing a task.

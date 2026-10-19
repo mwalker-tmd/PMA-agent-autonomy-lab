@@ -1,0 +1,45 @@
+name: Milestone task
+description: A unit of planned work from DEVELOPMENT.MD.
+title: "<short imperative title>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Assign a milestone and add one `type:` and one or more `area:` labels after filing.
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What this task accomplishes and why.
+    validations:
+      required: true
+  - type: input
+    id: plan-step
+    attributes:
+      label: Plan step
+      description: Step reference(s) in DEVELOPMENT.MD, e.g. "1.4, 1.5". Use "n/a" for process work outside the plan.
+    validations:
+      required: true
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Deliverable
+      description: The files, artifacts, or configuration this task produces.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Checkable conditions that must all be true to close this task.
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence of completion
+      description: Filled in when closing — links to commits, run manifests, trace IDs, or screenshots. Record real evidence only.
+    validations:
+      required: false
