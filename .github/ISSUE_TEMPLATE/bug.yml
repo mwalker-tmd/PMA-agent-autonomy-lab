@@ -1,0 +1,47 @@
+name: Bug
+description: Something does not behave as specified.
+title: "<what is wrong>"
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Reference the spec or acceptance criterion if one applies.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Commit, τ-bench version, models, seed, autonomy policy version — whatever is relevant.
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, trace IDs, or screenshots. Synthetic data only — no secrets or real PII.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      value: |
+        - [ ] Expected behavior restored
+        - [ ] Regression test added where practical
+    validations:
+      required: true

@@ -1,0 +1,31 @@
+# --- Secrets and local configuration (never commit credentials) ---
+.env
+.env.*
+!.env.example
+
+# --- Python / uv ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# --- Generated simulation results and trace exports ---
+# Commit only curated manifests and summaries, not raw dumps.
+results/
+reports/raw/
+traces/
+*.trace.json
+
+# --- OS / editor files ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

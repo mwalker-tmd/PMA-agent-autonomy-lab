@@ -1,0 +1,48 @@
+name: Decision / ADR
+description: Propose or record a decision for docs/DECISIONS.md.
+title: "ADR: <short title>"
+labels: ["type:decision", "area:governance"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: The decision required and the evidence available.
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options considered
+      description: Include retaining the current choice. Note tradeoffs for each.
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision
+      description: The selected option and why. Leave blank while still proposed.
+    validations:
+      required: false
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Tradeoffs and risks
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Artifacts affected
+      description: Specs, plan sections, code, or experiments that must change. Note if scoring comparability is affected.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      value: |
+        - [ ] Decision recorded in docs/DECISIONS.md
+        - [ ] Affected specs and DEVELOPMENT.MD updated
+    validations:
+      required: true

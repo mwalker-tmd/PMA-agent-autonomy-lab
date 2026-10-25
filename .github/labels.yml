@@ -1,0 +1,58 @@
+# Canonical label set for this repository.
+# Labels on GitHub must match this file; update both together.
+
+# Type: what kind of work the issue or PR is
+- name: "type:docs"
+  color: "0075ca"
+  description: "Documentation or specification writing"
+- name: "type:process"
+  color: "5319e7"
+  description: "Repository workflow, tooling, or project process"
+- name: "type:decision"
+  color: "d4c5f9"
+  description: "A decision to make or record as an ADR"
+- name: "type:review"
+  color: "fbca04"
+  description: "Review, sign-off, or milestone close-out"
+- name: "type:bug"
+  color: "d73a4a"
+  description: "Something is not working as specified"
+
+# Area: which part of the project it affects
+- name: "area:scope"
+  color: "c2e0c6"
+  description: "Audience, goals, and scope boundaries"
+- name: "area:evaluation"
+  color: "c2e0c6"
+  description: "Metrics, evaluators, judges, and scorecards"
+- name: "area:autonomy"
+  color: "c2e0c6"
+  description: "Autonomy levels, tool gate, promotion and restriction"
+- name: "area:architecture"
+  color: "c2e0c6"
+  description: "Components, interfaces, and telemetry contract"
+- name: "area:simulation"
+  color: "c2e0c6"
+  description: "Synthetic traffic and scenario generation"
+- name: "area:operations"
+  color: "c2e0c6"
+  description: "Monitoring, alerts, and incident response"
+- name: "area:demo"
+  color: "c2e0c6"
+  description: "Teaching demonstration and presentation assets"
+- name: "area:governance"
+  color: "c2e0c6"
+  description: "Plan, decision log, and project governance"
+
+# Status: why an item is waiting
+- name: "needs-review"
+  color: "fef2c0"
+  description: "Ready for review before it can be accepted"
+- name: "blocked"
+  color: "b60205"
+  description: "Cannot proceed until a dependency is resolved"
+
+# Other
+- name: "hygiene"
+  color: "bfdadc"
+  description: "Repository upkeep: ignore rules, dependencies, stale docs, broken links"
