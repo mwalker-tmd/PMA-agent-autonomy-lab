@@ -49,7 +49,7 @@ Avoid treating every denied action as an agent failure: some are **correct** ref
 
 **View 3 — Version comparison / release review**
 
-- v1.0 healthy, v1.1 regressed, v1.2 corrected results across the same scenario mix.
+- The planned demonstration versions (v1.0 baseline, v1.1 deliberate regression, v1.2 correction) compared across the same scenario mix.
 - Show sample size and denominators, not just percentages; include data freshness.
 - Highlight any critical violations even if overall task success increases.
 
