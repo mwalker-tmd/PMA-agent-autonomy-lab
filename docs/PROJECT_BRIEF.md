@@ -72,7 +72,7 @@ These are **candidate patterns** and must be reconciled with actual τ-bench ret
 - A simulated tool-execution approval service, authorization gate, and authorization audit log.
 - Versioned traffic batches, simulated incidents, and a live/backup office-hours demo.
 
-**Out of scope for v1**
+**Out of scope for the first release**
 
 - Real customer transactions, real identities, payment rails, or production deployment.
 - Building a frontend, call center, telephony pipeline, or generic SaaS platform.
