@@ -18,7 +18,8 @@ It extends an earlier RAGAS/RAG-pipeline evaluation demonstration into **agent o
 
 | Document | Purpose |
 | --- | --- |
-| **[DEVELOPMENT.MD](DEVELOPMENT.MD)** | **Canonical execution plan: all nine milestones, tasks, deliverables, and exit criteria.** |
+| **[DEVELOPMENT.MD](DEVELOPMENT.MD)** | **Canonical execution plan: all nine milestones, tasks, deliverables, and acceptance criteria.** |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow: issues, labels, branches, commits, pull requests, Copilot review, and definition of done. |
 | [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md) | Motivation, stakeholders, success outcomes, scope, teaching principles. |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, end-to-end flow, boundaries, metadata, and interfaces. |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Metrics, rubrics, evaluation datasets, methods, and interpretation. |
