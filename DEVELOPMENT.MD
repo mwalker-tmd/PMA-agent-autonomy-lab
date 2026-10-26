@@ -138,7 +138,7 @@ These application directories are **planned**, not generated in this documentati
 
 ### Steps
 
-- [ ] **2.1** Create the project repository (if not yet created), commit documentation, and establish safe `.gitignore` conventions for credentials and generated results.
+- [ ] **2.1** Confirm the `.gitignore` from Milestone 0 covers credentials and the result paths τ-bench actually writes; extend it if not. (The repository and documentation already exist from Milestones 0–1.)
 - [ ] **2.2** Install/verify `uv` and Python compatible with upstream (currently `>=3.12,<3.14`). Record local versions.
 - [ ] **2.3** Clone `https://github.com/sierra-research/tau2-bench` **alongside** this repo, not as an accidental nested Git repository; record upstream commit/tag.
 - [ ] **2.4** Run `uv sync`, configure a local `.env` (no credentials in Git), and validate the benchmark CLI/data.
@@ -477,7 +477,7 @@ All milestones must uphold the following invariants:
 - [x] Document all nine milestones, implementation steps, deliverables, and acceptance criteria.
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [ ] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions.
-- [ ] **Milestone 2:** create/clone τ-bench and execute baseline.
+- [ ] **Milestone 2:** clone τ-bench and execute baseline.
 - [ ] Milestones 3–9: not yet started.
 
 **First actionable work session:** Review the candidate workflow acceptance scenarios in [`docs/EVALUATION.md`](docs/EVALUATION.md), confirm the risk boundaries in [`docs/AUTONOMY.md`](docs/AUTONOMY.md), then move to the first upstream install/inspection in Milestone 2.
