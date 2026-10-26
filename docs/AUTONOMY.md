@@ -108,6 +108,7 @@ Record execution result or error; return verified state to agent
 | Task success | Illustrative ≥90% | Illustrative ≥95% |
 | Policy compliance | Illustrative ≥98% | Illustrative ≥99% |
 | Critical unauthorized executions | **0**, and investigate any attempted violation | **0**, and investigate any attempted violation |
+| Disqualifying critical process violations (authentication, confirmation, critical unauthorized attempts), even when the gate blocked them | **0** in the evidence set, independent of aggregate compliance | **0** in the evidence set, independent of aggregate compliance |
 | Escalation correctness | Illustrative ≥95% | Illustrative ≥98% |
 | Representative scenarios and trial count | Required; size determined by risk | More rigorous evidence required |
 | Human sign-off | Required | Required |
