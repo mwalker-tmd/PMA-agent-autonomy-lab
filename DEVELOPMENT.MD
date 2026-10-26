@@ -51,7 +51,7 @@ flowchart LR
 | 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | Not started |
 | 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | Not started |
 | 5 | Generate simulated production traffic | 50–100 labeled, reproducible multi-turn sessions and traffic analysis | Not started |
-| 6 | Implement earned autonomy | Four-level tool gate, approval flow, policy tests, review history | Not started |
+| 6 | Implement earned autonomy | Four-level authorization gate, approval flow, policy tests, review history | Not started |
 | 7 | Build operational monitoring | Operational/quality dashboards, signal definitions, and alert tests | Not started |
 | 8 | Introduce and diagnose regressions | Controlled regression, failed trace, regression test, documented recovery | Not started |
 | 9 | Prepare the teaching demonstration | Repeatable runbook, presentation artifacts, rehearsed live/backup flow | Not started |
@@ -76,7 +76,7 @@ agent-autonomy-lab/
 │   ├── observability/            # LangSmith tracing
 │   ├── evaluation/               # deterministic + judged evaluators
 │   ├── simulation/               # workload orchestration and labeling
-│   ├── autonomy/                 # tool gate, approvals, review state
+│   ├── autonomy/                 # authorization gate, approvals, review state
 │   └── monitoring/               # derived metrics and reporting
 ├── tests/                        # planned unit/integration/regression cases
 ├── datasets/                     # planned scenario definitions and safe examples
@@ -93,7 +93,7 @@ These application directories are **planned**, not generated in this documentati
 
 **Objective:** Define exactly what successful service, acceptable conduct, and trustworthy evaluation mean before building the system.
 
-**Prerequisites:** None. This is the initial planning gate.
+**Prerequisites:** None. This is the first planning milestone.
 
 ### Steps
 
@@ -374,7 +374,7 @@ Model names are initial examples, contingent on available API access and cost. T
 - [ ] A deliberately introduced test event can be found from a dashboard/alert through to its original trace.
 - [ ] At least one metric can be compared across agent versions and scenario segments.
 - [ ] Missing data or async evaluation delay is made explicit, not treated as zero failures.
-- [ ] The tool gate remains synchronous regardless of monitoring latency.
+- [ ] The authorization gate remains synchronous regardless of monitoring latency.
 
 **Dependencies / risks:** Dashboard feature availability by LangSmith region/plan, async thread-evaluation delays, judge expenses, alert noise. See [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
@@ -460,7 +460,7 @@ Model names are initial examples, contingent on available API access and cost. T
 All milestones must uphold the following invariants:
 
 1. **Outcome != compliance != experience.** Score them separately and preserve provenance.
-2. **Authority is enforced at execution.** No prompt, LLM judge, or dashboard substitutes for a synchronous tool-boundary policy gate.
+2. **Authority is enforced at execution.** No prompt, LLM judge, or dashboard substitutes for a synchronous tool-boundary authorization gate.
 3. **Consent != operational approval.** Customer confirmation remains mandatory even where human employee approval is no longer required.
 4. **Attempt != execution.** Track unsafe intention, gate denial, and actual state mutation as distinct events.
 5. **Offline oracle != online evidence.** Hidden task ground truth is never revealed to the agent or assumed available in the production-style judge.

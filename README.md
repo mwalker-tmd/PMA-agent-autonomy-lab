@@ -24,7 +24,7 @@ It extends an earlier RAGAS/RAG-pipeline evaluation demonstration into **agent o
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, end-to-end flow, boundaries, metadata, and interfaces. |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Metrics, rubrics, evaluation datasets, methods, and interpretation. |
 | [docs/SIMULATION.md](docs/SIMULATION.md) | Synthetic traffic generation, scenario strategy, realism, and reproducibility. |
-| [docs/AUTONOMY.md](docs/AUTONOMY.md) | Autonomy levels, runtime policy gate, promotion and restriction governance. |
+| [docs/AUTONOMY.md](docs/AUTONOMY.md) | Autonomy levels, runtime authorization gate, promotion and restriction governance. |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Monitoring, alerts, version comparison, and regression-response playbook. |
 | [docs/DEMO.md](docs/DEMO.md) | Office-hours narrative, live runbook, and teaching checkpoints. |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Recorded architecture decisions, open questions, and changes. |
@@ -34,7 +34,7 @@ It extends an earlier RAGAS/RAG-pipeline evaluation demonstration into **agent o
 - **Simulation:** τ-bench / τ³-bench, retail domain, text-mode multi-turn conversations.
 - **Implementation:** Python 3.12 or 3.13; `uv`.
 - **Telemetry/evaluation:** LangSmith (existing account); Python deterministic evaluators; sampled LLM and human judgments.
-- **Authorization:** A custom, synchronous tool-boundary policy gate independent of agent prompts.
+- **Authorization:** A custom, synchronous tool-boundary authorization gate independent of agent prompts.
 - **Presentation:** Existing τ-bench viewer and LangSmith dashboards first; no custom UI unless required.
 
 ## Nine milestones

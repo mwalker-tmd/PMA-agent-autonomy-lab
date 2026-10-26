@@ -27,7 +27,7 @@
   description: "Metrics, evaluators, judges, and scorecards"
 - name: "area:autonomy"
   color: "c2e0c6"
-  description: "Autonomy levels, tool gate, promotion and restriction"
+  description: "Autonomy levels, authorization gate, promotion and restriction"
 - name: "area:architecture"
   color: "c2e0c6"
   description: "Components, interfaces, and telemetry contract"
