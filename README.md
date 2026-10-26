@@ -1,12 +1,12 @@
 # Agent Autonomy Lab
 
+**Status:** Proposal and specification; nothing is implemented. No application code, τ-bench baseline, or LangSmith integration exists yet. Milestone 0 (repository and workflow setup) is complete; Milestone 1 is in progress.  
+**Documentation baseline:** October 18, 2026.  
+**Approach:** One repository for our project; the upstream [τ-bench repository](https://github.com/sierra-research/tau2-bench) remains separate.
+
 **An AI support agent earns bounded autonomy through demonstrated performance.**
 
 > Grant AI agents the autonomy they have demonstrated they can exercise safely and reliably. Expand that autonomy through evidence, and retain the ability to restrict it when performance changes.
-
-**Status:** Planning and documentation. No application code, τ-bench baseline, or LangSmith integration has yet been implemented.  
-**Documentation baseline:** October 18, 2026.  
-**Approach:** One repository for our project; the upstream [τ-bench repository](https://github.com/sierra-research/tau2-bench) remains separate.
 
 ## Why this project exists
 
@@ -52,7 +52,7 @@ See [DEVELOPMENT.MD](DEVELOPMENT.MD) for the steps and acceptance criteria for *
 
 ## Project state and next action
 
-We have **not yet run τ-bench or created application code**. The immediate objective is Milestone 1: ratify the scenarios, evaluation evidence, and success criteria. Milestone 2 will install τ-bench and run the first five unmodified retail simulations. The first working teaching checkpoint follows Milestone 4.
+We have **not yet run τ-bench or created application code**. Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). The immediate objective is Milestone 1: ratify the scenarios, evaluation evidence, and success criteria. Milestone 2 will install τ-bench and run the first five unmodified retail simulations. The first working teaching checkpoint follows Milestone 4.
 
 ## Guardrails
 
