@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.MD)
 
-**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026; nothing here is implemented or tested. “Selected” means selected for the **plan**.
+**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026); nothing here is implemented or tested. “Selected” means selected for the **plan**.
 
 **Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.MD).
 
@@ -21,6 +21,20 @@
 | ADR-009 | 2026-10-18 | **Selected:** τ-bench official baseline separate from customized experiments | Defensible, reproducible reporting | If a published benchmark protocol explicitly supports modifications |
 | ADR-010 | 2026-10-18 | **Selected:** No custom frontend for the first release | Prioritize the teaching workflow rather than presentation infrastructure | LangSmith + viewer cannot show essential evidence |
 | ADR-011 | 2026-10-18 | **Selected:** README short; `DEVELOPMENT.MD` authoritative; domain docs under `docs/` | Clear separation of purpose, execution and technical specifications | Documentation becomes unwieldy |
+| ADR-012 | 2026-10-26 | **Accepted:** Milestone 1 teaching scope and initial rubric ([note](#adr-012--accept-the-milestone-1-scope-and-rubric)) | All Milestone 1 documents merged after review; remaining unknowns are tracked as open questions | Milestone 2 inspection contradicts the workflows or rubric |
+
+## Decision notes
+
+### ADR-012 — Accept the Milestone 1 scope and rubric
+- Date: 2026-10-26
+- Status: Accepted
+- Context: Milestone 1 defines successful service, acceptable conduct, and trustworthy evaluation before any code is written. Its documents landed through pull requests #20–#23, #26, #27, and #29–#36, each reviewed by GitHub Copilot with every comment addressed before merge. The sign-off review (#19) checked every cross-document link and made terminology consistent across all documents.
+- Options considered: accept the scope and rubric now and validate them against real τ-bench retail tasks in Milestone 2; defer acceptance until after that inspection; revise further before accepting.
+- Decision: Accept the teaching scope in [PROJECT_BRIEF.md](PROJECT_BRIEF.md) and the initial rubric in [EVALUATION.md](EVALUATION.md) (scorecard, scenario acceptance contracts, ground-truth boundaries, and judge rubrics) as the Milestone 1 baseline. The sole maintainer accepts them, acting as stakeholder, product manager, engineer, and SDET, informed by the Copilot pull request reviews (see the single-maintainer exception in [CONTRIBUTING.md](../CONTRIBUTING.md#protection-of-main)).
+- Why: Milestone 2 needs a fixed rubric to inspect real tasks against. The rubric's known unknowns are recorded as open questions targeting Milestones 2–8, so accepting now does not hide them.
+- Tradeoffs/risks: Retail task IDs, tool names, and policies are unverified until Milestone 2; autonomy thresholds are illustrative; one maintainer plus automated review is weaker than independent human review.
+- Artifacts affected: `DEVELOPMENT.MD` (Milestone 1 marked complete), `README.md` (status), this log.
+- Verification or reconsideration trigger: Milestone 2 inspection shows the retail tasks or policies do not support the three workflows or the rubric (see the [scope review triggers](PROJECT_BRIEF.md#scope-review-triggers)), or a second maintainer joins.
 
 ## Open questions to resolve deliberately
 
