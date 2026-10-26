@@ -121,4 +121,4 @@ Any illustrated data must be marked **hypothetical** until real runs exist. Neve
 
 ## Suggested follow-on lessons
 
-Optional, not part of the nine milestones: comparing two model providers on the same scenarios; switching to an OpenTelemetry-compatible alternative; explaining evaluator drift, threshold calibration and confidence intervals; adding voice/knowledge domains; or piloting a separate, unrelated agent application.
+Optional, not part of the planned milestones: comparing two model providers on the same scenarios; switching to an OpenTelemetry-compatible alternative; explaining evaluator drift, threshold calibration and confidence intervals; adding voice/knowledge domains; or piloting a separate, unrelated agent application.

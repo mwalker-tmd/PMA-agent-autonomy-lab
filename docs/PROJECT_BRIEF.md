@@ -87,7 +87,7 @@ The project is successful when it can reproduce one complete evidence chain:
 
 **Customer request → agent/tool attempts → enforced permissions → business outcome → trace → eval score → monitoring signal → human autonomy decision → regression test.**
 
-The full nine-milestone criteria are maintained in [DEVELOPMENT.MD](../DEVELOPMENT.MD).
+Every milestone's Acceptance Criteria are maintained in [DEVELOPMENT.MD](../DEVELOPMENT.MD).
 
 ## Core principles
 

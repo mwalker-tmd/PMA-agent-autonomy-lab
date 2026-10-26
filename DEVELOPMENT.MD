@@ -67,7 +67,7 @@ Every milestone's Acceptance Criteria also include: **each open question in [doc
 ```text
 agent-autonomy-lab/
 ├── README.md
-├── DEVELOPMENT.MD                # authoritative nine-milestone tracker
+├── DEVELOPMENT.MD                # authoritative milestone tracker
 ├── docs/                         # project, architecture and teaching specifications
 ├── pyproject.toml                # planned; create when local project code begins
 ├── .env.example                  # planned; placeholders only, never real keys
@@ -474,7 +474,7 @@ All milestones must uphold the following invariants:
 
 - [x] Select single-repository strategy and an upstream dependency approach.
 - [x] **Milestone 0:** repository, workflow, and review process set up (see [CONTRIBUTING.md](CONTRIBUTING.md)).
-- [x] Document all nine milestones, implementation steps, deliverables, and acceptance criteria.
+- [x] Document all nine delivery milestones (1–9), implementation steps, deliverables, and acceptance criteria.
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [ ] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions.
 - [ ] **Milestone 2:** clone τ-bench and execute baseline.

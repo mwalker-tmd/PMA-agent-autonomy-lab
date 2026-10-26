@@ -18,7 +18,7 @@ It extends an earlier RAGAS/RAG-pipeline evaluation demonstration into **agent o
 
 | Document | Purpose |
 | --- | --- |
-| **[DEVELOPMENT.MD](DEVELOPMENT.MD)** | **Canonical execution plan: all nine milestones, tasks, deliverables, and acceptance criteria.** |
+| **[DEVELOPMENT.MD](DEVELOPMENT.MD)** | **Canonical execution plan: the nine delivery milestones (1–9), tasks, deliverables, and acceptance criteria.** |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow: issues, labels, branches, commits, pull requests, Copilot review, and definition of done. |
 | [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md) | Motivation, stakeholders, success outcomes, scope, teaching principles. |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, end-to-end flow, boundaries, metadata, and interfaces. |
@@ -37,7 +37,9 @@ It extends an earlier RAGAS/RAG-pipeline evaluation demonstration into **agent o
 - **Authorization:** A custom, synchronous tool-boundary authorization gate independent of agent prompts.
 - **Presentation:** Existing τ-bench viewer and LangSmith dashboards first; no custom UI unless required.
 
-## Nine milestones
+## Milestones
+
+Milestone 0 set up the repository and workflow. Nine delivery milestones follow:
 
 1. Establish project and success criteria.
 2. Install and run τ-bench.
