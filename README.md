@@ -61,7 +61,7 @@ All customer traffic is synthetic. Do not commit API keys or customer data. Neve
 
 ## License
 
-**MIT is the recommended license**, but the license file and copyright holder should be created by the repository owner. Upstream code retains its own copyright/license notices if any is incorporated.
+Released under the MIT License; see [LICENSE](LICENSE). Any upstream code incorporated later keeps its own copyright and license notices.
 
 ## References
 
