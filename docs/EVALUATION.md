@@ -24,7 +24,7 @@ A single aggregate quality score would hide unacceptable tradeoffs. Example: cha
 | Policy compliance | Applicable business rules and action order followed | Policy text + verified event sequence | Rule engine + sampled review | **Critical rules yes** |
 | Tool correctness | Correct tool selection and arguments, no prohibited action | Structured ordered tool calls/returns | Deterministic trajectory comparisons | **On harmful actions** |
 | Authentication compliance | Access/auth happened before protected operations | Authentication event + tool timeline | Deterministic | **Yes** |
-| Confirmation compliance | Required customer confirmation was established before state mutation | Customer-confirmation state + event ordering | Deterministic; review when ambiguous | **Yes** |
+| Confirmation compliance | Required customer confirmation was established before any state-changing action was **attempted** (a gate-denied premature attempt is a FAIL) | Customer-confirmation state + ordering of state-changing attempts and executions (gate `ATTEMPTED`/`EXECUTED` events) | Deterministic; review when ambiguous | **Yes** |
 | Escalation correctness | Appropriate handoff when user request exceeds scope | Scenario rubric + conversation + decision events | Rules + calibrated LLM judge | Depends on severity |
 | Customer experience | Accurate, clear, respectful, no unnecessary repeated questions | Customer/agent dialogue | Anchored LLM rubric + human | No |
 | Operational efficiency | Cost, latency, failed tools/retries, tokens, turns | LLM/tool telemetry and timestamps | Aggregation | Budget/service thresholds |
