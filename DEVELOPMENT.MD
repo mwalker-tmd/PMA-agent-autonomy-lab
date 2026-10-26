@@ -240,7 +240,7 @@ Model names are initial examples, contingent on available API access and cost. T
 
 - [ ] **4.1** Map each metric in [`docs/EVALUATION.md`](docs/EVALUATION.md) to exact data fields and one or more evidence sources.
 - [ ] **4.2** Build deterministic checks for final-state success, allowed tool/action, authentication order, confirmation order, and denied/attempted/executed actions where measurable.
-- [ ] **4.3** Represent unknown/not-observed conditions explicitly rather than marking them as passing (e.g. `PASS`, `FAIL`, `NOT_APPLICABLE`, `INSUFFICIENT_EVIDENCE`).
+- [ ] **4.3** Represent unknown/not-observed conditions explicitly rather than marking them as passing using the [EVALUATION.md statuses](docs/EVALUATION.md#required-result-format): `PASS`, `FAIL`, `NOT_APPLICABLE`, `INSUFFICIENT_EVIDENCE`, and `EVALUATOR_ERROR`. An evaluator error never counts as passing.
 - [ ] **4.4** Implement the three rubric-based LLM judges in [`docs/EVALUATION.md`](docs/EVALUATION.md#llm-as-a-judge-design): clarity/customer effort, escalation judgment, and conversation efficiency. Version judge prompts.
 - [ ] **4.5** Run focused evaluator unit tests: successful state change + policy violation, failed transaction + appropriate escalation, and gate-denied action.
 - [ ] **4.6** Create a ~20-case **baseline subset**, balanced across workflow types and risk cases; keep a future held-out slice separate.
@@ -279,7 +279,7 @@ Model names are initial examples, contingent on available API access and cost. T
 - [ ] **5.1** Create a scenario catalog covering straightforward, multi-step, ambiguous, difficult/contradictory, and policy-sensitive requests.
 - [ ] **5.2** Reuse τ-bench's simulated user and actual tasks before authoring new scenarios; label any modified task as an Agent Autonomy Lab experiment.
 - [ ] **5.3** Define customer personas/behavior dimensions, task distributions, max turns/steps, seeds, and concurrency.
-- [ ] **5.4** Implement a repeatable runner producing 50–100 conversations, with capped cost/attempts and retries logged distinctly.
+- [ ] **5.4** Implement a repeatable runner producing 50–100 sessions, with capped cost/attempts and retries logged distinctly.
 - [ ] **5.5** Separate task splits into development, regression, and held-out evaluation slices; prevent exposing task oracle instructions to the agent.
 - [ ] **5.6** Persist a lightweight manifest/index for trace IDs and derived scores rather than committing large or sensitive raw transcript dumps.
 - [ ] **5.7** Repeat selected tasks across seeds/trials to illustrate non-determinism; include exception classes and timeout cases.
