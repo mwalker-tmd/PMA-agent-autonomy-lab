@@ -113,7 +113,9 @@ follow_up_owner: TBD
 follow_up_due: TBD
 ```
 
-## Verification for Milestones 7 and 8
+## Verification checks for Milestones 7 and 8
+
+These checks support the canonical Acceptance Criteria for [Milestone 7](../DEVELOPMENT.MD#milestone-7--build-operational-monitoring) and [Milestone 8](../DEVELOPMENT.MD#milestone-8--introduce-and-diagnose-regressions) in `DEVELOPMENT.MD`.
 
 - Alert/signal can be drilled down to at least one relevant trace and gate event.
 - The dashboard shows actual outcome metrics and separate process-compliance metrics.
