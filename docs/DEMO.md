@@ -57,7 +57,7 @@ Show how the oracle verifies a correct final state and independent evaluators ve
 
 ### 4 — Monitor synthetic production traffic
 
-Show the workload mix, run count, verified resolution, tool errors, latency/cost and unsafe attempts. Distinguish realistic-ish synthetic operations from a real production reliability claim. Ask: **Which signal would you watch after a release?**
+Show the workload mix, run count, task success rate, tool errors, latency/cost and unsafe attempts. Distinguish realistic-ish synthetic operations from a real production reliability claim. Ask: **Which signal would you watch after a release?**
 
 **Evidence needed:** actual generated traffic, dashboards, counts/denominators and metadata.
 

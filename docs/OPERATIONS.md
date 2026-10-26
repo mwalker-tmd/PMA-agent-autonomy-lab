@@ -19,7 +19,7 @@ These are related disciplines but different responsibilities. Monitoring can be 
 | --- | --- | --- | --- |
 | Conversation volume | Started and completed sessions | Time window | Operations / workload context |
 | Completion rate | Completed sessions | Started sessions | Engineering / failure investigation |
-| Verified resolution rate | Oracle-verified successful eligible tasks | Completed, scored eligible tasks | PM/product / outcome quality |
+| Task success rate | Eligible tasks scored as [task success](EVALUATION.md#initial-scorecard--evidence-matrix) | Completed, scored eligible tasks | PM/product / outcome quality |
 | Critical policy failure | Critical violations | Applicable evaluated cases | Governance / restrict when warranted |
 | Unauthorized action attempts | Gate-invalid attempted tools | Sessions and/or protected tool attempts | Governance / inspect and restrict |
 | Unauthorized executions | Forbidden tools that **executed** | All protected executions | **Critical incident** |
@@ -42,7 +42,7 @@ Avoid treating every denied action as an agent failure: some are **correct** ref
 
 **View 2 — Customer and policy outcomes**
 
-- Verified resolution and policy compliance separately, sampled qualitative scores.
+- Task success rate and policy compliance separately, sampled qualitative scores.
 - Attempted vs executed unauthorized mutations, gate denials by reason.
 - Escalation and human approval rates, current autonomy level/grants.
 - Drill-down to concrete traces and gate events.

@@ -352,7 +352,7 @@ Model names are initial examples, contingent on available API access and cost. T
 ### Steps
 
 - [ ] **7.1** Define an operational metrics contract: conversation count, failure/error rate, latency, token/cost usage, tool retries, escalation volume.
-- [ ] **7.2** Define quality/governance metrics: verified resolution rate, policy compliance, unauthorized **attempts**, unauthorized **executions**, gate denials, autonomy level, approval rate.
+- [ ] **7.2** Define quality/governance metrics: task success rate, policy compliance, unauthorized **attempts**, unauthorized **executions**, gate denials, autonomy level, approval rate.
 - [ ] **7.3** Configure LangSmith prebuilt/custom dashboards; group by agent/prompt version, scenario class, model, and autonomy level.
 - [ ] **7.4** Establish metric denominators, `N/A` handling, sampling strategy, and time windows; avoid mixing the benchmark dataset and modified synthetic traffic in one unqualified chart.
 - [ ] **7.5** Configure or emulate actionable alerts for attempted restricted actions, rising tool errors, and significant quality degradation; document where direct LangSmith alert support is not available.
@@ -363,7 +363,7 @@ Model names are initial examples, contingent on available API access and cost. T
 ### Deliverables
 
 1. Operational dashboard with volume, reliability, latency, and cost views.
-2. Quality/governance dashboard with task success, policy/attempt metrics, and agent-version breakdowns.
+2. Quality/governance dashboard with task success rate, policy/attempt metrics, and agent-version breakdowns.
 3. Alert thresholds/sampling configuration and test evidence.
 4. Runbook linking each signal to an investigation and decision owner.
 5. Metric dictionary specifying numerators/denominators and freshness.
