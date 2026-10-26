@@ -16,7 +16,7 @@ Fixed evaluation datasets establish comparable behavior under known conditions. 
 | --- | --- | --- | --- |
 | Setup smoke test | 5 tasks × 1 trial | Validate installation, schema, tools, results | 2 |
 | Rubric baseline | ~20 selected cases | Validate evaluators and find initial examples | 4 |
-| Operational simulation | 50–100 conversations | Populate monitoring, compare scenario classes | 5 |
+| Operational simulation | 50–100 sessions | Populate monitoring, compare scenario classes | 5 |
 | Regression suite | Targeted fixed cases × repeated trials | Detect known behavioral regressions | 8 |
 | Held-out validation | Non-tuned cases; sized by resources | Compare corrected vs. regressed behavior with less leakage | 4, 5, 8 |
 
