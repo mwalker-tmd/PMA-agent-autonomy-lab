@@ -30,6 +30,7 @@
 | Which agent extension point is the narrowest safe place for LangSmith instrumentation? | 2–3 | Prototype against upstream examples without modifying core benchmark behavior |
 | Which exact tool execution boundary permits complete gate enforcement? | 2, 6 | Trace real call path; test blocked mutations and alternative routes |
 | Which agent and simulated-user models balance affordability and reliability? | 2 | Run five tasks, measure usage and model compatibility |
+| How should tool correctness be judged when a task's reference `actions` are one valid trajectory, not the only correct one? (Affects the Tool correctness method in the [evaluation scorecard](EVALUATION.md#initial-scorecard--evidence-matrix).) | 2, 4 | Inspect real retail tasks; compare runs that reach the correct end state by different paths; define allowed-alternative and prohibited-action rules rather than exact trajectory match |
 | Which policy checks can be deterministic from actual data? | 2–4 | Review policy/event/state schema; implement unit-test fixtures |
 | Can the current LangSmith account/region access required thread evaluator/trajectory views? | 3–4 | Validate with one test thread and judge |
 | How will human approvals be simulated: deterministic fixture, manual UI, or both? | 6 | Choose simplest auditable and teachable option |
