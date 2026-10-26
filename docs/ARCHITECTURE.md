@@ -100,6 +100,7 @@ Store these fields in a versioned event schema once we inspect actual τ-bench s
 
 | Field | Purpose | Example (illustrative) |
 | --- | --- | --- |
+| `event_id` | Uniquely identify one event; the target of evaluator `evidence_ids` in [EVALUATION.md](EVALUATION.md#required-result-format) | `event-101` |
 | `simulation_id` | Correlate one full simulated run | `sim-00023` |
 | `thread_id` | Group multi-turn traces | `thread-00023` |
 | `scenario_id` / `task_id` | Task category and benchmark ground truth index | `retail:<verified-id>` |
@@ -118,6 +119,7 @@ Record explicit event state transitions using the gate event classes in [AUTONOM
 
 ```json
 {
+  "event_id": "event-101",
   "event_type": "gate_decision",
   "simulation_id": "sim-00023",
   "thread_id": "thread-00023",
