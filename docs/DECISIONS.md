@@ -2,9 +2,9 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.MD)
 
-**Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.MD).
+**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026; nothing here is implemented or tested. “Selected” means selected for the **plan**.
 
-**Record status:** Initial planning decisions and proposed follow-ups as of October 18, 2026. “Selected” means selected for the **plan**, not implemented/tested.
+**Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.MD).
 
 ## Decision log
 
