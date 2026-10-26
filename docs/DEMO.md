@@ -29,7 +29,7 @@ The demo answers four questions in sequence:
 | 2. Observability | 5 min | LangSmith thread, tool and model spans | Reconstruct why actions happened |
 | 3. Evaluation | 5 min | Task outcome vs. policy and experience scores | A correct state alone isn't enough |
 | 4. Simulated traffic | 4 min | 50–100 session dashboard and segment breakdown | Monitoring trends and denominators |
-| 5. Earned autonomy | 5 min | Level 1 approval versus Level 2 scoped execution | Evidence-based, code-enforced authority |
+| 5. Earned autonomy | 5 min | Level 1 (Supervised) approval versus Level 2 (Trusted within bounds) execution | Evidence-based, code-enforced authority |
 | 6. Regression and restriction | 7 min | Release comparison, denied attempt, regression trace | Detect → investigate → restrict → correct |
 | 7. Wrap-up | 3 min | Promotion packet and discussion | Product ownership of risk tolerance |
 
@@ -63,7 +63,7 @@ Show the workload mix, run count, task success rate, tool errors, latency/cost a
 
 ### 5 — Earn autonomy
 
-Demonstrate the same customer-confirmed eligible action under Level 1 (human employee approval needed) and Level 2 (independent within grant). Show that customer authentication and consent stay required in **both** cases. Ask: **Who is accountable for approving the grant?**
+Demonstrate the same customer-confirmed eligible action under Level 1 Supervised (human employee approval needed) and Level 2 Trusted within bounds (executes within its grant). Show that customer authentication and consent stay required in **both** cases. Ask: **Who is accountable for approving the grant?**
 
 **Evidence needed:** policy matrix, gate event, promotion review record and current action grants.
 

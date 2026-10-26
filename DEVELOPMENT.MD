@@ -313,7 +313,7 @@ Model names are initial examples, contingent on available API access and cost. T
 
 ### Steps
 
-- [ ] **6.1** Define Level 0 read-only, Level 1 supervised execution, Level 2 bounded independent execution, and Level 3 broader bounded execution; write an action-by-action permissions matrix.
+- [ ] **6.1** Define the [autonomy levels](docs/AUTONOMY.md): Level 0 Trainee (read-only), Level 1 Supervised, Level 2 Trusted within bounds, and Level 3 Advanced within bounds; write an action-by-action permissions matrix.
 - [ ] **6.2** Implement a **synchronous authorization gate** immediately before all mutating retail tool calls; default-deny on unknown actions, malformed arguments, or missing context.
 - [ ] **6.3** Validate authenticated customer authority, business eligibility, transaction parameters, explicit customer confirmation, and agent's current action permission independently.
 - [ ] **6.4** Simulate a human support representative's approval for supervised actions; keep human operational approval distinct from customer authorization.
@@ -329,7 +329,7 @@ Model names are initial examples, contingent on available API access and cost. T
 2. Tool-boundary authorization gate, simulated approval service, and audit trail.
 3. Promotion/restriction review workflow with recorded supporting evidence.
 4. Security/behavior tests (deny-by-default, auth, consent, approval, bypass attempt).
-5. Demonstrable supervised vs. bounded-independent execution of an eligible action.
+5. Demonstrable Level 1 (Supervised) vs. Level 2 (Trusted within bounds) execution of an eligible action.
 
 ### Verification / definition of done
 
