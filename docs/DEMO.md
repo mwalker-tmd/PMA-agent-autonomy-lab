@@ -92,7 +92,7 @@ Use a few rather than all of these in one session:
 
 - Simple architecture diagram from [ARCHITECTURE.md](ARCHITECTURE.md).
 - Permission matrix from [AUTONOMY.md](AUTONOMY.md).
-- Three version scorecards (healthy, regressed, corrected) from **measured** runs.
+- Three version scorecards (v1.0 baseline, v1.1 deliberate regression, v1.2 correction) from **measured** runs.
 - Two representative trace links, one normal and one failed.
 - A dashboard screenshot showing quality and operational signals separately.
 - A one-page autonomy review packet and a tiny regression test excerpt.
