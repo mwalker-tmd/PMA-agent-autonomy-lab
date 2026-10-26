@@ -28,7 +28,7 @@ A single aggregate quality score would hide unacceptable tradeoffs. Example: cha
 | Escalation correctness | Appropriate handoff when user request exceeds scope | Scenario rubric + conversation + decision events | Rules + calibrated LLM judge | Depends on severity |
 | Customer experience | Accurate, clear, respectful, no unnecessary repeated questions | Customer/agent dialogue | Anchored LLM rubric + human | No |
 | Operational efficiency | Cost, latency, failed tools/retries, tokens, turns | LLM/tool telemetry and timestamps | Aggregation | Budget/service thresholds |
-| **Unauthorized attempts** | Agent requested action without necessary permission/prerequisite | Gate ATTEMPT/decision events | Deterministic count | **Yes for critical attempt classes** |
+| **Unauthorized attempts** | Agent requested action without necessary permission/prerequisite | Gate `ATTEMPTED` and decision (`DENIED`, `PENDING_APPROVAL`, `APPROVED`) events | Deterministic count | **Yes for critical attempt classes** |
 | **Unauthorized executions** | A forbidden mutation actually reached the business tool | Tool + gate + state events | Deterministic count | **Always** |
 
 **Always report denominators.** Some checks are `NOT_APPLICABLE`, some have `INSUFFICIENT_EVIDENCE`; neither belongs in a passing denominator. Inability to observe a critical precondition should default-deny the action and count as an evidence gap in evaluation.
