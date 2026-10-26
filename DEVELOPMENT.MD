@@ -1,5 +1,7 @@
 # Development Plan — Agent Autonomy Lab
 
+**Status:** Plan and specification; no application implementation has begun. Milestone 0 (repository and workflow setup) is complete; Milestone 1 is in progress.
+
 **This file is the canonical implementation plan.** Supporting specifications live in [`docs/`](docs/). When scope, order, or acceptance criteria change, update this file and record the decision in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 | Field | Value |
@@ -21,6 +23,8 @@ The governing rule is: **increase autonomy based on verified performance, never 
 
 Read [PROJECT_BRIEF](docs/PROJECT_BRIEF.md) for audience, outcomes, and scope, [AUTONOMY](docs/AUTONOMY.md) for precise permission semantics, and [EVALUATION](docs/EVALUATION.md) for measurement details.
 
+**Development process:** Milestone 0 set up the repository, issue templates, labels, branch protection, and pull request review. Every milestone follows the issue → branch → pull request → review workflow in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## 2. How the milestones fit together
 
 ```mermaid
@@ -41,7 +45,8 @@ flowchart LR
 
 | # | Milestone | Primary deliverable | Status |
 | --- | --- | --- | --- |
-| 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | Not started |
+| 0 | Repository and workflow setup | Repository, issue templates, labels, protected `main`, [CONTRIBUTING.md](CONTRIBUTING.md) | Complete |
+| 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | In progress |
 | 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | Not started |
 | 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | Not started |
 | 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | Not started |
@@ -53,7 +58,7 @@ flowchart LR
 
 ### Working definition of a milestone
 
-Each milestone has **inputs/prerequisites**, **steps**, **deliverables**, **verification evidence**, and **exit criteria**. We do not mark a milestone complete merely because code exists: its result must be reproducible and inspectable. Tests, measurements, and screenshots/trace IDs are recorded when produced, not invented in advance.
+Each milestone has **inputs/prerequisites**, **steps**, **deliverables**, **verification evidence**, and **acceptance criteria**. We do not mark a milestone complete merely because code exists: its result must be reproducible and inspectable. Tests, measurements, and screenshots/trace IDs are recorded when produced, not invented in advance.
 
 Every milestone's definition of done also includes: **each open question in [docs/DECISIONS.md](docs/DECISIONS.md) that targets this milestone is resolved (decision recorded) or re-targeted with a stated reason.**
 
@@ -463,7 +468,8 @@ All milestones must uphold the following invariants:
 ## 4. Current execution checklist
 
 - [x] Select single-repository strategy and an upstream dependency approach.
-- [x] Document all nine milestones, implementation steps, deliverables, and exit criteria.
+- [x] **Milestone 0:** repository, workflow, and review process set up (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+- [x] Document all nine milestones, implementation steps, deliverables, and acceptance criteria.
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [ ] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions.
 - [ ] **Milestone 2:** create/clone τ-bench and execute baseline.
