@@ -396,7 +396,7 @@ Model names are initial examples, contingent on available API access and cost. T
 - [ ] **8.6** Restrict the affected autonomy permission, record incident and review decision, and verify restriction on a repeat attempt.
 - [ ] **8.7** Promote the observed failure into a versioned regression test; include both the agent-behavior check and the gate-enforcement check.
 - [ ] **8.8** Correct the agent (prompt/tool contract/model change as appropriate); run regression suite plus a held-out sample.
-- [ ] **8.9** Present results for healthy/regressed/corrected versions. Request human review before restoring permission; record if evidence is insufficient.
+- [ ] **8.9** Present results for the baseline (v1.0), deliberately regressed (v1.1), and corrected (v1.2) versions. Request human review before restoring permission; record if evidence is insufficient.
 
 ### Deliverables
 
