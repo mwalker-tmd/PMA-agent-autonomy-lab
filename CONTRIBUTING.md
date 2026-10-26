@@ -29,6 +29,8 @@ Every issue has an **Acceptance Criteria** section of checkable items. An issue 
 
 Assign each issue to its milestone. Milestones mirror the milestones in [`DEVELOPMENT.MD`](DEVELOPMENT.MD); each milestone's description holds its objective and Acceptance Criteria.
 
+When planning a milestone's tickets, cover every open question in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that targets that milestone, with its own ticket or an Acceptance Criteria item on an existing one. Before the milestone closes, each such question is resolved (decision recorded) or re-targeted with a stated reason; see the [working definition of a milestone](DEVELOPMENT.MD#working-definition-of-a-milestone).
+
 ## Labels
 
 The canonical label set lives in [`.github/labels.yml`](.github/labels.yml). Labels on GitHub must match that file; change both together.
