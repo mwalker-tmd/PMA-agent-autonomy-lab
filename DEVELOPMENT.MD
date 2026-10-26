@@ -1,6 +1,6 @@
 # Development Plan — Agent Autonomy Lab
 
-**Status:** Plan and specification; no application implementation has begun. Milestone 0 (repository and workflow setup) is complete; Milestone 1 is in progress.
+**Status:** Plan and specification; no application implementation has begun. Milestones 0 (repository and workflow setup) and 1 (project and success criteria) are complete; Milestone 2 is next.
 
 **This file is the canonical implementation plan.** Supporting specifications live in [`docs/`](docs/). When scope, order, or acceptance criteria change, update this file and record the decision in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -46,7 +46,7 @@ flowchart LR
 | # | Milestone | Primary deliverable | Status |
 | --- | --- | --- | --- |
 | 0 | Repository and workflow setup | Repository, issue templates, labels, protected `main`, [CONTRIBUTING.md](CONTRIBUTING.md) | Complete |
-| 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | In progress |
+| 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | Complete |
 | 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | Not started |
 | 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | Not started |
 | 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | Not started |
@@ -93,18 +93,20 @@ These application directories are **planned**, not generated in this documentati
 
 **Objective:** Define exactly what successful service, acceptable conduct, and trustworthy evaluation mean before building the system.
 
+**Status:** Complete. The scope and rubric were accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric) (October 26, 2026).
+
 **Prerequisites:** None. This is the first planning milestone.
 
 ### Steps
 
-- [ ] **1.1** Confirm audience (primarily product managers), the lesson sequence, and the central earned-autonomy claim.
-- [ ] **1.2** Confirm scope: τ-bench retail/text; local simulation; synthetic accounts; LangSmith; no production integrations or public-facing app.
-- [ ] **1.3** Specify **three candidate workflows**: order lookup/status, eligible pending-order cancellation, and eligible return/exchange. Document intended correct outcome, disallowed behavior, and risk tier for each. Verify their actual availability in Milestone 2; avoid invented τ-bench task IDs.
-- [ ] **1.4** Select initial metrics (the [scorecard](docs/EVALUATION.md#initial-scorecard--evidence-matrix)): task success, policy compliance, tool correctness, authentication compliance, confirmation compliance, escalation correctness, customer experience, operational efficiency, unauthorized attempts, and unauthorized executions. Record what source can prove each metric.
-- [ ] **1.5** Classify **hard failures** (e.g. unauthorized execution) separately from scored soft qualities (e.g. clarity). Distinguish attempted violations from executed violations.
-- [ ] **1.6** Define ground-truth boundaries: hidden task objectives/state for offline scoring only; traces for online-style evaluation.
-- [ ] **1.7** Draft per-workflow acceptance scenarios (happy path, ambiguous request, missing consent/identity, ineligible action) and define terminology and metadata fields.
-- [ ] **1.8** Record assumptions, questions to validate against upstream retail policies, and initial cost/privacy constraints.
+- [x] **1.1** Confirm audience (primarily product managers), the lesson sequence, and the central earned-autonomy claim.
+- [x] **1.2** Confirm scope: τ-bench retail/text; local simulation; synthetic accounts; LangSmith; no production integrations or public-facing app.
+- [x] **1.3** Specify **three candidate workflows**: order lookup/status, eligible pending-order cancellation, and eligible return/exchange. Document intended correct outcome, disallowed behavior, and risk tier for each. Verify their actual availability in Milestone 2; avoid invented τ-bench task IDs.
+- [x] **1.4** Select initial metrics (the [scorecard](docs/EVALUATION.md#initial-scorecard--evidence-matrix)): task success, policy compliance, tool correctness, authentication compliance, confirmation compliance, escalation correctness, customer experience, operational efficiency, unauthorized attempts, and unauthorized executions. Record what source can prove each metric.
+- [x] **1.5** Classify **hard failures** (e.g. unauthorized execution) separately from scored soft qualities (e.g. clarity). Distinguish attempted violations from executed violations.
+- [x] **1.6** Define ground-truth boundaries: hidden task objectives/state for offline scoring only; traces for online-style evaluation.
+- [x] **1.7** Draft per-workflow acceptance scenarios (happy path, ambiguous request, missing consent/identity, ineligible action) and define terminology and metadata fields.
+- [x] **1.8** Record assumptions, questions to validate against upstream retail policies, and initial cost/privacy constraints.
 
 ### Deliverables
 
@@ -121,10 +123,10 @@ These application directories are **planned**, not generated in this documentati
 
 ### Acceptance Criteria
 
-- [ ] For each candidate workflow, we can explain a correct final state, how to verify it, and at least one unacceptable behavior.
-- [ ] We can distinguish **successful outcome**, **compliant behavior**, and **good customer experience** without treating them as a single score.
-- [ ] No metric depends on hidden ground truth in a production-style online judge.
-- [ ] The initial rubric and teaching scope have been reviewed and accepted.
+- [x] For each candidate workflow, we can explain a correct final state, how to verify it, and at least one unacceptable behavior.
+- [x] We can distinguish **successful outcome**, **compliant behavior**, and **good customer experience** without treating them as a single score.
+- [x] No metric depends on hidden ground truth in a production-style online judge.
+- [x] The initial rubric and teaching scope have been reviewed and accepted.
 
 **Dependencies / risks:** Exact retail capabilities, policies, and task IDs remain unverified until Milestone 2. Update this milestone's scenario language after inspecting real tasks. **No application code is required for completion.**
 
@@ -476,11 +478,11 @@ All milestones must uphold the following invariants:
 - [x] **Milestone 0:** repository, workflow, and review process set up (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 - [x] Document all nine delivery milestones (1–9), implementation steps, deliverables, and acceptance criteria.
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
-- [ ] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions.
+- [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
 - [ ] **Milestone 2:** clone τ-bench and execute baseline.
 - [ ] Milestones 3–9: not yet started.
 
-**First actionable work session:** Review the candidate workflow acceptance scenarios in [`docs/EVALUATION.md`](docs/EVALUATION.md), confirm the risk boundaries in [`docs/AUTONOMY.md`](docs/AUTONOMY.md), then move to the first upstream install/inspection in Milestone 2.
+**Next work session:** Start Milestone 2 with the first upstream install and inspection. Plan its tickets to cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
