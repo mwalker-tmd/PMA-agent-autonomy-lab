@@ -111,9 +111,9 @@ Store these fields in a versioned event schema once we inspect actual τ-bench s
 | `traffic_type`, `scenario_category` | Separate synthetic vs. other; segment evaluations | `synthetic`, `cancellation` |
 | `tool_name`, `argument_hash` | Audit attempted action without dumping secrets | `cancel_order`, safe hash |
 | `decision`, `decision_reason` | Explain gate result | `DENIED`, `missing_customer_confirmation` |
-| `outcome`, `elapsed_ms`, `tokens`, `cost` | Outcome + operations | `execution_failed`, numeric values |
+| `outcome`, `elapsed_ms`, `tokens`, `cost` | Outcome + operations | `EXECUTION_FAILED`, numeric values |
 
-Record explicit event state transitions so **attempted**, **denied**, **approved**, **executed**, and **execution-failed** states cannot collapse into a single flag. Example policy decision:
+Record explicit event state transitions using the gate event classes in [AUTONOMY.md](AUTONOMY.md#distinguish-events-and-metrics) (`ATTEMPTED`, `DENIED`, `PENDING_APPROVAL`, `APPROVED`, `EXECUTED`, `EXECUTION_FAILED`) so they cannot collapse into a single flag. Example policy decision:
 
 ```json
 {
@@ -122,7 +122,7 @@ Record explicit event state transitions so **attempted**, **denied**, **approved
   "thread_id": "thread-00023",
   "tool_name": "cancel_order",
   "decision": "DENIED",
-  "reason_code": "missing_customer_confirmation",
+  "decision_reason": "missing_customer_confirmation",
   "autonomy_level": 2,
   "policy_version": "gate-001",
   "traffic_type": "synthetic"
