@@ -70,7 +70,7 @@ Thresholds for noncritical trends must be chosen after obtaining actual baseline
 
 ## Online evaluation timing and sampling
 
-Multi-turn LangSmith evaluation may run after thread inactivity rather than after every tool call. LangSmith currently documents a thread idle setting with a minimum of two minutes. That makes thread-level judges useful for **retrospective quality signals**, not synchronous action permissions. Restrict dangerous actions at the tool gate immediately and use async evaluators to study broader behavior. For cost control, sample qualitative judges and run critical deterministic checks exhaustively where practical.
+Multi-turn LangSmith evaluation may run after thread inactivity rather than after every tool call. LangSmith currently documents a thread idle setting with a minimum of two minutes. That makes thread-level judges useful for **retrospective quality signals**, not synchronous action permissions. Restrict dangerous actions at the authorization gate immediately and use async evaluators to study broader behavior. For cost control, sample qualitative judges and run critical deterministic checks exhaustively where practical.
 
 ## Incident handling runbook
 

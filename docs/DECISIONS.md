@@ -63,7 +63,7 @@
 
 ## Deferred ideas (not commitments)
 
-- Port a reusable autonomy gate to other agent frameworks after it has demonstrated value in this lab.
+- Port a reusable authorization gate to other agent frameworks after it has demonstrated value in this lab.
 - Add OpenTelemetry portability or compare Opik/Langfuse after LangSmith-based MVP works.
 - Expand to telecom, banking knowledge, or voice only if it clearly improves a later lesson.
 - Build an application UI or deploy publicly only if existing trace/dashboard viewers fail to communicate the core concepts.

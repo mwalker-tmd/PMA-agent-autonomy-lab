@@ -12,7 +12,7 @@ Use a small, understandable Python project that **adapts τ-bench** rather than 
 flowchart TB
     C[Simulated customer\nτ-bench user simulator] --> O[τ-bench conversation orchestrator]
     O <--> A[Support agent\nmodel + conversation state]
-    A --> G{Independent synchronous\nautonomy gate}
+    A --> G{Independent synchronous\nauthorization gate}
     G -->|Allowed| T[Retail tool execution]
     G -->|Approval needed| H[Simulated human review]
     G -->|Denied| X[Safe refusal / escalation]
@@ -55,7 +55,7 @@ Clone τ-bench **beside** this repository, never inside it: a nested Git reposit
 | --- | --- | --- |
 | τ-bench environment/user simulator | Provide tasks, synthetic customer, retail tools/state, original scoring | Be silently altered during baseline reporting |
 | Agent adapter | Connect dialogue and tool requests to the benchmark orchestrator; expose trace hooks | Possess authority to bypass execution controls |
-| Autonomy gate | Validate permissions and mandatory policy preconditions; enforce approve/deny | Infer permission merely from model confidence or an LLM judge score |
+| Authorization gate | Validate permissions and mandatory policy preconditions; enforce approve/deny | Infer permission merely from model confidence or an LLM judge score |
 | Human-review simulator | Approve/deny designated operational actions deterministically or through explicit review | Substitute for customer confirmation |
 | LangSmith adapter | Record correlated runs/threads, child calls and failures | Serve as an authorization mechanism |
 | Evaluators | Score final state, events, quality, escalation; maintain evidence trail | Treat unavailable ground truth as negative/positive proof |
@@ -67,7 +67,7 @@ Clone τ-bench **beside** this repository, never inside it: a nested Git reposit
 sequenceDiagram
     participant U as Simulated customer
     participant A as Support agent
-    participant G as Autonomy gate
+    participant G as Authorization gate
     participant H as Human-review simulator
     participant T as Retail tool
     participant L as LangSmith
@@ -140,7 +140,7 @@ Record explicit event state transitions using the gate event classes in [AUTONOM
 
 Acceptance test: one task is navigable as a complete conversation; its child spans include tool invocations; a thread-level evaluator can consume the assembled messages without schema errors.
 
-Multi-turn online evaluation can be delayed after conversation inactivity. **The tool gate executes synchronously regardless of the evaluator's timing.**
+Multi-turn online evaluation can be delayed after conversation inactivity. **The authorization gate executes synchronously regardless of the evaluator's timing.**
 
 ## Data handling
 

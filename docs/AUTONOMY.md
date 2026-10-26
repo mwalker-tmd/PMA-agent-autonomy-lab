@@ -131,7 +131,7 @@ Before granting a new action scope, a designated reviewer receives:
 
 ### Restriction triggers and response
 
-Critical or high-confidence events—such as unauthorized attempted mutation, policy gate bypass, identity/consent failure, unexpected new mutating tool, or a quality trend across a controlled batch—may trigger *automatic restriction* of the affected capability. The restriction is a **configuration/enforcement change** at the gate, not just an alert or a prompt edit.
+Critical or high-confidence events—such as unauthorized attempted mutation, authorization gate bypass, identity/consent failure, unexpected new mutating tool, or a quality trend across a controlled batch—may trigger *automatic restriction* of the affected capability. The restriction is a **configuration/enforcement change** at the gate, not just an alert or a prompt edit.
 
 1. Restrict precisely the relevant action permission or autonomy scope.
 2. Record trigger, active version, decision ID and time.

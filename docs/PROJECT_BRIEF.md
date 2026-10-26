@@ -69,7 +69,7 @@ These are **candidate patterns** and must be reconciled with actual τ-bench ret
 - Local Python/`uv` execution; synthetic customer personas and multi-turn tasks.
 - LangSmith traces, threads, evaluators, dashboards and human review.
 - Offline ground-truth scoring plus independent process checks.
-- A simulated tool-execution approval service, policy gate, and authorization audit log.
+- A simulated tool-execution approval service, authorization gate, and authorization audit log.
 - Versioned traffic batches, simulated incidents, and a live/backup office-hours demo.
 
 **Out of scope for v1**
@@ -101,4 +101,4 @@ The full nine-milestone criteria are maintained in [DEVELOPMENT.MD](../DEVELOPME
 
 ## Scope review triggers
 
-Update this brief and the decision log if: the retail tools don't support planned workflows, needed LangSmith functionality is unavailable on the account/region, the autonomy gate cannot safely intercept tool execution, or API budgets require a smaller baseline.
+Update this brief and the decision log if: the retail tools don't support planned workflows, needed LangSmith functionality is unavailable on the account/region, the authorization gate cannot safely intercept tool execution, or API budgets require a smaller baseline.
