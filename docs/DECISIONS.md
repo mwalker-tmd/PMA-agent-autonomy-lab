@@ -19,7 +19,7 @@
 | ADR-007 | 2026-10-18 | **Selected:** Promotions human-reviewed and action-scoped; restrictions may be automatic | Accountability, fail-safe behavior and minimum authority | Evidence-based governance model evolves |
 | ADR-008 | 2026-10-18 | **Selected:** Outcome, compliance, and customer experience scored separately | Avoid hiding serious violations behind fluent/successful responses | If more metrics require explicit split |
 | ADR-009 | 2026-10-18 | **Selected:** τ-bench official baseline separate from customized experiments | Defensible, reproducible reporting | If a published benchmark protocol explicitly supports modifications |
-| ADR-010 | 2026-10-18 | **Selected:** No custom frontend for v1 | Prioritize the teaching workflow rather than presentation infrastructure | LangSmith + viewer cannot show essential evidence |
+| ADR-010 | 2026-10-18 | **Selected:** No custom frontend for the first release | Prioritize the teaching workflow rather than presentation infrastructure | LangSmith + viewer cannot show essential evidence |
 | ADR-011 | 2026-10-18 | **Selected:** README short; `DEVELOPMENT.MD` authoritative; domain docs under `docs/` | Clear separation of purpose, execution and technical specifications | Documentation becomes unwieldy |
 
 ## Open questions to resolve deliberately
