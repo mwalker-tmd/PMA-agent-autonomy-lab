@@ -109,10 +109,15 @@ These application directories are **planned**, not generated in this documentati
 ### Deliverables
 
 1. [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md) — ratified goals, audience, scope, and learning outcomes.
-2. [`docs/EVALUATION.md`](docs/EVALUATION.md) — initial measurement rubric, known limitations, and evidence plan.
-3. [`docs/AUTONOMY.md`](docs/AUTONOMY.md) — provisional levels and non-negotiable permission rules.
-4. Initial **scenario specifications**: IDs assigned locally, three workflow descriptions, expected outcomes, policy checks, and classification; add machine-readable fixtures once schemas are known.
-5. Decision log of assumptions that Milestone 2 must confirm.
+2. [`docs/DECISIONS.md`](docs/DECISIONS.md) — decision log and the open questions (assumptions) that later milestones must confirm.
+3. [`docs/EVALUATION.md`](docs/EVALUATION.md) — initial measurement rubric, known limitations, evidence plan, and the initial **scenario specifications** (candidate acceptance contracts for the three workflows: expected outcomes, policy checks, and classification); add machine-readable fixtures once schemas are known.
+4. [`docs/AUTONOMY.md`](docs/AUTONOMY.md) — provisional levels and non-negotiable permission rules.
+5. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — target architecture and telemetry contract.
+6. [`docs/SIMULATION.md`](docs/SIMULATION.md) — synthetic customer simulation and traffic strategy.
+7. [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — monitoring, incident response, and recovery specification.
+8. [`docs/DEMO.md`](docs/DEMO.md) — proposed teaching demonstration runbook.
+9. `DEVELOPMENT.MD` (this file) — the canonical plan.
+10. [`README.md`](README.md) — project landing page.
 
 ### Verification / definition of done
 
@@ -432,7 +437,7 @@ Model names are initial examples, contingent on available API access and cost. T
 
 ### Deliverables
 
-1. [`docs/DEMO.md`](docs/DEMO.md) — complete facilitator runbook, learning objectives, and backup plan.
+1. [`docs/DEMO.md`](docs/DEMO.md) — the Milestone 1 runbook completed with actual URLs, scenario IDs, commands, and backup evidence.
 2. Replayable set of sample traces, manifests, real scorecards, and dashboard links/screenshots (sanitized).
 3. Short presentation outline and learner discussion prompts.
 4. Verified from-scratch setup and a final demo readiness checklist.
