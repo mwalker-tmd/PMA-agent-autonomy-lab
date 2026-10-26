@@ -100,7 +100,9 @@ Use a **controlled simulated tool** to produce timeouts, transient errors, perma
 
 The project regression demonstration focuses on a **behavioral** premature cancellation attempt; injected tool failures provide additional operational observability practice but are optional for the MVP.
 
-## Acceptance criteria for Milestone 5
+## Verification checks for Milestone 5
+
+These checks support the canonical [Milestone 5 Acceptance Criteria](../DEVELOPMENT.MD#milestone-5--generate-simulated-production-traffic) in `DEVELOPMENT.MD`.
 
 - 50–100 total synthetic sessions or a documented budget-limited subset.
 - Runs labeled by task, category, model and version; failed/incomplete attempts included in denominators.

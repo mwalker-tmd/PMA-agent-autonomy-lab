@@ -60,7 +60,7 @@ flowchart LR
 
 Each milestone has **inputs/prerequisites**, **steps**, **deliverables**, **verification evidence**, and **acceptance criteria**. We do not mark a milestone complete merely because code exists: its result must be reproducible and inspectable. Tests, measurements, and screenshots/trace IDs are recorded when produced, not invented in advance.
 
-Every milestone's definition of done also includes: **each open question in [docs/DECISIONS.md](docs/DECISIONS.md) that targets this milestone is resolved (decision recorded) or re-targeted with a stated reason.**
+Every milestone's Acceptance Criteria also include: **each open question in [docs/DECISIONS.md](docs/DECISIONS.md) that targets this milestone is resolved (decision recorded) or re-targeted with a stated reason.**
 
 ### Suggested artifact layout as implementation grows
 
@@ -119,7 +119,7 @@ These application directories are **planned**, not generated in this documentati
 9. `DEVELOPMENT.MD` (this file) — the canonical plan.
 10. [`README.md`](README.md) — project landing page.
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] For each candidate workflow, we can explain a correct final state, how to verify it, and at least one unacceptable behavior.
 - [ ] We can distinguish **successful outcome**, **compliant behavior**, and **good customer experience** without treating them as a single score.
@@ -181,7 +181,7 @@ Model names are initial examples, contingent on available API access and cost. T
 4. Real task-to-workflow mapping for the selected three cases.
 5. Short extension-point recommendation for LangSmith tracing and subsequent gate instrumentation.
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] Five completed retail task results are accessible or a precise environmental blocker is recorded.
 - [ ] At least one complete conversation can be reconstructed from persisted results.
@@ -218,7 +218,7 @@ Model names are initial examples, contingent on available API access and cost. T
 4. Short sample trace walkthrough (URLs or screenshots, with safe synthetic content).
 5. Integration tests for identifiers, parent-child nesting, error paths, and message formatting.
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] Given a simulation ID, we can find the corresponding LangSmith conversation and tool trajectory.
 - [ ] At least one full multi-turn interaction is assembled correctly for thread-level evaluation.
@@ -256,7 +256,7 @@ Model names are initial examples, contingent on available API access and cost. T
 4. Baseline experiment report: outcome, compliance, user experience, latency/cost, and trace links.
 5. MVP walkthrough: successful outcome despite procedural failure (if naturally encountered; otherwise use clearly labeled controlled fixture).
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] Every score has traceable evidence and a known denominator.
 - [ ] At least one test proves task success and policy compliance can disagree.
@@ -293,7 +293,7 @@ Model names are initial examples, contingent on available API access and cost. T
 4. Segment analysis by risk, complexity, outcome, policy compliance, and efficiency.
 5. Demonstrable held-out/evaluator-isolation strategy.
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] Re-running a manifest recreates the scenario selection/settings (LLM output may still vary).
 - [ ] Synthetic sessions have usable traces and corresponding evaluation scores.
@@ -331,7 +331,7 @@ Model names are initial examples, contingent on available API access and cost. T
 4. Security/behavior tests (deny-by-default, auth, consent, approval, bypass attempt).
 5. Demonstrable Level 1 (Supervised) vs. Level 2 (Trusted within bounds) execution of an eligible action.
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] All mutating tools are inaccessible without gate approval; no bypass route is known in the supported integration.
 - [ ] Level 0 cannot execute a mutation; Level 1 requires human approval; Level 2 can execute **only** specified, customer-confirmed eligible actions.
@@ -368,7 +368,7 @@ Model names are initial examples, contingent on available API access and cost. T
 4. Runbook linking each signal to an investigation and decision owner.
 5. Metric dictionary specifying numerators/denominators and freshness.
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] The dashboard shows operating and customer-outcome quality as **different** dimensions.
 - [ ] A deliberately introduced test event can be found from a dashboard/alert through to its original trace.
@@ -406,7 +406,7 @@ Model names are initial examples, contingent on available API access and cost. T
 4. New regression test and documented change/fix.
 5. Written incident review and autonomy restoration decision record.
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] The regression reliably produces the **attempted** violation without executing a forbidden transaction.
 - [ ] Evidence connects observed metric movement to one or more concrete trace behaviors.
@@ -443,7 +443,7 @@ Model names are initial examples, contingent on available API access and cost. T
 4. Verified from-scratch setup and a final demo readiness checklist.
 5. Post-demo improvement backlog.
 
-### Verification / definition of done
+### Acceptance Criteria
 
 - [ ] Someone with the repository and required external accounts can reproduce the demo without undocumented decisions.
 - [ ] Every displayed percentage or comparison comes from a recorded run or is clearly labeled illustrative.
