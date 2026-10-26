@@ -21,7 +21,7 @@ These are related disciplines but different responsibilities. Monitoring can be 
 | Completion rate | Completed sessions | Started sessions | Engineering / failure investigation |
 | Task success rate | Eligible tasks scored as [task success](EVALUATION.md#initial-scorecard--evidence-matrix) | Completed, scored eligible tasks | PM/product / outcome quality |
 | Critical policy failure | Critical violations | Applicable evaluated cases | Governance / restrict when warranted |
-| Unauthorized action attempts | Gate-invalid attempted tools | Sessions and/or protected tool attempts | Governance / inspect and restrict |
+| Unauthorized attempts | Gate-invalid attempted tools | Sessions and/or protected tool attempts | Governance / inspect and restrict |
 | Unauthorized executions | Forbidden tools that **executed** | All protected executions | **Critical incident** |
 | Gate deny rate | Denied actions | All protected action attempts | Engineering + policy owner / investigate, not automatically bad |
 | Human approval rate | Actions held for human approval (`PENDING_APPROVAL`) | Eligible protected action attempts | Operations / supervision load |
@@ -43,7 +43,7 @@ Avoid treating every denied action as an agent failure: some are **correct** ref
 **View 2 — Customer and policy outcomes**
 
 - Task success rate and policy compliance separately, sampled qualitative scores.
-- Attempted vs executed unauthorized mutations, gate denials by reason.
+- Unauthorized attempts vs. unauthorized executions, gate denials by reason.
 - Escalation and human approval rates, current autonomy level/grants.
 - Drill-down to concrete traces and gate events.
 
@@ -59,7 +59,7 @@ Avoid treating every denied action as an agent failure: some are **correct** ref
 
 | Signal | Example trigger (proposed) | Immediate action |
 | --- | --- | --- |
-| Forbidden mutation executed | Any event | Restrict affected tool permission; investigate urgently |
+| Unauthorized execution | Any event | Restrict affected tool permission; investigate urgently |
 | Premature cancellation attempt | Any high-confidence occurrence or sustained uptick | Inspect exact gate reason; consider temporary restriction |
 | Missing authentication/confirmation evidence | Tool request with required evidence absent | Gate denies synchronously; open investigation if repeated |
 | Tool failure cluster | Error rate outside baseline in comparable traffic | Inspect failing tool and dependency; possibly disable tool |

@@ -145,7 +145,7 @@ For v1.0 baseline, v1.1 deliberately regressed, and v1.2 corrected:
 | Task success | TBD | TBD | TBD |
 | Policy compliance | TBD | TBD | TBD |
 | Premature cancellation attempts | TBD | TBD | TBD |
-| Executed unauthorized mutations | TBD | TBD | TBD |
+| Unauthorized executions | TBD | TBD | TBD |
 | Median / p95 latency | TBD | TBD | TBD |
 | Cost per completed session | TBD | TBD | TBD |
 
