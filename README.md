@@ -1,6 +1,6 @@
 # Agent Autonomy Lab
 
-**Status:** Proposal and specification; nothing is implemented. No application code, τ-bench baseline, or LangSmith integration exists yet. Milestone 0 (repository and workflow setup) is complete; Milestone 1 is in progress.  
+**Status:** Proposal and specification; nothing is implemented. No application code, τ-bench baseline, or LangSmith integration exists yet. Milestones 0 (repository and workflow setup) and 1 (project and success criteria) are complete; Milestone 2 is next.  
 **Documentation baseline:** October 18, 2026.  
 **Approach:** One repository for our project; the upstream [τ-bench repository](https://github.com/sierra-research/tau2-bench) remains separate.
 
@@ -55,7 +55,7 @@ See [DEVELOPMENT.MD](DEVELOPMENT.MD) for the steps and acceptance criteria for *
 
 ## Project state and next action
 
-We have **not yet run τ-bench or created application code**. Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). The immediate objective is Milestone 1: ratify the scenarios, evaluation evidence, and success criteria. Milestone 2 will install τ-bench and run the first five unmodified retail simulations. The first working teaching checkpoint follows Milestone 4.
+We have **not yet run τ-bench or created application code**. Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). Milestone 1 defined the scenarios, evaluation evidence, and success criteria, accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric). The immediate objective is Milestone 2: install τ-bench and run the first five unmodified retail simulations. The first working teaching checkpoint follows Milestone 4.
 
 ## Guardrails
 
