@@ -5,7 +5,7 @@ This repository demonstrates how a production AI application is planned, built, 
 ## Workflow at a glance
 
 ```
-issue → branch → commits → pull request → review → squash-merge → issue closed
+issue → branch → commits → pull request → review → merge (squash or rebase) → issue closed
 ```
 
 Work follows a **design → implement → verify → review** rhythm:
@@ -57,7 +57,10 @@ A branch may cover a whole milestone when its tickets are small and sequential (
 - Use the [pull request template](.github/pull_request_template.md): link the issue (`Closes #N`), summarize the change, describe verification, and complete the definition-of-done checklist.
 - **GitHub Copilot reviews every pull request.** A review is requested automatically when a non-draft pull request is opened and again on each new push. Open as a draft to iterate without triggering reviews.
 - Address every Copilot comment: either fix it, or reply with the reason it does not apply. Then resolve the conversation. All conversations must be resolved before merging.
-- Merge with **squash-merge** (the only enabled merge method). The source branch is deleted automatically.
+- Merge with one of the two enabled methods. Merge commits are disabled, and both methods keep history linear:
+  - **Squash and merge** (default): the pull request lands as one commit. Use it when the individual commits are work-in-progress.
+  - **Rebase and merge**: each commit lands on `main` as a separate commit (rebased, so commit IDs change). Use it when the individual commits are meaningful history, such as one commit per ticket or review-fix commits worth keeping (as in #23).
+- The source branch is deleted automatically after merge.
 
 ## Definition of done
 
