@@ -18,7 +18,7 @@ A single aggregate quality score would hide unacceptable tradeoffs. Example: cha
 
 ## Initial scorecard / evidence matrix
 
-| Metric | Definition | Evidence | Method | Hard gate? |
+| Metric | Definition | Evidence | Method | Hard failure? |
 | --- | --- | --- | --- | --- |
 | Task success | Benchmark reward under the pinned task's `reward_basis` (retail: end-state only, e.g. `DB` × `COMMUNICATE`); reference `actions` are one valid trajectory, not required calls | τ-bench reward and per-component results; final database state | Benchmark evaluator offline (DB state comparison; communication via LLM judge by default); reported separately from our tool/compliance checks | Not alone |
 | Policy compliance | Applicable business rules and action order followed | Policy text + verified event sequence | Rule engine + sampled review | **Critical rules yes** |
