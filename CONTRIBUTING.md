@@ -13,7 +13,7 @@ Work follows a **design → implement → verify → review** rhythm:
 1. **Design** — the issue states the objective and its Acceptance Criteria before work starts.
 2. **Implement** — make the change on a branch.
 3. **Verify** — demonstrate each criterion with real evidence (commands, tests, run manifests, trace IDs). Never invent results.
-4. **Review** — open a pull request, check the definition of done, then merge.
+4. **Review** — open a pull request, address the Copilot review, check the definition of done, then merge.
 
 ## Issues
 
@@ -55,7 +55,8 @@ A branch may cover a whole milestone when its tickets are small and sequential (
 ## Pull requests
 
 - Use the [pull request template](.github/pull_request_template.md): link the issue (`Closes #N`), summarize the change, describe verification, and complete the definition-of-done checklist.
-- Resolve all review conversations before merging.
+- **GitHub Copilot reviews every pull request.** A review is requested automatically when a non-draft pull request is opened and again on each new push. Open as a draft to iterate without triggering reviews.
+- Address every Copilot comment: either fix it, or reply with the reason it does not apply. Then resolve the conversation. All conversations must be resolved before merging.
 - Merge with **squash-merge** (the only enabled merge method). The source branch is deleted automatically.
 
 ## Definition of done
@@ -75,9 +76,10 @@ A repository ruleset named **Protect main** applies to the default branch:
 - changes must arrive through a pull request;
 - linear history is required;
 - force-pushes and branch deletion are blocked;
-- review conversations must be resolved before merge.
+- review conversations must be resolved before merge;
+- GitHub Copilot review is requested automatically on every pull request.
 
-**Single-maintainer exception:** required approvals are set to **0** because the project has one maintainer, who cannot approve their own pull requests. Reviews still happen through the pull request checklist. Raise this to 1 when a second maintainer joins.
+**Single-maintainer exception:** the project has one maintainer, who acts as stakeholder, product manager, engineer, and SDET, and GitHub does not allow approving your own pull request. **GitHub Copilot is the reviewer.** Copilot leaves comment reviews and cannot approve, so required approvals are set to **0**. The review still has to happen: every Copilot comment must be addressed and resolved, and the maintainer accepts the change by merging. Raise required approvals to 1 when a second maintainer joins.
 
 ## Secrets and data
 
