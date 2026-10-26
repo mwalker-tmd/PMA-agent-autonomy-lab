@@ -16,7 +16,7 @@ flowchart TB
     G -->|Allowed| T[Retail tool execution]
     G -->|Approval needed| H[Simulated human review]
     G -->|Denied| X[Safe refusal / escalation]
-    H -->|Approved| T
+    H -->|Approved: recheck at execution| G
     H -->|Rejected| X
     T --> DB[(Simulated retail state)]
     T --> O
@@ -81,6 +81,7 @@ sequenceDiagram
       G->>H: Approval request
       H-->>G: Approved or denied
       opt Approved
+        G->>G: Recheck preconditions and permissions at execution time
         G->>T: Execute validated tool
         T-->>G: Result / error
       end
