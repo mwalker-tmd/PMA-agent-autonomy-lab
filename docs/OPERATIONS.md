@@ -24,7 +24,7 @@ These are related disciplines but different responsibilities. Monitoring can be 
 | Unauthorized action attempts | Gate-invalid attempted tools | Sessions and/or protected tool attempts | Governance / inspect and restrict |
 | Unauthorized executions | Forbidden tools that **executed** | All protected executions | **Critical incident** |
 | Gate deny rate | Denied actions | All protected action attempts | Engineering + policy owner / investigate, not automatically bad |
-| Human approval rate | Approval-required actions | Eligible protected action attempts | Operations / supervision load |
+| Human approval rate | Actions held for human approval (`PENDING_APPROVAL`) | Eligible protected action attempts | Operations / supervision load |
 | Escalation rate | Escalated sessions | Completed sessions | Product/operations / contextual |
 | Tool error rate | Failed tool invocations | Total tool invocations | Engineering / dependency repair |
 | Conversation latency | p50/p95 wall-clock duration | Completed sessions | Engineering / SLO tracking |
