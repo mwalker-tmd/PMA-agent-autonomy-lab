@@ -64,11 +64,13 @@ Check required customer confirmation ── Missing ──> DENY / request confi
     |
    Present
     v
-Check active agent level + scoped grants
+Check active agent level + scoped grants ── Not permitted ──> DENY + record
     |                          |
-   Allowed                  Human review required
+   Allowed                  Human review required (PENDING_APPROVAL)
     |                          |
-    |                      Approve / Deny
+    |                      Employee decision ── Reject ──> DENY + record
+    |                          |
+    |                       Approve
     v                          v
 Execute once, with idempotency/audit where possible
     |
