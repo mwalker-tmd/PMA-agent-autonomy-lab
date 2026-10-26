@@ -110,7 +110,7 @@ Store these fields in a versioned event schema once we inspect actual τ-bench s
 | `model_id`, `user_model_id` | Agent and user-simulator model provenance | provider-qualified ID |
 | `tool_schema_version`, `policy_version` | Reproduce permissions and API surface | `gate-001` |
 | `autonomy_level` | Active authority at **decision time** | `1` |
-| `traffic_type`, `scenario_category` | Separate synthetic vs. other; segment evaluations | `synthetic`, `cancellation` |
+| `traffic_type`, `workflow`, `scenario_category` | Separate synthetic vs. other; segment evaluations by workflow and [scenario category](SIMULATION.md#initial-scenario-taxonomy) | `synthetic`, `cancellation`, `policy_sensitive` |
 | `tool_name`, `argument_hash` | Audit attempted action without dumping secrets | `cancel_order`, safe hash |
 | `decision`, `decision_reason` | Explain gate result | `DENIED`, `missing_customer_confirmation` |
 | `outcome`, `elapsed_ms`, `tokens`, `cost` | Outcome + operations | `EXECUTION_FAILED`, numeric values |

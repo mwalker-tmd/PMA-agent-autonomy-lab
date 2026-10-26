@@ -493,12 +493,12 @@ tau_bench_commit: TBD
 tau_bench_task_split: base
 selected_task_ids: []
 scenario_manifest_version: TBD
-agent_model: TBD
-simulated_user_model: TBD
+model_id: TBD
+user_model_id: TBD
 judge_model: TBD
 agent_version: TBD
 prompt_version: TBD
-autonomy_policy_version: TBD
+policy_version: TBD
 seed: TBD
 trials_per_task: TBD
 concurrency: TBD
