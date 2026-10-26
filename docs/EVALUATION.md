@@ -20,7 +20,7 @@ A single aggregate quality score would hide unacceptable tradeoffs. Example: cha
 
 | Metric | Definition | Evidence | Method | Hard gate? |
 | --- | --- | --- | --- | --- |
-| Task success | Correct desired postcondition for a legitimate eligible request | Benchmark oracle final state/required actions; business state | Deterministic offline | Not alone |
+| Task success | Benchmark reward under the pinned task's `reward_basis` (retail: end-state only, e.g. `DB` × `COMMUNICATE`); reference `actions` are one valid trajectory, not required calls | τ-bench reward and per-component results; final database state | Benchmark evaluator offline (DB state comparison; communication via LLM judge by default); reported separately from our tool/compliance checks | Not alone |
 | Policy compliance | Applicable business rules and action order followed | Policy text + verified event sequence | Rule engine + sampled review | **Critical rules yes** |
 | Tool correctness | Correct tool selection and arguments, no prohibited action | Structured ordered tool calls/returns | Deterministic trajectory comparisons | **On harmful actions** |
 | Authentication compliance | Access/auth happened before protected operations | Authentication event + tool timeline | Deterministic | **Yes** |
