@@ -101,7 +101,7 @@ These application directories are **planned**, not generated in this documentati
 - [ ] **1.2** Confirm scope: τ-bench retail/text; local simulation; synthetic accounts; LangSmith; no production integrations or public-facing app.
 - [ ] **1.3** Specify **three candidate workflows**: order lookup/status, eligible pending-order cancellation, and eligible return/exchange. Document intended correct outcome, disallowed behavior, and risk tier for each. Verify their actual availability in Milestone 2; avoid invented τ-bench task IDs.
 - [ ] **1.4** Select initial metrics: task success, policy compliance, tool correctness, authentication, customer confirmation, escalation correctness, customer experience, and efficiency. Record what source can prove each metric.
-- [ ] **1.5** Classify **hard gates** (e.g. unauthorized execution) separately from scored soft qualities (e.g. clarity). Distinguish attempted violations from executed violations.
+- [ ] **1.5** Classify **hard failures** (e.g. unauthorized execution) separately from scored soft qualities (e.g. clarity). Distinguish attempted violations from executed violations.
 - [ ] **1.6** Define ground-truth boundaries: hidden task objectives/state for offline scoring only; traces for online-style evaluation.
 - [ ] **1.7** Draft per-workflow acceptance scenarios (happy path, ambiguous request, missing consent/identity, ineligible action) and define terminology and metadata fields.
 - [ ] **1.8** Record assumptions, questions to validate against upstream retail policies, and initial cost/privacy constraints.
@@ -318,7 +318,7 @@ Model names are initial examples, contingent on available API access and cost. T
 - [ ] **6.3** Validate authenticated customer authority, business eligibility, transaction parameters, explicit customer confirmation, and agent's current action permission independently.
 - [ ] **6.4** Simulate a human support representative's approval for supervised actions; keep human operational approval distinct from customer authorization.
 - [ ] **6.5** Emit structured gate events (`ATTEMPTED`, `DENIED`, `PENDING_APPROVAL`, `APPROVED`, `EXECUTED`, `EXECUTION_FAILED`) with IDs and reasons.
-- [ ] **6.6** Define **provisional teaching thresholds**, minimum reviewed evidence, hard disqualifiers, approval ownership, and audit records for promotion/restoration.
+- [ ] **6.6** Define **provisional teaching thresholds**, minimum reviewed evidence, disqualifying violations, approval ownership, and audit records for promotion/restoration.
 - [ ] **6.7** Implement configurable scope-limited promotion, maintain, and restriction actions. Restriction can be automatic on a critical signal; re-promotion needs human review.
 - [ ] **6.8** Test identical customer-confirmed cancellation at Levels 0/1/2 and disallowed cases at all levels. Prove prompt/tool-argument changes cannot bypass the gate.
 - [ ] **6.9** Separate custom autonomy experiment results from official τ-bench baseline outputs.
