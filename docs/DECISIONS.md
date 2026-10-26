@@ -48,7 +48,7 @@
 ## Decision note template
 
 ```markdown
-### ADR-012 — <short title>
+### ADR-NNN — <short title>
 - Date:
 - Status: Proposed | Accepted | Rejected | Superseded
 - Context:
