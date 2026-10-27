@@ -101,12 +101,15 @@ run:  # M2-03 (#41) — fields follow the DEVELOPMENT.md §5 template
       estimates.
   latency:  # M2-05 (#43); computed from results.json, not printed by tau2 run
     method: >-
-      Per-call latency is the gap between a model-generated message's
-      timestamp and the previous message's timestamp (local clock;
-      includes LiteLLM and network overhead). generation_time_seconds is
-      null in results.json. Task wall time is the simulation's duration.
-    agent_call_s: {calls: 59, median: 1.86, mean: 2.29, max: 8.57}
-    user_call_s: {calls: 21, median: 2.19, mean: 2.48, max: 4.54}
+      Agent calls: generation_time_seconds from results.json, which
+      tau2 times around the LiteLLM completion call (llm_utils.py); the
+      5 fixed greetings have none. User calls: tau2 leaves the field null
+      on user messages, so the figure is a proxy, the gap between the
+      user message's timestamp and the previous message's (local clock;
+      also includes inter-turn processing). Task wall time is the
+      simulation's duration.
+    agent_call_s: {calls: 59, source: generation_time_seconds, median: 1.85, mean: 2.28, max: 8.57, sum: 134.6}
+    user_call_s: {calls: 21, source: timestamp_gap_proxy, median: 2.19, mean: 2.48, max: 4.54}
     task_wall_s: {"0": 35.0, "1": 39.1, "2": 34.6, "3": 40.0, "4": 38.1, mean: 37.4}
     run_wall_s: 198   # started_at_utc to finished_at_utc
   errors:  # M2-05 (#43); run of record only

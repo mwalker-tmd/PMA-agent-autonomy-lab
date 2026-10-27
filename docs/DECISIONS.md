@@ -59,7 +59,7 @@
   - **Outcome:** 5 of 5 tasks evaluated; rewards 1, 1, 0, 1, 1 (average 0.8). Task 2 failed its one NL assertion; every DB check passed.
   - **Token use:** agent 59 calls, 320,266 prompt and 5,813 completion tokens; simulated user 21 calls, 20,970 prompt and 1,860 completion tokens.
   - **Cost:** $0.03 billed (OpenAI usage dashboard, authoritative). LiteLLM's per-message estimate is $0.0107 (agent $0.0082, user $0.0025) and the list-price upper bound is $0.038, at $0.10 input / $0.50 output per 1M tokens. The gap between the estimate and the bill is unexplained. NL-judge calls are not in the estimate because τ-bench does not record their usage.
-  - **Latency:** agent calls median 1.86 s (max 8.57 s); user calls median 2.19 s (max 4.54 s); 34.6–40.0 s per task; 198 s for the run. Measured from message timestamps, so these include LiteLLM and network overhead.
+  - **Latency:** agent calls median 1.85 s (max 8.57 s), from τ-bench's recorded `generation_time_seconds`; user calls median 2.19 s (max 4.54 s), a proxy from message timestamp gaps because τ-bench does not time user calls; 34.6–40.0 s per task; 198 s for the run.
   - **Errors in the run of record:** 0 infra errors, 0 tool errors, 0 hallucination retries.
   - **Compatibility issues:** two earlier attempts failed on all five tasks. τ-bench's default `temperature: 0.0` is rejected ("Only the default (1) value is supported"). With `reasoning_effort` set, function tools are rejected on `/v1/chat/completions` ("use /v1/responses"). The bare model name is also missing from the pinned LiteLLM price map, so τ-bench reports a cost of 0.0 for it.
 - Options considered:
