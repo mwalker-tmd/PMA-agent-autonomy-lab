@@ -39,10 +39,84 @@ git -C ../tau2-bench checkout 0c69df456a96aa76a1162591574dad9c427a34d7
 
 ### Validation
 
-`uv sync` installed the locked dependencies into `../tau2-bench/.venv` (ignored upstream). Only the last five lines of its output were captured:
+`uv sync` installed the locked dependencies into `../tau2-bench/.venv` (ignored upstream):
 
 ```text
-$ uv sync 2>&1 | tail -5
+$ uv sync
+Using CPython 3.12.0
+Creating virtual environment at: .venv
+Resolved 187 packages in 8ms
+Installed 75 packages in 218ms
+ + addict==2.4.0
+ + aiohappyeyeballs==2.6.1
+ + aiohttp==3.14.5
+ + aiosignal==1.4.0
+ + annotated-doc==0.0.4
+ + annotated-types==0.7.0
+ + anyio==4.14.2
+ + attrs==25.4.0
+ + certifi==2025.11.12
+ + charset-normalizer==3.4.4
+ + click==8.3.1
+ + deepdiff==8.6.2
+ + distro==1.9.0
+ + docstring-parser==0.17.0
+ + fastapi==0.121.2
+ + fastuuid==0.14.0
+ + filelock==3.25.2
+ + frozenlist==1.8.0
+ + fsspec==2025.10.0
+ + h11==0.16.0
+ + hf-xet==1.2.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + huggingface-hub==1.1.4
+ + idna==3.20
+ + importlib-metadata==8.7.0
+ + jinja2==3.1.6
+ + jiter==0.12.0
+ + jsonschema==4.25.1
+ + jsonschema-specifications==2025.9.1
+ + litellm==1.81.11
+ + loguru==0.7.3
+ + markdown-it-py==4.0.0
+ + markupsafe==3.0.3
+ + mdurl==0.1.2
+ + multidict==6.7.0
+ + numpy==2.3.5
+ + openai==2.20.0
+ + orderly-set==5.5.0
+ + packaging==24.2
+ + pandas==2.3.3
+ + propcache==0.4.1
+ + psutil==7.1.3
+ + pydantic==2.13.5
+ + pydantic-core==2.46.5
+ + pygments==2.21.0
+ + python-dateutil==2.9.0.post0
+ + python-dotenv==1.2.4
+ + pytz==2025.2
+ + pyyaml==6.0.3
+ + referencing==0.37.0
+ + regex==2025.11.3
+ + requests==2.34.2
+ + rich==14.2.0
+ + rpds-py==0.29.0
+ + shellingham==1.5.4
+ + six==1.17.0
+ + sniffio==1.3.1
+ + starlette==0.49.3
+ + tabulate==0.9.0
+ + tau2==2.0.0 (from file:///Users/mwalker-tmd/TAMARKDesigns/Clients/PMA%20Accelerator/demo/tau2-bench)
+ + tenacity==9.1.2
+ + tiktoken==0.12.0
+ + tokenizers==0.22.1
+ + toml==0.10.2
+ + tqdm==4.67.1
+ + typer==0.20.0
+ + typer-slim==0.20.0
+ + typing-extensions==4.15.0
+ + typing-inspection==0.4.2
  + tzdata==2025.2
  + urllib3==2.8.0
  + uvicorn==0.38.0
