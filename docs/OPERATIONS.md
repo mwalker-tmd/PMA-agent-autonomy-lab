@@ -97,7 +97,7 @@ signal: unauthorized_cancellation_attempts
 agent_version: TBD
 prompt_version: TBD
 policy_version: TBD
-affected_action: cancel_order
+affected_action: cancel_pending_order
 scope: TBD
 attempts_detected: TBD
 unauthorized_executions: TBD
