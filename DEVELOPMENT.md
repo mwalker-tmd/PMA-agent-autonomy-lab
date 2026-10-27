@@ -156,7 +156,7 @@ These application directories are **planned**, not generated in this documentati
 - [x] **2.5** Read actual retail tools, policy, task descriptions, and [task evaluation documentation](https://github.com/sierra-research/tau2-bench/blob/main/docs/evaluation.md).
 - [x] **2.6** Execute five baseline retail task attempts, one trial each, with pinned model names, seed, and concurrency; save original results.
 - [x] **2.7** Inspect at least one complete multi-turn conversation: user turns, agent turns, tool-call arguments, tool results, final state, benchmark score.
-- [ ] **2.8** Identify actual task IDs suitable for the three workflows (adapt if necessary); identify API/extension paths for our LangSmith adapter.
+- [x] **2.8** Identify actual task IDs suitable for the three workflows (adapt if necessary); identify API/extension paths for our LangSmith adapter.
 - [ ] **2.9** Record failure cases and costs, and separate benchmark findings from speculative improvements.
 
 ### First-run reference commands
@@ -494,7 +494,7 @@ All milestones must uphold the following invariants:
 - [ ] **Milestone 2:** clone τ-bench and execute baseline (in progress).
 - [ ] Milestones 3–9: not yet started.
 
-**Next work session:** Continue Milestone 2: record the task-mapping decision, then finish the extension-point, tool-correctness, policy-check, and findings notes before sign-off. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
+**Next work session:** Continue Milestone 2: finish the tool-correctness, policy-check, and findings notes before sign-off. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
