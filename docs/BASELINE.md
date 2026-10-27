@@ -311,3 +311,73 @@ This answers [milestone criterion 3](../DEVELOPMENT.MD#milestone-2--install-and-
 - **Intermediate states were valid.** Only the final DB is compared, so a wrong write that a later write fully reverses (for example, an address changed and changed back) still passes the DB component.
 
 For this lab, that means the independent process and policy checks in [`EVALUATION.md`](EVALUATION.md) (deterministic checks, judge rubrics, and the authorization gate's own logs) are required alongside τ-bench reward, not optional. [#48](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/48) classifies which of these checks can be deterministic.
+
+## Conversation reconstruction
+
+Recorded on October 27, 2026 for [#42](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/42) (plan step 2.7). This answers [milestone criterion 2](../DEVELOPMENT.MD#milestone-2--install-and-run-τ-bench): a complete conversation can be rebuilt from the persisted results alone. The curated transcript is [`reports/m2-baseline/conversation-task-0.md`](../reports/m2-baseline/conversation-task-0.md).
+
+### Source and method
+
+The source is the run of record's `results.json` (`../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3/`, ignored upstream and not committed). We chose task `0` because it is the shortest of the five (20 messages), passed, and includes a write (`exchange_delivered_order_items`).
+
+The transcript was rebuilt by reading the JSON directly, not through `tau2 view`. This prints every turn of the simulation, in order:
+
+```bash
+python3 -I -c '
+import json, sys
+s = json.load(open(sys.argv[1]))["simulations"][0]
+for m in s["messages"]:
+    for c in m.get("tool_calls") or []:
+        print(m["turn_idx"], "agent -> tool", c["name"], json.dumps(c["arguments"]))
+    if m["role"] == "tool":
+        print(m["turn_idx"], "tool result", m["execution_status"], m["content"][:120])
+    elif m.get("content"):
+        print(m["turn_idx"], m["role"], m["content"][:120])
+print("reward", s["reward_info"]["reward"], s["reward_info"]["reward_breakdown"])
+' ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3/results.json
+```
+
+### Result file structure
+
+Field names as they appear at `0c69df4`. Top level: `timestamp`, `info`, `tasks`, `simulations`, `simulation_index`.
+
+| Location | Fields |
+| --- | --- |
+| `info` (run) | `git_commit`, `seed`, `num_trials`, `max_steps`, `max_errors`, `agent_info` (`implementation`, `llm`, `llm_args`), `user_info` (same), `environment_info` (`domain_name`, `policy`), `communicate_scoring` |
+| `tasks[]` | `id`, `description`, `user_scenario.instructions` (`reason_for_call`, `known_info`, `unknown_info`, `task_instructions`), `initial_state`, `evaluation_criteria` (`actions`, `nl_assertions`, `reward_basis`, …), `agent_opener` |
+| `simulations[]` | `id` (UUID), `task_id`, `trial`, `seed`, `start_time`, `end_time`, `duration`, `termination_reason`, `agent_cost`, `user_cost`, `policy`, `mode`, `messages`, `reward_info` |
+| Agent/user message | `role` (`assistant` or `user`), `content`, `tool_calls`, `turn_idx`, `timestamp`, `cost`, `usage` (`prompt_tokens`, `completion_tokens`), `raw_data` (full provider response), `generation_time_seconds` (agent only) |
+| Tool call | `tool_calls[].id`, `name`, `arguments` (object), `requestor` |
+| Tool result message | `role: tool`, `id` (equals the `tool_calls[].id` it answers), `content` (string; JSON for structured results), `requestor`, `error` (boolean), `execution_status`, `turn_idx`, `timestamp` |
+| `reward_info` | `reward`, `reward_basis`, `reward_breakdown`, `db_check` (`db_match`, `db_reward`), `nl_assertions[]` (`nl_assertion`, `met`, `justification`), `action_checks[]` (`action`, `action_match`, `action_reward`, `tool_type`), `env_assertions`, `communicate_checks`, `info` |
+
+### Mapping input for the telemetry contract
+
+How the fields proposed in [`ARCHITECTURE.md`](ARCHITECTURE.md#proposed-event-and-identifier-contract) line up with what τ-bench persists. This is input to the mapping, not the final schema.
+
+| Proposed field | τ-bench source | Note |
+| --- | --- | --- |
+| `simulation_id` | `simulations[].id` | UUID per simulation |
+| `scenario_id` / `task_id` | `simulations[].task_id` | String, e.g. `"0"` |
+| `turn_index` | `messages[].turn_idx` | Starts at 0 with the fixed opener; tool calls and tool results each take an index |
+| `run_id` / `parent_run_id` | none | The only persisted link is tool result `id` = `tool_calls[].id` |
+| `thread_id` | none | Must be assigned by our adapter |
+| `model_id`, `user_model_id` | `info.agent_info.llm`, `info.user_info.llm` | Per run, not per message; `raw_data.model` holds the provider's name (`gpt-6-luna`) |
+| `agent_version`, `prompt_version` | none | Only upstream's `agent_info.implementation` (`llm_agent`) |
+| `policy_version` | none | The full policy text is stored in `info.environment_info.policy` and `simulations[].policy`; a version must be derived (for example, a hash) |
+| `tool_name`, `argument_hash` | `tool_calls[].name`, `tool_calls[].arguments` | Arguments are stored in full; the hash is ours to compute |
+| `outcome` | tool result `execution_status`, `error` | `executed` and `false` for every call in task `0` |
+| `elapsed_ms` | `generation_time_seconds` (agent), `duration` (simulation) | No per-call timing for the user simulator or tools |
+| `tokens`, `cost` | `messages[].usage`, `messages[].cost` | Per model call; `null` on the fixed opener |
+| `autonomy_level`, `decision`, `decision_reason` | none | Lab concepts; the gate will emit them |
+| `traffic_type`, `workflow`, `scenario_category` | none | Lab concepts |
+
+### What reconstruction showed
+
+1. **Every element the criterion asks for is persisted:** user and agent turns, tool-call arguments, tool results, reward, and the reward breakdown. The task's hidden user instructions (`tasks[].user_scenario`) are stored too, so the transcript can be compared against what the simulated user was told.
+2. **The final database is not persisted.** `reward_info.db_check` holds only `db_match` and `db_reward`. The changed order survives only as the write tool's result (status `exchange requested`, `exchange_price_difference: -16.63`). To audit end states independently, the lab must capture them itself.
+3. **Timestamps have no time zone.** `start_time` and message `timestamp` values are local time (`2026-10-27T00:25:09`, which was 06:25Z). Normalize to UTC before correlating with LangSmith or provider logs.
+4. **Each simulation has its own seed.** The run seed is `42` (`info.seed`), but `simulations[0].seed` is `670487`.
+5. **The fixed opener has no cost or usage.** Message 0 (`agent_opener`) is not a model call, which is why τ-bench reports `agent_cost` as `null` for every simulation in this run.
+6. **One agent reply was a JSON string.** Message 12 stored `{"message": "Please confirm: …"}` as `content`, and the simulated user saw it that way. Nothing in scoring checks reply formatting.
+7. **`raw_data` holds the full provider response,** converted to chat-completion format even though calls went through LiteLLM's Responses API bridge. It is the bulk of the file and is left out of curated excerpts.
