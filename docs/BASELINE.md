@@ -264,3 +264,49 @@ Each entry in `tasks.json` validates against the `Task` model in [`src/tau2/data
 Across the 114 tasks, the reference trajectories contain 550 actions. 10 tasks (`10`, `12`, `24`, `25`, `50`, `57`, `62`, `65`, `67`, `68`) contain no write, so their target end state is the unchanged database. Four actions are `transfer_to_human_agents`.
 
 **English replacement tasks.** The English language pack (`data/tau2/multilingual/en/retail_tasks_en.json`) holds same-ID replacements for 50 tasks. Compared field by field with `tasks.json`, they differ only in `user_scenario`: `known_info` gains a "Name details" block giving first- and last-name order. Their `evaluation_criteria` are identical, so scoring is unaffected. Upstream's CHANGELOG says every run resolves the English pack by default, while `docs/language-packs.md` says custom text runs without `--language` use the ordinary tasks; [#41](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/41) records which one the baseline run actually used.
+
+## Scoring
+
+Recorded on October 26, 2026 for [#40](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/40). Sources: upstream's [evaluation documentation](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/docs/evaluation.md) and the evaluator code in [`src/tau2/evaluator/`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/), both at `0c69df4`. Where they disagree, the code wins.
+
+### How reward is computed
+
+1. **Termination gate.** A conversation that did not end by `AGENT_STOP` or `USER_STOP` (for example, it hit the turn limit or an error) scores `0.0`, and no other check runs ([`evaluator.py:123`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator.py#L123)).
+2. **Components.** The final reward is the **product** of the components listed in the task's `reward_basis`. Each component is 0 or 1, so reward is binary in practice. The run path defaults to `EvaluationType.ALL` (`src/tau2/run.py:85`), which applies the basis ([`evaluator.py:202`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator.py#L202)).
+3. **DB state (`DB`).** `EnvironmentEvaluator` ([`evaluator_env.py`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator_env.py)) builds two environments from `db.json`:
+   - *predicted*: replays the agent's actual tool calls from the conversation; only mutating (`WRITE`) tools are re-executed;
+   - *gold*: replays the task's `evaluation_criteria.actions`. A failing gold action is logged and skipped.
+
+   It then compares SHA-256 hashes of the two databases. A match gives `1.0`, anything else `0.0`. There is no partial credit and no per-field diff in the reward.
+4. **Natural-language assertions (`NL_ASSERTION`).** `NLAssertionsEvaluator` sends the transcript and the task's `nl_assertions` to an LLM judge, `gpt-5.4-mini-2026-03-17` at `reasoning_effort: low` (`src/tau2/config.py:45`). The component is `1.0` only if the judge marks every assertion met. With no assertions it is `1.0` without calling the judge ([`evaluator_nl_assertions.py:34`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator_nl_assertions.py#L34)). Upstream labels this component experimental.
+5. **Communicated info (`COMMUNICATE`).** `CommunicateEvaluator` checks that each `communicate_info` item was said, by a semantic judge (`gpt-5.5`, low effort) or, with `--communicate-scorer substring`, by substring match. Under `ALL` it runs only when `COMMUNICATE` is in the basis ([`evaluator.py:217`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator.py#L217)).
+6. **Action matching (`ACTION`).** `ActionEvaluator` checks that each reference action has a matching agent tool call (same name; arguments compared per `compare_args`, or all of them). It always runs and is reported (`action_checks`, `partial_action_reward`), but gates reward only when `ACTION` is in the basis.
+
+**What this means for retail at `0c69df4`.**
+
+| Component | Gates retail reward? | Why |
+| --- | --- | --- |
+| DB state | Yes, all 114 tasks | `DB` is in every retail `reward_basis` |
+| NL assertions | Yes, in 40 tasks | `NL_ASSERTION` is in 112 bases, but only 40 tasks have non-empty `nl_assertions`; the rest score `1.0` automatically |
+| Communicated info | **No** | No retail task lists `COMMUNICATE`, so the 36 non-empty `communicate_info` lists are not checked under `ALL` |
+| Action matching | **No** | No retail task lists `ACTION`; reported as a diagnostic only |
+| Env assertions | No | No retail task defines any |
+
+So a retail task scores `1.0` when the conversation ends normally, the final database equals the reference end state, and (in 40 tasks) an LLM judge accepts the assertions. Note that upstream's documentation describes the default basis as `["DB", "COMMUNICATE"]`. That is the schema default, but every retail task sets its basis explicitly, so the default never applies here.
+
+Upstream's worked example (airline task `1`) shows the consequence: when every reference action is read-only, the target state is the initial database, and an agent that only refuses, with no lookups at all, gets full reward.
+
+### What τ-bench success does not guarantee
+
+This answers [milestone criterion 3](../DEVELOPMENT.MD#milestone-2--install-and-run-τ-bench): a reward of `1.0` is evidence about the **end state**, not about the **process**. It does not show that:
+
+- **The user was authenticated.** No tool requires authentication, and no reward component checks it (upstream issue on task `5`). Upstream's authentication classifier (`auth_classifier.py`) is part of the optional reviewer, not the reward.
+- **Confirmation was obtained before a write.** The DB hash is the same whether or not the agent asked "yes?" first. Only an NL assertion could catch a missing confirmation, and the retail NL assertions are about facts told to the user (for example, "Agent should tell the user the total refund amount is $918.43."), not about confirmation or authentication.
+- **Only the right user's data was touched or disclosed.** Reads leave no trace in the DB, so looking up or revealing another user's orders does not lower the score.
+- **The policy's conversation rules were followed.** One tool call at a time, no tool call and reply in the same turn, no invented information, and the exact transfer message are not checked by any gating component.
+- **The right path was taken.** Any sequence of calls that reaches the same end state passes; a correct refusal with zero tool calls passes a read-only task. `partial_action_reward` measures similarity to one reference path, not correctness.
+- **The user was told what they needed.** `communicate_info` does not gate retail reward. Required facts are checked only where an NL assertion covers them (40 tasks), and then by an LLM judge whose verdicts are not deterministic.
+- **Results are stable.** One trial per task, an LLM-simulated user, and an LLM judge mean the same task can score differently across runs. Upstream's `pass^k` metric exists for this reason.
+- **Intermediate states were valid.** Only the final DB is compared, so a wrong write that a later write fully reverses (for example, an address changed and changed back) still passes.
+
+For this lab, that means the independent process and policy checks in [`EVALUATION.md`](EVALUATION.md) (deterministic checks, judge rubrics, and the authorization gate's own logs) are required alongside τ-bench reward, not optional. [#48](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/48) classifies which of these checks can be deterministic.
