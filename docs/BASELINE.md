@@ -508,19 +508,19 @@ Recorded on October 27, 2026 for [#47](https://github.com/mwalker-tmd/PMA-agent-
 Reference `actions` have two consumers at the pinned commit:
 
 1. **Gold replay (gates reward).** `EnvironmentEvaluator` runs every reference action into a fresh environment with `make_tool_call`, and its DB hash becomes the target end state. A reference action that raises is logged and skipped ([`evaluator_env.py:107`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator_env.py#L107)). Only the end state matters: the agent's calls are compared to it by hash, not call by call (see [How reward is computed](#how-reward-is-computed)).
-2. **Action matching (diagnostic only in retail).** Under `EvaluationType.ALL` the evaluator always runs `ActionEvaluator` ([`evaluator.py:211`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator.py#L211)) and stores `action_checks` and `partial_action_reward` in `results.json`. Its result enters the reward only when `ACTION` is in `reward_basis` ([`evaluator.py:257`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator.py#L257)), which no retail task does.
+2. **Action matching (diagnostic only in retail).** Under `EvaluationType.ALL` the evaluator always runs `ActionEvaluator` ([`evaluator.py:211`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator.py#L211)) and stores `action_checks` in `results.json`. Its result enters the reward only when `ACTION` is in `reward_basis` ([`evaluator.py:257`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator.py#L257)), which no retail task does.
 
 How a reference action is matched ([`_check_actions`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/evaluator/evaluator_action.py#L16), [`Action.compare_with_tool_call`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/data_model/tasks.py#L178)):
 
 | Rule | Consequence |
 | --- | --- |
 | A reference action matches if **any** tool call in the trajectory has the same name and equal arguments | Order is ignored. One agent call can satisfy several identical reference actions (tasks `2`–`4` list `get_product_details 9523456873` twice). Extra calls are never penalized |
-| Arguments: all the tool call's keys when `compare_args` is `null` (546 of 550 retail actions), name only when it is `[]` (4) | Every retail comparison is effectively exact |
+| Arguments: when `compare_args` is `null` (546 of 550 retail actions), only the keys **the agent's call** supplies are compared; when it is `[]` (the 4 `transfer_to_human_agents` actions in tasks `10`, `12`, `26`, `50`), only the name | Not full argument validation: a call that omits an argument can still match, and a transfer matches whatever its `summary` says. Supplied values must be exactly equal |
 | Values are compared with `==` | List arguments are **order-sensitive**: `item_ids` in a different order do not match, even when the end state is identical |
 | `requestor` and the call's outcome are not compared | A call that failed (`error: true`) still matches |
 | Reference actions that fail on gold replay are still expected | An agent is marked as missing a call that could only have failed |
 
-`partial_action_reward` is the share of matched reference actions, split into `READ` and `WRITE` ([`simulation.py:844`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/data_model/simulation.py#L844)). Upstream's [evaluation documentation](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/docs/evaluation.md) calls it "a similarity signal against *one* reference trajectory, not a correctness verdict".
+`partial_action_reward` is the share of matched reference actions, split into `READ` and `WRITE` ([`simulation.py:844`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/data_model/simulation.py#L844)). It is a Python property computed from `action_checks`, not a field, so it is not in `results.json`; `tau2 view` and the metrics code compute it after loading. Upstream's [evaluation documentation](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/docs/evaluation.md) calls it "a similarity signal against *one* reference trajectory, not a correctness verdict".
 
 ### What the baseline run showed
 
@@ -534,7 +534,7 @@ Each agent tool call in the run of record compared with its task's reference act
 | `3` | `1.0` | `true` | 11/12 | `get_product_details 6086499569` (fails, as above) | `list_all_product_types` |
 | `4` | `1.0` | `true` | 12/13 | `get_product_details 6086499569` (fails, as above) | `list_all_product_types` |
 
-Two of the three mismatches in the run are false negatives. The failing product read could not have helped the agent, and the reordered return reached the same end state (`db_match: true`; a fresh-environment replay of both orders gives equal hashes). The agent found the T-shirt product through `list_all_product_types`, a tool no retail reference trajectory uses. Each task ran once, every task reached its reference end state, and none did so with a different set of writes.
+All four unmatched reference actions (two in task `2`, one each in `3` and `4`) are false negatives. Three are the failing product read, which could not have helped the agent; the fourth is the reordered return, which reached the same end state (`db_match: true`; a fresh-environment replay of both orders gives equal hashes). The agent found the T-shirt product through `list_all_product_types`, a tool no retail reference trajectory uses. Each task ran once, every task reached its reference end state, and none did so with a different set of writes.
 
 ### Tasks with more than one valid path
 
@@ -548,7 +548,7 @@ Found by reading the tasks and the policy, and by replaying reference actions on
 | **Extra or repeated reads** | Tasks `0` and `1` in the baseline run | Yes |
 | **Order of independent writes** | 44 tasks contain more than one write. Task `113`'s two cancellations in either order (probe) | Yes |
 | **Order of items in a list argument** | Task `2` in the baseline run; the probe confirms it for `return_delivered_order_items` | Yes, except `modify_pending_order_items` (below) |
-| **Reads the reference omits.** The policy requires authentication and a status check before writes ([`policy.md:10`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md?plain=1#L10), [line 88](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md?plain=1#L88)) | 45 tasks (`36`, `70`–`113`) have reference writes and no `find_user_id_*` call at all. A compliant agent makes calls the reference lacks, and an agent that skips authentication matches the reference *better* | Yes |
+| **Reads the reference omits.** The policy requires authentication and a status check before writes ([`policy.md:10`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md?plain=1#L10), [line 88](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md?plain=1#L88)) | 45 tasks (`36`, `70`–`113`) have reference writes and no `find_user_id_*` call at all. A compliant agent makes calls the reference lacks. Extra calls are not penalized, so action matching scores an agent that authenticates and one that skips authentication the same: it cannot distinguish compliance | Yes |
 | **Failed calls in the reference** | 18 of the 550 reference actions fail on gold replay: 16 reads (product `6086499569` in `2`–`4`; email lookups in `35`, `37`, `38`, `54`, `55`; name + zip in `39`, `67` ×2, `68`; orders in `46` ×2, `47` ×2) and 2 writes (`64`, `105`, below) | Yes: skipping a call that fails changes nothing |
 
 Where an apparently equivalent path is **not** equivalent:
@@ -570,7 +570,7 @@ Principle: tool correctness is judged on the **writes** and on **prohibited acti
 | ID | Rule | Check |
 | --- | --- | --- |
 | AA-1 | Authenticate by either method; failed lookups before a successful one are allowed | Trajectory |
-| AA-2 | Reads are unconstrained in number, order, and choice of tool, as long as they are catalog data or the authenticated user's own records (see PA-3) | Trajectory + DB |
+| AA-2 | After successful authentication, reads are unconstrained in number, order, and choice of tool, as long as they are catalog data or the authenticated user's own records (see PA-3). Identity lookups before that are covered by AA-1 | Trajectory + DB |
 | AA-3 | `calculate` is optional | — |
 | AA-4 | Expected writes are the reference writes that succeed on gold replay. Reference actions that fail are dropped | Gold replay |
 | AA-5 | Writes are compared as a multiset: independent writes may come in any order, and list arguments are compared as multisets of item IDs (or of `item_id` → `new_item_id` pairs). Exception, until the upstream defect is fixed: `modify_pending_order_items` with several items must also pass the DB check, which depends on pair order | Trajectory + DB |
@@ -586,7 +586,7 @@ Principle: tool correctness is judged on the **writes** and on **prohibited acti
 | PA-4 | No write on an order whose status the policy forbids, including those the tools allow: `modify_pending_order_address` succeeds on a `pending (item modified)` order (probe), which the policy forbids | Policy lines 88, 96, 110, 118, 130 | Trajectory + DB |
 | PA-5 | No exchange to the identical item ID (`exchange_delivered_order_items` accepts it) and no second item modification or exchange on the same order | Policy lines 84, 132 | Trajectory |
 | PA-6 | No write the user did not ask for, even if a later write undoes it | Policy line 16 | Trajectory + judge |
-| PA-7 | Cancellation reason and refund or payment method must be ones the user stated | Policy lines 90, 114, 122–124 | Trajectory + judge |
+| PA-7 | A cancellation reason must be one the user stated. For item modifications, payment changes, returns, and exchanges, the payment or refund method must be one the user stated. Cancellations take no method: the refund goes to the original method automatically | Policy lines 90–92, 102, 114, 122–124, 134 | Trajectory + judge |
 | PA-8 | No call to an unknown tool, more than one tool call per message, or a tool call and a reply in the same message | Policy line 20 | Trajectory |
 | PA-9 | `transfer_to_human_agents` only for out-of-scope requests, followed by the exact transfer message | Policy line 24 | Trajectory + judge |
 | PA-10 | No write outside the autonomy level the run grants ([AUTONOMY.md](AUTONOMY.md)) | Lab policy | Gate log |
