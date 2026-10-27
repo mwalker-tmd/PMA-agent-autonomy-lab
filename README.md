@@ -55,7 +55,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the steps and acceptance criteria for *
 
 ## Project state and next action
 
-We have **not yet created application code**; the first unmodified τ-bench baseline has run (see [docs/BASELINE.md](docs/BASELINE.md)). Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). Milestone 1 defined the scenarios, evaluation evidence, and success criteria, accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric). The immediate objective is to finish Milestone 2: record the model and task-mapping decisions and complete the baseline inspection notes. The first working teaching checkpoint follows Milestone 4.
+We have **not yet created application code**; the first unmodified τ-bench baseline has run (see [docs/BASELINE.md](docs/BASELINE.md)). Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). Milestone 1 defined the scenarios, evaluation evidence, and success criteria, accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric). The immediate objective is to sign off Milestone 2; the baseline inspection is recorded and the Milestone 1 specifications now use the real retail tools and tasks. The first working teaching checkpoint follows Milestone 4.
 
 ## Guardrails
 

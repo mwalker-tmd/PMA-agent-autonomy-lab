@@ -137,7 +137,7 @@ These application directories are **planned**, not generated in this documentati
 - [x] No metric depends on hidden ground truth in a production-style online judge.
 - [x] The initial rubric and teaching scope have been reviewed and accepted.
 
-**Dependencies / risks:** Exact retail capabilities, policies, and task IDs remain unverified until Milestone 2. Update this milestone's scenario language after inspecting real tasks. **No application code is required for completion.**
+**Dependencies / risks:** Retail capabilities, policies, and task IDs were verified in Milestone 2, and the scenario language was updated to match ([ADR-015](docs/DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows), [#50](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/50)); workflow 1 is adapted to an order detail lookup. **No application code is required for completion.**
 
 ---
 
@@ -494,7 +494,7 @@ All milestones must uphold the following invariants:
 - [ ] **Milestone 2:** clone τ-bench and execute baseline (in progress).
 - [ ] Milestones 3–9: not yet started.
 
-**Next work session:** Continue Milestone 2: update the Milestone 1 specifications to match the real tasks, then sign off. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
+**Next work session:** Sign off Milestone 2. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
