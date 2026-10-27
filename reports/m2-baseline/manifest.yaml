@@ -91,6 +91,14 @@ run:  # M2-03 (#41) — fields follow the DEVELOPMENT.MD §5 template
       agent: {calls: 59, prompt: 320266, completion: 5813}
       user: {calls: 21, prompt: 20970, completion: 1860}
     excluded: NL-assertion judge calls (3 tasks have assertions); results.json records no judge usage
+    billed_usd: 0.03        # OpenAI usage dashboard for 2026-10-27, as read by the maintainer; authoritative
+    reconciliation: >-
+      The dashboard total ($0.03) is about $0.02 above the LiteLLM estimate
+      ($0.0107) and below the list-price upper bound ($0.038). Unexplained
+      so far. Candidates: the caching discount LiteLLM applied was not
+      billed, the unrecorded judge calls, or other usage on the key that
+      day. Use billed_usd for budgeting; treat agent_usd/user_usd as
+      estimates.
   failed_attempts:
     - save_to: m2-baseline-2026-10-27
       started_at_utc: 2026-10-27T06:06:40Z
