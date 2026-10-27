@@ -23,6 +23,15 @@ reports/raw/
 traces/
 *.trace.json
 
+# --- τ-bench output ---
+# τ-bench writes under its own data directory (../tau2-bench/data by
+# default), outside this repository. These patterns catch its output if
+# TAU2_DATA_DIR or an absolute --save-to path points into this repository.
+data/simulations/
+*_simulation.json
+logs/
+*.log
+
 # --- OS / editor files ---
 .DS_Store
 Thumbs.db
