@@ -87,6 +87,12 @@ run:  # M2-03 (#41) — fields follow the DEVELOPMENT.md §5 template
     user_usd: 0.0025139     # equals the user_cost tau2 reports
     total_usd: 0.0107476    # agent + user only
     list_price_upper_bound_usd: 0.0379601   # all tokens at list price, no caching
+    per_task_usd:  # M2-11 (#49); LiteLLM per-message cost summed per simulation; judge calls excluded
+      - {task_id: "0", agent: 0.0017724, user: 0.0005123, total: 0.0022848, list_price_bound: 0.0062958, judge_calls: 0}
+      - {task_id: "1", agent: 0.0014209, user: 0.0006351, total: 0.0020560, list_price_bound: 0.0062689, judge_calls: 0}
+      - {task_id: "2", agent: 0.0015519, user: 0.0004548, total: 0.0020067, list_price_bound: 0.0080009, judge_calls: 1}
+      - {task_id: "3", agent: 0.0016501, user: 0.0004246, total: 0.0020746, list_price_bound: 0.0082617, judge_calls: 1}
+      - {task_id: "4", agent: 0.0018383, user: 0.0004871, total: 0.0023255, list_price_bound: 0.0091328, judge_calls: 1}
     tokens:
       agent: {calls: 59, prompt: 320266, completion: 5813}
       user: {calls: 21, prompt: 20970, completion: 1860}
