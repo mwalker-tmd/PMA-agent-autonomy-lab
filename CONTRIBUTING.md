@@ -31,6 +31,14 @@ Assign each issue to its milestone. Milestones mirror the milestones in [`DEVELO
 
 When planning a milestone's tickets, cover every open question in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that targets that milestone, with its own ticket or an Acceptance Criteria item on an existing one. Before the milestone closes, each such question is resolved (decision recorded) or re-targeted with a stated reason; see the [working definition of a milestone](DEVELOPMENT.MD#working-definition-of-a-milestone).
 
+## Milestone status
+
+`DEVELOPMENT.MD` is the progress tracker, so keep it current while a milestone is under way, not only at sign-off:
+
+- **Milestone start:** the first pull request of a milestone sets the milestone's row in the `DEVELOPMENT.MD` milestone table to **In progress** and updates the [current execution checklist](DEVELOPMENT.MD#4-current-execution-checklist) and the status lines at the top of `DEVELOPMENT.MD` and `README.md`.
+- **Plan steps:** each issue's **Plan step** field names the `DEVELOPMENT.MD` steps it serves. A pull request that closes the last open issue for a step ticks that step in the same pull request. An issue whose plan step is a process step ticks nothing.
+- **Milestone end:** marking the milestone **Complete** and ticking its Acceptance Criteria belong to the milestone's sign-off issue.
+
 ## Labels
 
 The canonical label set lives in [`.github/labels.yml`](.github/labels.yml). Labels on GitHub must match that file; change both together.
@@ -78,6 +86,7 @@ A change is done when:
 
 - every Acceptance Criteria item in the linked issue is met and verified;
 - `DEVELOPMENT.MD` reflects any change to scope, order, or acceptance criteria;
+- `DEVELOPMENT.MD` milestone status and plan steps are current (see [Milestone status](#milestone-status));
 - any decision is recorded in `docs/DECISIONS.md`;
 - code follows the [dependency rule](#architecture): no τ-bench, LangSmith, or provider SDK imports outside adapters and the composition root;
 - no secrets, credentials, or real PII are committed (all customer data is synthetic);
