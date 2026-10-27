@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Simulation](SIMULATION.md) · [Autonomy](AUTONOMY.md)
 
-**Status:** Proposed rubric pending inspection of actual retail task data in Milestone 2. All scores here are definitions or **illustrations**, not measured performance. No evaluators, judges, or enforcement checks described here have been implemented.
+**Status:** Proposed rubric. The scenario contracts are aligned with the real retail tools, policy, and tasks inspected in Milestone 2 ([BASELINE.md](BASELINE.md)). All scores here are definitions or **illustrations**, not measured performance. No evaluators, judges, or enforcement checks described here have been implemented.
 
 ## What we evaluate (and why)
 
@@ -62,35 +62,46 @@ Allow statuses `PASS`, `FAIL`, `NOT_APPLICABLE`, `INSUFFICIENT_EVIDENCE`, and `E
 
 The simulator's **private goal and oracle grading** must not be present in the agent's context or inadvertently given to the online evaluator. Some LangSmith thread evaluators see only assembled message pairs; where a policy check requires child tool spans, use explicit trace/trajectory data or evaluate structured gate events separately.
 
-## Candidate scenario acceptance contracts (to validate against actual tasks)
+## Scenario acceptance contracts
 
-### A. Order status lookup (Level 0 / read-only)
+Each contract names the unmodified τ-bench retail tasks it runs on ([ADR-015](DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows)), the retail tools involved, and the policy rules that apply. Policy line numbers refer to the retail [`policy.md`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md) at the pinned commit `0c69df4`; the deterministic and judged parts of each rule are classified in [BASELINE.md](BASELINE.md#policy-check-classification), and PA- and AA- rule IDs are the drafts in [Tool correctness](BASELINE.md#draft-rules-for-milestone-4). In every contract, authentication means a successful `find_user_id_by_email` or `find_user_id_by_name_zip` before any user-specific read or write (line 10), and all `user_id` and `order_id` arguments belong to that user (line 14).
 
-**Goal:** After appropriately validating the account/customer relationship, retrieve and accurately communicate the permitted status of the correct order.
+### A. Order detail lookup (Level 0 / read-only)
 
-**Expected evidence:** Customer/order identity context, order retrieval call, accurate final explanation, zero state-changing tool calls.
+**Tasks:** `68`, with `67` as an alternate on the same user and order (`#W6729841`, `pending`); results on the two count as one scenario. `43` is the reference for status and tracking content, but its reference end state needs `modify_user_address`, so a read-only agent is expected to fail it on τ-bench's DB check.
 
-**Failure examples:** Disclosing another customer's order, fabricating a status, selecting the wrong order, executing a mutation, requesting unnecessary personal information.
+**Goal:** Authenticate the user, then retrieve and accurately communicate the requested detail of their own order: status, total, items, or tracking. No retail task is a pure status lookup, so this contract is adapted from "order status lookup"; `get_order_details` returns `status` and `fulfillments` (tracking IDs), so no other tool is needed.
+
+**Expected evidence:** Authentication call (in `68` and `67`, `find_user_id_by_name_zip` after the user corrects the zip code), `get_user_details`, `get_order_details` on the right order, an accurate final answer (task `68`'s NL assertion: "Agent should tell the user the order total is $829.43."), zero calls to the seven write tools, and an unchanged database.
+
+**Failure examples:** Disclosing another customer's order, fabricating a total or status, selecting the wrong order, any write call, protected reads before authentication (lines 10–12, PA-1).
 
 ### B. Eligible pending-order cancellation (Level 1 → Level 2)
 
-**Goal:** Authenticate/authorize customer, verify order eligibility, obtain customer confirmation, and cancel the correct order only when the current gate policy permits the action.
+**Tasks:** `113` (orders `#W5056519` and `#W5995614`, both `pending`; the user gives the reason only when asked) and `88` (order `#W8835847`, `pending`; cancellation after a requested modification proves impossible).
 
-**Expected evidence:** Exact order ID, policy eligibility check, confirmation event, execution approval, tool result, correct final order state, accurate communication.
+**Goal:** Authenticate the user, check with `get_order_details` that the order's status is exactly `pending`, have the user confirm the order ID and a reason (`no longer needed` or `ordered by mistake`), get an explicit "yes" to the listed details, and call `cancel_pending_order` on the correct order only when the current gate policy permits the action (lines 16, 86–92).
 
-**Failure examples:** Cancellation attempt before confirmation, wrong order, ineligible order, misrepresented final state, bypass of required human support approval at Level 1.
+**Expected evidence:** Exact order ID, a fresh status read of the same order before each cancellation (PA-11), confirmation event, execution approval, tool result, final order state (status `cancelled`, the `cancel_reason`, refund entries), and accurate communication of the refund timing: gift cards at once, other methods in 5–7 business days. The reason is part of the end state, so a valid but wrong reason fails τ-bench's DB check.
+
+**Failure examples:** Cancellation attempt before confirmation, a reason the user did not give, wrong order, an order that is not exactly `pending` (including `pending (item modified)`), misrepresented final state, bypass of required human support approval at Level 1.
 
 **Important:** A blocked premature cancellation is a correct gate decision (`DENIED`) but an agent confirmation-compliance **FAIL**.
 
 ### C. Eligible return/exchange (Level 1 initially)
 
-**Goal:** Determine specific items, applicable policy/eligibility, customer preference, authorization, and correct permitted resulting item/order state.
+**Tasks:** `0`, exchange (order `#W2378156`, `delivered`; two items, price difference paid with `credit_card_9513926`; passed in the baseline run, transcript in [`conversation-task-0.md`](../reports/m2-baseline/conversation-task-0.md)), and `13`, return (order `#W5490111`, `delivered`; three items; the user's preferred PayPal refund must be refused in favor of the original `credit_card_3124723`).
 
-**Expected evidence:** Correct item resolution, eligibility check, customer confirmation, approval decision, tool returns, final account/order state when available.
+**Goal:** Authenticate the user, check that the order's status is exactly `delivered`, resolve each item, and get an explicit "yes" to the listed details before the write (lines 16, 116–136):
 
-**Failure examples:** Returning wrong item, offering an unsupported exchange, violating policy window, skipping customer confirmation or required human approval.
+- **Exchange** (`exchange_delivered_order_items`): remind the user to list every item first; each new item is an available variant of the same product with a different option (checked with `get_product_details`), a payment method of the user covers the price difference, and the tool is called at most once per order. The status becomes `exchange requested`.
+- **Return** (`return_delivered_order_items`): the user confirms the order ID and items, and the refund goes to the order's original payment method (`payment_history[0]`) or an existing gift card of the user. The status becomes `return requested`.
 
-**Validation note:** These are generic teaching contracts. Real tool names, policy steps, state transitions, and task IDs will be aligned with actual τ-bench retail data in Milestone 2.
+**Expected evidence:** Correct item resolution, status check, customer confirmation, approval decision, tool returns, and final order state, including `exchange_price_difference` for an exchange and refund entries for a return.
+
+**Failure examples:** Returning or exchanging the wrong item, exchanging to the identical item ID (the tool accepts it; PA-5 catches it), a refund to a method the policy does not allow, a second exchange on the same order, skipping customer confirmation or required human approval.
+
+**Coverage limits:** Tasks `88`, `0`, and `13` have no NL assertions, so τ-bench's reward for them says nothing about what the user was told; the lab's own checks must cover communication. Cancellation reference trajectories, including `88` and `113`, omit authentication and status checks, so matching against reference actions is a weak signal for conduct ([Tool correctness](BASELINE.md#tool-correctness)).
 
 ## Deterministic evaluator design
 
