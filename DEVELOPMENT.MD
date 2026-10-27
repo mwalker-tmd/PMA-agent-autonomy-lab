@@ -1,6 +1,6 @@
 # Development Plan — Agent Autonomy Lab
 
-**Status:** Plan and specification; no application implementation has begun. Milestones 0 (repository and workflow setup) and 1 (project and success criteria) are complete; Milestone 2 is next.
+**Status:** Plan and specification; no application implementation has begun. Milestones 0 (repository and workflow setup) and 1 (project and success criteria) are complete; Milestone 2 (install and run τ-bench) is in progress.
 
 **This file is the canonical implementation plan.** Supporting specifications live in [`docs/`](docs/). When scope, order, or acceptance criteria change, update this file and record the decision in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -47,7 +47,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | 0 | Repository and workflow setup | Repository, issue templates, labels, protected `main`, [CONTRIBUTING.md](CONTRIBUTING.md) | Complete |
 | 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | Complete |
-| 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | Not started |
+| 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | In progress |
 | 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | Not started |
 | 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | Not started |
 | 5 | Generate simulated production traffic | 50–100 labeled, reproducible multi-turn sessions and traffic analysis | Not started |
@@ -149,13 +149,13 @@ These application directories are **planned**, not generated in this documentati
 
 ### Steps
 
-- [ ] **2.1** Confirm the `.gitignore` from Milestone 0 covers credentials and the result paths τ-bench actually writes; extend it if not. (The repository and documentation already exist from Milestones 0–1.)
-- [ ] **2.2** Install/verify `uv` and Python compatible with upstream (currently `>=3.12,<3.14`). Record local versions.
-- [ ] **2.3** Clone `https://github.com/sierra-research/tau2-bench` **alongside** this repo, not as an accidental nested Git repository; record upstream commit/tag.
-- [ ] **2.4** Run `uv sync`, configure a local `.env` (no credentials in Git), and validate the benchmark CLI/data.
-- [ ] **2.5** Read actual retail tools, policy, task descriptions, and [task evaluation documentation](https://github.com/sierra-research/tau2-bench/blob/main/docs/evaluation.md).
+- [x] **2.1** Confirm the `.gitignore` from Milestone 0 covers credentials and the result paths τ-bench actually writes; extend it if not. (The repository and documentation already exist from Milestones 0–1.)
+- [x] **2.2** Install/verify `uv` and Python compatible with upstream (currently `>=3.12,<3.14`). Record local versions.
+- [x] **2.3** Clone `https://github.com/sierra-research/tau2-bench` **alongside** this repo, not as an accidental nested Git repository; record upstream commit/tag.
+- [x] **2.4** Run `uv sync`, configure a local `.env` (no credentials in Git), and validate the benchmark CLI/data.
+- [x] **2.5** Read actual retail tools, policy, task descriptions, and [task evaluation documentation](https://github.com/sierra-research/tau2-bench/blob/main/docs/evaluation.md).
 - [ ] **2.6** Execute five baseline retail task attempts, one trial each, with pinned model names, seed, and concurrency; save original results.
-- [ ] **2.7** Inspect at least one complete multi-turn conversation: user turns, agent turns, tool-call arguments, tool results, final state, benchmark score.
+- [x] **2.7** Inspect at least one complete multi-turn conversation: user turns, agent turns, tool-call arguments, tool results, final state, benchmark score.
 - [ ] **2.8** Identify actual task IDs suitable for the three workflows (adapt if necessary); identify API/extension paths for our LangSmith adapter.
 - [ ] **2.9** Record failure cases and costs, and separate benchmark findings from speculative improvements.
 
@@ -491,10 +491,10 @@ All milestones must uphold the following invariants:
 - [x] Document all nine delivery milestones (1–9), implementation steps, deliverables, and acceptance criteria.
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
-- [ ] **Milestone 2:** clone τ-bench and execute baseline.
+- [ ] **Milestone 2:** clone τ-bench and execute baseline (in progress).
 - [ ] Milestones 3–9: not yet started.
 
-**Next work session:** Start Milestone 2 with the first upstream install and inspection. Plan its tickets to cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
+**Next work session:** Continue Milestone 2: record the model and task-mapping decisions, then finish the extension-point, tool-correctness, policy-check, and findings notes before sign-off. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
