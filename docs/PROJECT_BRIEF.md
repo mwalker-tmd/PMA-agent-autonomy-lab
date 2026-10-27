@@ -55,11 +55,11 @@ The intended audience sees all four questions answered:
 
 ## Initial product workflows
 
-These are **candidate patterns** and must be reconciled with actual τ-bench retail tasks in Milestone 2. Do not invent matching task IDs.
+Each workflow is mapped to unmodified τ-bench retail tasks at the pinned commit `0c69df4` in [ADR-015](DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows). The tasks' tools, policy rules, and gating checks are listed in [BASELINE.md](BASELINE.md#selected-tasks). No retail task is a pure order-status lookup, so workflow 1 is adapted to an order detail lookup.
 
-1. **Order status lookup (low risk).** Authorized user asks about order location/status. Desired result: accurate permitted read and clear response; no mutation.
-2. **Pending-order cancellation (moderate risk).** Authorized user requests cancellation of an eligible order. Desired result: policy checks, explicit confirmation, appropriate tool call, and correct final state. At Level 1, a simulated employee also approves.
-3. **Return/exchange (higher complexity/risk).** User requests eligible return/exchange with item-level detail. Desired result: correct item and policy choice, confirmation, and state changes only within authorization.
+1. **Order detail lookup (low risk).** An authenticated user asks about their own order: its status, total, items, or tracking. Desired result: accurate permitted read (`get_order_details`) and clear response; no mutation. Tasks: `68`, with `67` as an alternate on the same user and order (one scenario, not two); `43` carries the status and tracking content but ends in a write. *Adapted from "order status lookup"; the lookup tasks ask for an order total, not a status.*
+2. **Pending-order cancellation (moderate risk).** Authenticated user requests cancellation of an order whose status is `pending`. Desired result: status check, explicit confirmation of the order ID and reason (`no longer needed` or `ordered by mistake`), `cancel_pending_order`, and correct final state. At Level 1, a simulated employee also approves. Tasks: `113` (two orders) and `88`.
+3. **Return/exchange (higher complexity/risk).** User requests a return or exchange of items in a `delivered` order. Desired result: correct items, same-product available variants for an exchange, a refund to the original payment method or an existing gift card for a return, explicit confirmation, and state changes (`exchange_delivered_order_items` or `return_delivered_order_items`) only within authorization. Tasks: `0` (exchange) and `13` (return).
 
 ## Scope boundaries
 
