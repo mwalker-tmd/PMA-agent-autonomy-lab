@@ -1,6 +1,6 @@
 # Development Plan — Agent Autonomy Lab
 
-**Status:** Plan and specification; no application implementation has begun. Milestones 0 (repository and workflow setup) and 1 (project and success criteria) are complete; Milestone 2 (install and run τ-bench) is in progress.
+**Status:** Plan and specification; no application implementation has begun. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is next.
 
 **This file is the canonical implementation plan.** Supporting specifications live in [`docs/`](docs/). When scope, order, or acceptance criteria change, update this file and record the decision in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -47,7 +47,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | 0 | Repository and workflow setup | Repository, issue templates, labels, protected `main`, [CONTRIBUTING.md](CONTRIBUTING.md) | Complete |
 | 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | Complete |
-| 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | In progress |
+| 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | Complete |
 | 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | Not started |
 | 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | Not started |
 | 5 | Generate simulated production traffic | 50–100 labeled, reproducible multi-turn sessions and traffic analysis | Not started |
@@ -145,6 +145,8 @@ These application directories are **planned**, not generated in this documentati
 
 **Objective:** Establish an unmodified, reproducible baseline using the open-source benchmark, with inspectable customer conversations and tool trajectories.
 
+**Status:** Complete (October 27, 2026). The unmodified five-task baseline and its inspection are in [docs/BASELINE.md](docs/BASELINE.md) and [`reports/m2-baseline/`](reports/m2-baseline/); the decisions are [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture), [ADR-014](docs/DECISIONS.md#adr-014--use-gpt-6-luna-for-the-agent-and-the-simulated-user), and [ADR-015](docs/DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows).
+
 **Prerequisites:** Milestone 1 scope and preliminary metrics.
 
 ### Steps
@@ -196,11 +198,11 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 ### Acceptance Criteria
 
-- [ ] Five completed retail task results are accessible or a precise environmental blocker is recorded.
-- [ ] At least one complete conversation can be reconstructed from persisted results.
-- [ ] We know what τ-bench counts as success and what it **does not** guarantee (including independent process/policy checks).
-- [ ] Actual task IDs and upstream version are recorded; no made-up scores or workflows.
-- [ ] Changes to upstream benchmark behavior are **zero** in this baseline.
+- [x] Five completed retail task results are accessible or a precise environmental blocker is recorded.
+- [x] At least one complete conversation can be reconstructed from persisted results.
+- [x] We know what τ-bench counts as success and what it **does not** guarantee (including independent process/policy checks).
+- [x] Actual task IDs and upstream version are recorded; no made-up scores or workflows.
+- [x] Changes to upstream benchmark behavior are **zero** in this baseline.
 
 **Dependencies / risks:** Model-provider credentials, API cost/rate limits, benchmark evolution, task-data availability, partial results. Maintain unchanged upstream results separately from our modified experiments.
 
@@ -491,10 +493,10 @@ All milestones must uphold the following invariants:
 - [x] Document all nine delivery milestones (1–9), implementation steps, deliverables, and acceptance criteria.
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
-- [ ] **Milestone 2:** clone τ-bench and execute baseline (in progress).
+- [x] **Milestone 2:** clone τ-bench and execute baseline; record the inspection, task mapping, and extension points (see [docs/BASELINE.md](docs/BASELINE.md)).
 - [ ] Milestones 3–9: not yet started.
 
-**Next work session:** Sign off Milestone 2. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
+**Next work session:** Plan the Milestone 3 tickets. They must cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 3, including the two re-targeted from Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
