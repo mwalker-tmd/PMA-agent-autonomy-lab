@@ -32,17 +32,35 @@ A Level 2 agent might not need **operational** approval for eligible cancellatio
 
 A level alone does not grant a blanket action allowlist. Pair it with **explicit per-tool/action scope**. “Level 3” is not unlimited autonomy.
 
-## Proposed policy matrix (must align to actual τ-bench tools)
+## Proposed policy matrix (retail tools)
 
-| Action category | Level 0 | Level 1 | Level 2 | Level 3 |
-| --- | --- | --- | --- | --- |
-| Order status lookup | Allowed with required identity/authorization | Allowed | Allowed | Allowed |
-| Eligible pending-order cancellation | Deny execution | Human operational approval | Allowed within explicit bounds | Allowed within explicit bounds |
-| Eligible return/exchange | Deny execution | Human operational approval | Human operational approval by default | Allowed only for approved subcategories |
-| Ineligible/wrong-account/high-risk action | Deny | Deny or escalate | Deny or escalate | Deny or escalate |
-| Unknown/new tool or malformed request | **Deny** | **Deny** | **Deny** | **Deny** |
+Action categories map to the 16 retail agent tools at the pinned τ-bench commit `0c69df4` ([tool inventory](BASELINE.md#tool-inventory)): 7 `READ`, 2 `GENERIC`, and 7 `WRITE`. Only the `WRITE` tools change the database.
 
-**Caveat:** Exact action and eligibility mapping will be based on actual retail tools/policies discovered in Milestone 2; these rows are the teaching policy abstraction.
+| Action category | Retail tools | Level 0 | Level 1 | Level 2 | Level 3 |
+| --- | --- | --- | --- | --- | --- |
+| Authentication and order detail lookup | `find_user_id_by_email`, `find_user_id_by_name_zip`, `get_user_details`, `get_order_details`, `get_product_details`, `get_item_details`, `list_all_product_types`, `calculate` | Allowed with required identity/authorization | Allowed | Allowed | Allowed |
+| Hand-off to a human | `transfer_to_human_agents` (changes nothing) | Allowed | Allowed | Allowed | Allowed |
+| Eligible pending-order cancellation | `cancel_pending_order` | Deny execution | Human operational approval | Allowed within explicit bounds | Allowed within explicit bounds |
+| Eligible return/exchange | `return_delivered_order_items`, `exchange_delivered_order_items` | Deny execution | Human operational approval | Human operational approval by default | Allowed only for approved subcategories |
+| Other pending-order and profile changes (outside the three workflows) | `modify_pending_order_address`, `modify_pending_order_payment`, `modify_pending_order_items`, `modify_user_address` | Deny execution | Human operational approval | Human operational approval | Human operational approval unless specifically granted |
+| Ineligible/wrong-account/high-risk action | Any write that fails the eligibility checks below | Deny | Deny or escalate | Deny or escalate | Deny or escalate |
+| Unknown/new tool or malformed request | Any tool not in this table, including a new upstream `WRITE` tool | **Deny** | **Deny** | **Deny** | **Deny** |
+
+### Eligibility checks for the granted writes
+
+The gate checks eligibility from the retail policy, not from the tools: no retail tool checks identity or confirmation, and some tool checks are looser than the policy ([observations](BASELINE.md#tool-inventory)). Policy line numbers refer to [`policy.md`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md) at `0c69df4`; which parts code can decide is in [Policy-check classification](BASELINE.md#policy-check-classification).
+
+| Check | `cancel_pending_order` | `return_delivered_order_items` | `exchange_delivered_order_items` |
+| --- | --- | --- | --- |
+| Authenticated user owns the order (lines 10–14) | Required | Required | Required |
+| Order status, read with `get_order_details` since the last write to the order (PA-11) | Exactly `pending` (line 88); the tool enforces this too | Exactly `delivered` (line 118) | Exactly `delivered` (line 130) |
+| Arguments | Reason is `no longer needed` or `ordered by mistake` (line 90) | Items are in the order; refund to the original payment method or an existing gift card of the user (line 124) | Each new item is an available variant of the same product with a different option (line 132), which the tool does not enforce for an identical item ID; a gift card used must cover the difference (line 134) |
+| Once per order | — | — | At most one exchange per order (line 110) |
+| Explicit customer "yes" to the listed details (line 16) | Required | Required | Required |
+
+If `modify_pending_order_address` is ever granted, the gate must deny it on an order in `pending (item modified)`: the tool accepts that status, but the policy allows no change after an item modification (line 84).
+
+The workflow-to-task mapping that these categories serve is [ADR-015](DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows).
 
 ## Synchronous enforcement design
 
