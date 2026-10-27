@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md)
 
-**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), and the baseline model choice (ADR-014, October 27, 2026); nothing here is implemented or tested. “Selected” means selected for the **plan**.
+**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), the baseline model choice (ADR-014, October 27, 2026), and the task-to-workflow mapping (ADR-015, October 27, 2026); nothing here is implemented or tested. “Selected” means selected for the **plan**.
 
 **Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.md).
 
@@ -24,6 +24,7 @@
 | ADR-012 | 2026-10-26 | **Accepted:** Milestone 1 teaching scope and initial rubric ([note](#adr-012--accept-the-milestone-1-scope-and-rubric)) | All Milestone 1 documents merged after review; remaining unknowns are tracked as open questions | Milestone 2 inspection contradicts the workflows or rubric |
 | ADR-013 | 2026-10-26 | **Accepted:** Ports-and-adapters (Clean Architecture) for all lab code ([note](#adr-013--adopt-the-ports-and-adapters-architecture)) | Keeps τ-bench, LangSmith, the model provider, and the approval mechanism swappable, and the gate testable without them | A port has one adapter and no test double after Milestone 6, or the layering costs more than it isolates |
 | ADR-014 | 2026-10-27 | **Accepted:** `gpt-6-luna` for both the agent and the simulated user ([note](#adr-014--use-gpt-6-luna-for-the-agent-and-the-simulated-user)) | Completed all five baseline tasks with no errors once called through the Responses API; about $0.006 billed and under 40 s per task | Repeated runs are too noisy, cost rises, the model changes, or published-result comparability is needed |
+| ADR-015 | 2026-10-27 | **Accepted:** Real retail tasks for the three workflows; order lookup adapted to order detail lookup ([note](#adr-015--map-real-retail-tasks-to-the-three-workflows)) | Every workflow has verified tasks at `0c69df4`; no task is a pure status lookup, but the tools support one | Upstream tasks change, a lesson needs a pure status lookup, or a selected task proves unstable |
 
 ## Decision notes
 
@@ -78,11 +79,35 @@
 - Artifacts affected: [`reports/m2-baseline/manifest.yaml`](../reports/m2-baseline/manifest.yaml) (latency and error counts added), the open question below, and [`DEVELOPMENT.md`](../DEVELOPMENT.md) (step 2.6 ticked).
 - Verification or reconsideration trigger: Reconsider if repeated runs show rewards or error rates swinging enough to hide the lab's own changes, if the billed cost per task rises well above the baseline, if OpenAI deprecates the model or changes the Responses API behavior, or if a lesson needs results comparable with published τ-bench numbers (then use the published models in a separately labeled run).
 
+### ADR-015 — Map real retail tasks to the three workflows
+- Date: 2026-10-27
+- Status: Accepted
+- Context: Resolves the open question "Which actual retail task IDs support order lookup, pending cancellation, and return/exchange?" [PROJECT_BRIEF.md](PROJECT_BRIEF.md#initial-product-workflows) defines three candidate workflows and forbids inventing task IDs. All 114 retail tasks at the pinned commit `0c69df4` were classified by the write tools in their reference trajectories, and the candidates were read in full against `db.json` ([BASELINE.md](BASELINE.md#task-to-workflow-mapping)). Cancellation and return/exchange have many direct matches (18 tasks cancel, 59 return or exchange). No task is a pure order-status lookup: the seven read-only tasks ask for an order total, item or product details, or pair a question with a request the policy does not allow, and every task that asks for status or tracking goes on to a write or a conditional request.
+- Options considered:
+  1. **Adapt workflow 1 to "order detail lookup"** (an authenticated, read-only answer about the user's own order: status, total, items, or tracking) and map it to read-only task `68`.
+  2. **Use a mixed task for workflow 1**, such as `43` (status, tracking, and shipping address, then a default-address change). Its content matches best, but its reference end state needs a write, so a read-only agent cannot pass it.
+  3. **Write a custom status-lookup task.** Matches the brief exactly, but it is not a τ-bench task, so its results would not be comparable with the baseline ([ADR-009](#decision-log)), and it adds a task to maintain.
+  4. **Drop or replace workflow 1.** Loses the low-risk, read-only starting point the autonomy story depends on.
+- Decision:
+  - **Order lookup (adapted):** task `68`, with `67` as an alternate on the same user and order (one scenario, not two). Task `43` is the reference for status and tracking content; at read-only access the expected behavior is to answer the lookup and decline or hand off the address change, which τ-bench will score as a failure.
+  - **Pending cancellation:** task `113` (two pending orders; the user gives the reason only when asked), with `88` (one order, after an impossible modification).
+  - **Return/exchange:** task `0` for exchange (passed in the baseline run, with a curated transcript) and task `13` for return (the user's preferred PayPal refund must be refused in favor of the original card).
+  - Each task's tools, policy rules, and gating checks are listed in [BASELINE.md](BASELINE.md#selected-tasks).
+- Why: Every selected task is an unmodified upstream task, so results stay comparable with the baseline. The adaptation changes only the wording of workflow 1, not its purpose: a low-risk, authenticated, read-only request with no mutation. The tools already support status and tracking (`get_order_details` returns `status` and `fulfillments`), so the gap is in the task set, not the toolset.
+- Tradeoffs/risks:
+  - The lookup scenario asks for a total, not a status, so it does not exercise status wording. `67` and `68` share one user and order, so the lookup sample is effectively one task.
+  - Three of the selected tasks (`88`, `0`, `13`) are gated by the DB check alone, so their reward says nothing about what the user was told; the lab's own checks must cover communication.
+  - The cancellation reference trajectories omit authentication and status checks, so action matching against them is a weak signal for conduct ([#47](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/47)).
+  - One trial per task: individual tasks may prove unstable across repeats (the separate variation question below).
+- Scope review: Checked against the [scope review triggers](PROJECT_BRIEF.md#scope-review-triggers) and ADR-012's reconsideration trigger. The retail tools support all three workflows, so the "retail tools don't support planned workflows" trigger is not met, and ADR-012's scope and rubric stand. The adaptation is a wording change to workflow 1 and to scenario contract A in [EVALUATION.md](EVALUATION.md#a-order-status-lookup-level-0--read-only); [#50](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/50) makes those edits.
+- Artifacts affected: [BASELINE.md](BASELINE.md#task-to-workflow-mapping) (mapping section), the open question below, and, through #50, `PROJECT_BRIEF.md` and `EVALUATION.md`.
+- Verification or reconsideration trigger: Reconsider if the pinned τ-bench commit changes and the tasks change, if a lesson needs a status-only lookup (then add a separately labeled custom task, option 3), or if repeated runs show a selected task is too unstable to demonstrate its workflow.
+
 ## Open questions to resolve deliberately
 
 | Question | Target milestone | Preferred way to decide |
 | --- | --- | --- |
-| Which actual retail task IDs support order lookup, pending cancellation, and return/exchange? | 2 | Inspect task dataset, policies, tool schema, and sample trajectories |
+| Which actual retail task IDs support order lookup, pending cancellation, and return/exchange? | 2 | **Resolved** in [ADR-015](#adr-015--map-real-retail-tasks-to-the-three-workflows) (2026-10-27): lookup `68` (adapted to order detail lookup), cancellation `113` and `88`, return/exchange `0` and `13` |
 | Which agent extension point is the narrowest safe place for LangSmith instrumentation? | 2–3 | Prototype against upstream examples without modifying core benchmark behavior |
 | Which exact tool execution boundary permits complete gate enforcement? | 2, 6 | Trace real call path; test blocked mutations and alternative routes |
 | Which agent and simulated-user models balance affordability and reliability? | 2 | **Resolved** in [ADR-014](#adr-014--use-gpt-6-luna-for-the-agent-and-the-simulated-user) (2026-10-27): `gpt-6-luna` for both, from the five-task baseline's usage, cost, latency, and compatibility |

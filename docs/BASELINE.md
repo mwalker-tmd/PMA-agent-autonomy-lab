@@ -381,3 +381,62 @@ How the fields proposed in [`ARCHITECTURE.md`](ARCHITECTURE.md#proposed-event-an
 5. **The fixed opener has no cost or usage.** Message 0 is τ-bench's default greeting (task `0`'s `agent_opener` is `null`), not a model call, which is why τ-bench reports `agent_cost` as `null` for every simulation in this run.
 6. **One agent reply was a JSON string.** Message 12 stored `{"message": "Please confirm: …"}` as `content`, and the simulated user saw it that way. Nothing in scoring checks reply formatting.
 7. **`raw_data` holds the full provider response,** converted to chat-completion format even though calls went through LiteLLM's Responses API bridge. It is the bulk of the file and is left out of curated excerpts.
+
+## Task-to-workflow mapping
+
+Recorded on October 27, 2026 for [#44](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/44) (plan step 2.8). This maps the three candidate workflows in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md#initial-product-workflows) to real retail task IDs at the pinned commit (`0c69df4`). The decision is [ADR-015](DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows).
+
+### Method
+
+Each task was classified by the write tools in its reference trajectory (`evaluation_criteria.actions`), then the candidates were read in full: user instructions, reference actions, NL assertions, and the orders they touch in `db.json`. Every order status below was read from `db.json`, not inferred from the task text. To reproduce the classification from `../tau2-bench`:
+
+```bash
+python3 -I -c '
+import json, collections
+WRITES = {"cancel_pending_order", "modify_pending_order_address", "modify_pending_order_payment",
+          "modify_pending_order_items", "modify_user_address", "exchange_delivered_order_items",
+          "return_delivered_order_items", "transfer_to_human_agents"}
+groups = collections.defaultdict(list)
+for t in json.load(open("data/tau2/domains/retail/tasks.json")):
+    names = {a["name"] for a in t["evaluation_criteria"]["actions"]}
+    groups[tuple(sorted(names & WRITES))].append(t["id"])
+for k, ids in sorted(groups.items(), key=lambda kv: -len(kv[1])):
+    print(len(ids), k or "(read-only)", ids)
+'
+```
+
+`transfer_to_human_agents` is grouped with the writes here only to separate hand-off tasks from pure lookups; it changes nothing.
+
+| Reference writes | Tasks | Count |
+| --- | --- | --- |
+| None (read-only) | `24`, `25`, `57`, `62`, `65`, `67`, `68` | 7 |
+| Transfer only | `10`, `12`, `50` | 3 |
+| `cancel_pending_order` only | `38`, `66`, `69`, `76`, `81`, `88`, `90`, `113` | 8 |
+| `return_delivered_order_items` only | `2`, `5`, `11`, `13`, `14`, `19`, `28`, `46`, `47`, `48`, `51`, `53`, `73`, `82`, `83`, `84`, `89`, `92`, `108` | 19 |
+| `exchange_delivered_order_items` only | `0`, `1`, `6`, `7`, `8`, `9`, `18`, `27`, `29`, `45`, `49`, `52`, `58`, `70`, `75`, `77`, `80`, `93`, `94`, `95`, `99`, `105`, `106`, `107` | 24 |
+| Any other combination | the remaining 53 tasks (modifications, address changes, and mixed requests) | 53 |
+
+Counting tasks that contain the write at all, 18 tasks cancel, 31 return, and 29 exchange (59 return or exchange).
+
+### Selected tasks
+
+| Workflow | Task (split) | Order and state in `db.json` | Tools in the reference trajectory | Policy rules involved | Gating checks |
+| --- | --- | --- | --- | --- | --- |
+| 1. Order lookup (**adapted**) | `68` (test) | `#W6729841`, `pending`, user `noah_ito_3850` | `find_user_id_by_name_zip` (wrong zip `98178`, then `98187`), `get_user_details`, `get_order_details` | Authenticate by email or name + zip before sharing anything; one user per conversation; no made-up information | DB unchanged; NL: "Agent should tell the user the order total is $829.43." |
+| | `67` (train), alternate | Same user and order | Same, with a second wrong zip (`98186`) and a nickname | Same | Same as `68` |
+| | `43` (train), status and tracking content | `#W7895761`, `delivered`, tracking `840887978435`; `#W1588712`, `cancelled` | `find_user_id_by_name_zip`, `get_user_details`, `get_order_details` ×2, then `modify_user_address` | Same, plus confirmation before the address write | DB includes the new default address; 3 NL assertions (tracking number, shipping address, tablet storage) |
+| 2. Pending cancellation | `113` (train) | `#W5056519` and `#W5995614`, both `pending`, user `yara_muller_8652` | `cancel_pending_order` ×2, reason `ordered by mistake` | Authenticate; check status is `pending`; user confirms order ID and reason (`no longer needed` or `ordered by mistake` only); explicit "yes" before each write | DB (status `cancelled`, `cancel_reason`, refunds); NL: "Agent should cancel all pending orders" |
+| | `88` (train) | `#W8835847`, `pending`, user `daiki_silva_2903` | `cancel_pending_order`, reason `ordered by mistake` | Same; the requested 4 ft glass white bookshelf is unavailable in `db.json`, so modification is not possible and cancellation is the user's fallback | DB only (no NL assertions) |
+| 3. Return/exchange | `0` (train), exchange | `#W2378156`, `delivered`, user `yusuf_rossi_9620` | `find_user_id_by_name_zip`, `get_order_details`, `get_product_details` ×2, `exchange_delivered_order_items` (2 items, `credit_card_9513926`) | Authenticate; check status is `delivered`; remind the user to list every item; same product, different option, available; payment method covers the difference; explicit "yes"; callable once per order | DB only. Passed (reward `1.0`) in the baseline run `m2-baseline-2026-10-27-r3`; transcript in [`conversation-task-0.md`](../reports/m2-baseline/conversation-task-0.md) |
+| | `13` (train), return | `#W5490111`, `delivered`, user `mia_garcia_4516` (paid with `credit_card_3124723`) | `find_user_id_by_email`, `get_user_details`, `get_order_details` ×2, `return_delivered_order_items` (3 items to `credit_card_3124723`) | Authenticate; check status is `delivered`; refund only to the original method or an existing gift card, so the user's preferred PayPal must be refused; explicit "yes" | DB only |
+
+Tool references at `0c69df4`: [`get_order_details`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/domains/retail/tools.py#L378), [`cancel_pending_order`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/domains/retail/tools.py#L191), [`exchange_delivered_order_items`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/domains/retail/tools.py#L240), [`return_delivered_order_items`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/src/tau2/domains/retail/tools.py#L709). Policy rules are from [`policy.md`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md) (authentication at line 10, one user at line 14, confirmation at line 16, cancel at lines 86–92, return at lines 116–126, exchange at lines 128–136). Tasks `13` and `68` have English-pack replacements; only their `user_scenario` differs (see [Task schema](#task-schema)), so the mapping and scoring are unchanged.
+
+### What the mapping showed
+
+1. **No task is a pure order-status lookup.** The brief's workflow 1 is "user asks about order location or status, no mutation". The seven read-only tasks ask for an order total (`67`, `68`), ask about items in the user's orders and their product details (`24`, `62`), or pair a question with a request the policy does not allow (`25`, `57`, `65`). The tasks that do ask for status or tracking (`25`, `26`, `30`–`32`, `43`, `56`, `57`, `59`) all continue into a write or a conditional request. Workflow 1 is therefore **adapted** to "order detail lookup": an authenticated read of the user's own order (status, total, items, or tracking) with no mutation. Task `68` matches that shape and is gated by an NL assertion; `43` carries the status and tracking content but ends in `modify_user_address`, so an agent held to read-only access will not reach its reference end state.
+2. **The tools support all three workflows.** `get_order_details` returns the order's `status` and `fulfillments` (tracking IDs), so status and tracking lookups need no new tool. The adaptation is in the task set, not the toolset.
+3. **`67` and `68` are not independent.** They share the user, order, and expected answer and differ only in the zip-code correction script. Results on them count as one scenario, not two.
+4. **The cancellation reason is part of the end state.** `cancel_pending_order` stores `cancel_reason` on the order, so a cancellation with the wrong (but valid) reason fails the DB hash. In `113` the user reveals the reason only when asked, so the agent has to ask.
+5. **Cancellation reference trajectories omit authentication.** In `76`, `81`, `88`, `90`, and `113` the reference actions contain only the cancellations, with no `find_user_id_*` or `get_order_details` call, even though the policy requires both. The reference trajectory is one path to the end state, not a model of correct conduct; [#47](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/47) covers this for tool correctness.
+6. **Some reward checks are DB-only.** `88`, `0`, and `13` have no NL assertions, so their reward says nothing about what the user was told (see [What τ-bench success does not guarantee](#what-τ-bench-success-does-not-guarantee)).
