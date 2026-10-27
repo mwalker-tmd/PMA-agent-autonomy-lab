@@ -71,13 +71,22 @@ agent-autonomy-lab/
 ├── docs/                         # project, architecture and teaching specifications
 ├── pyproject.toml                # planned; create when local project code begins
 ├── .env.example                  # planned; placeholders only, never real keys
-├── src/agent_autonomy_lab/       # planned
-│   ├── integration/              # τ-bench adapters and run metadata
-│   ├── observability/            # LangSmith tracing
-│   ├── evaluation/               # deterministic + judged evaluators
-│   ├── simulation/               # workload orchestration and labeling
-│   ├── autonomy/                 # authorization gate, approvals, review state
-│   └── monitoring/               # derived metrics and reporting
+├── src/agent_autonomy_lab/       # planned; ports-and-adapters (ADR-013)
+│   ├── domain/                   # pure logic: no τ-bench, LangSmith, or provider SDK imports
+│   │   ├── autonomy/             # levels, permission matrix, gate decisions, review state
+│   │   ├── evaluation/           # scoring rules and result records
+│   │   └── events/               # gate event and identifier schema
+│   ├── ports/                    # Protocols: ToolExecutor, AuthorizationGate, TraceSink,
+│   │                             #   ApprovalSource, Evaluator, ModelClient
+│   ├── application/              # use cases: run simulation, evaluate run, label traffic,
+│   │                             #   review autonomy, derive monitoring metrics
+│   ├── adapters/                 # the only code that imports third-party infrastructure
+│   │   ├── tau2/                 # τ-bench agent/orchestrator hook, ToolExecutor, run metadata
+│   │   ├── langsmith/            # TraceSink
+│   │   ├── models/               # ModelClient (LiteLLM / provider SDK)
+│   │   ├── approvals/            # ApprovalSource: fixture; FastAPI UI only if M6 chooses one
+│   │   └── evaluators/           # LLM judge and τ-bench reward reader
+│   └── entrypoints/              # composition root: CLI and scripts wire adapters to use cases
 ├── tests/                        # planned unit/integration/regression cases
 ├── datasets/                     # planned scenario definitions and safe examples
 ├── scripts/                      # planned repeatable run utilities
@@ -85,7 +94,7 @@ agent-autonomy-lab/
 └── demo/                         # planned teaching materials and backup evidence
 ```
 
-These application directories are **planned**, not generated in this documentation-only package. τ-bench remains a sibling clone or separately pinned dependency unless a later decision changes that.
+These application directories are **planned**, not generated in this documentation-only package. The layout follows [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture): dependencies point inward, and only `adapters/` and `entrypoints/` import τ-bench, LangSmith, or a provider SDK (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#code-structure-ports-and-adapters)). τ-bench remains a sibling clone or separately pinned dependency unless a later decision changes that.
 
 ---
 
@@ -211,6 +220,7 @@ Model names are initial examples, contingent on available API access and cost. T
 - [ ] **3.6** Attach `traffic_type=synthetic`; redact secrets; ensure no hidden answer keys appear in agent-visible traces.
 - [ ] **3.7** Run one known customer task and one failing/exceptional case through the adapter. Compare traced behavior to the τ-bench saved result.
 - [ ] **3.8** Document trace navigation steps and expected trace shape in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+- [ ] **3.9** Create `pyproject.toml` with `import-linter` contracts that enforce the [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture) dependency rule; build the LangSmith tracing as a `TraceSink` adapter and run `lint-imports` before every pull request.
 
 ### Deliverables
 
