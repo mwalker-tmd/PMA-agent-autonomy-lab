@@ -1,6 +1,6 @@
 # τ-bench Baseline
 
-[Home](../README.md) · [Master plan](../DEVELOPMENT.MD) · [Evaluation](EVALUATION.md)
+[Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Evaluation](EVALUATION.md)
 
 **Status:** In progress (Milestone 2). Each section is added by its own ticket; machine-readable values live in [`reports/m2-baseline/manifest.yaml`](../reports/m2-baseline/manifest.yaml).
 
@@ -163,7 +163,7 @@ gpt-6-luna OK
 
 ### Deviations from the first-run reference commands
 
-Compared with [`DEVELOPMENT.MD` — First-run reference commands](../DEVELOPMENT.MD#first-run-reference-commands):
+Compared with [`DEVELOPMENT.md` — First-run reference commands](../DEVELOPMENT.md#first-run-reference-commands):
 
 1. **Pinned commit.** The reference clones `main` without pinning. We record the commit above and check it out explicitly to reproduce.
 2. **Python.** No command changed, but the system Python (3.14.3) is out of range. `uv` selected its managed 3.12.0 from upstream's `.python-version`.
@@ -299,7 +299,7 @@ Upstream's worked example (airline task `1`) shows the consequence: when every r
 
 ### What τ-bench success does not guarantee
 
-This answers [milestone criterion 3](../DEVELOPMENT.MD#milestone-2--install-and-run-τ-bench): a reward of `1.0` is evidence about the **end state**, not about the **process**. It does not show that:
+This answers [milestone criterion 3](../DEVELOPMENT.md#milestone-2--install-and-run-τ-bench): a reward of `1.0` is evidence about the **end state**, not about the **process**. It does not show that:
 
 - **The user was authenticated.** No tool requires authentication, and no reward component checks it (upstream issue on task `5`). Upstream's authentication classifier (`auth_classifier.py`) is part of the optional reviewer, not the reward.
 - **Confirmation was obtained before a write.** The DB hash is the same whether or not the agent asked "yes?" first. Only an NL assertion could catch a missing confirmation, and none of the retail NL assertions checks confirmation or authentication. In 33 tasks they check facts told to the user (for example, "Agent should tell the user the total refund amount is $918.43."). In the other 7 (`105`, `106`, `107`, `109`, `110`, `111`, `113`) they check that an action happened (for example, "Agent should process the exchange.").
@@ -314,7 +314,7 @@ For this lab, that means the independent process and policy checks in [`EVALUATI
 
 ## Conversation reconstruction
 
-Recorded on October 27, 2026 for [#42](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/42) (plan step 2.7). This answers [milestone criterion 2](../DEVELOPMENT.MD#milestone-2--install-and-run-τ-bench): a complete conversation can be rebuilt from the persisted results alone. The curated transcript is [`reports/m2-baseline/conversation-task-0.md`](../reports/m2-baseline/conversation-task-0.md).
+Recorded on October 27, 2026 for [#42](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/42) (plan step 2.7). This answers [milestone criterion 2](../DEVELOPMENT.md#milestone-2--install-and-run-τ-bench): a complete conversation can be rebuilt from the persisted results alone. The curated transcript is [`reports/m2-baseline/conversation-task-0.md`](../reports/m2-baseline/conversation-task-0.md).
 
 ### Source and method
 

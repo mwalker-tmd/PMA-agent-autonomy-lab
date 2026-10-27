@@ -1,10 +1,10 @@
 # Decision Record and Open Questions
 
-[Home](../README.md) · [Master plan](../DEVELOPMENT.MD)
+[Home](../README.md) · [Master plan](../DEVELOPMENT.md)
 
 **Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026) and the code architecture (ADR-013, October 26, 2026); nothing here is implemented or tested. “Selected” means selected for the **plan**.
 
-**Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.MD).
+**Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.md).
 
 ## Decision log
 
@@ -20,7 +20,7 @@
 | ADR-008 | 2026-10-18 | **Selected:** Outcome, compliance, and customer experience scored separately | Avoid hiding serious violations behind fluent/successful responses | If more metrics require explicit split |
 | ADR-009 | 2026-10-18 | **Selected:** τ-bench official baseline separate from customized experiments | Defensible, reproducible reporting | If a published benchmark protocol explicitly supports modifications |
 | ADR-010 | 2026-10-18 | **Selected:** No custom frontend for the first release | Prioritize the teaching workflow rather than presentation infrastructure | LangSmith + viewer cannot show essential evidence |
-| ADR-011 | 2026-10-18 | **Selected:** README short; `DEVELOPMENT.MD` authoritative; domain docs under `docs/` | Clear separation of purpose, execution and technical specifications | Documentation becomes unwieldy |
+| ADR-011 | 2026-10-18 | **Selected:** README short; `DEVELOPMENT.md` authoritative; domain docs under `docs/` | Clear separation of purpose, execution and technical specifications | Documentation becomes unwieldy |
 | ADR-012 | 2026-10-26 | **Accepted:** Milestone 1 teaching scope and initial rubric ([note](#adr-012--accept-the-milestone-1-scope-and-rubric)) | All Milestone 1 documents merged after review; remaining unknowns are tracked as open questions | Milestone 2 inspection contradicts the workflows or rubric |
 | ADR-013 | 2026-10-26 | **Accepted:** Ports-and-adapters (Clean Architecture) for all lab code ([note](#adr-013--adopt-the-ports-and-adapters-architecture)) | Keeps τ-bench, LangSmith, the model provider, and the approval mechanism swappable, and the gate testable without them | A port has one adapter and no test double after Milestone 6, or the layering costs more than it isolates |
 
@@ -34,7 +34,7 @@
 - Decision: Accept the teaching scope in [PROJECT_BRIEF.md](PROJECT_BRIEF.md) and the initial rubric in [EVALUATION.md](EVALUATION.md) (scorecard, scenario acceptance contracts, ground-truth boundaries, and judge rubrics) as the Milestone 1 baseline. The sole maintainer accepts them, acting as stakeholder, product manager, engineer, and SDET, informed by the Copilot pull request reviews (see the single-maintainer exception in [CONTRIBUTING.md](../CONTRIBUTING.md#protection-of-main)).
 - Why: Milestone 2 needs a fixed rubric to inspect real tasks against. The rubric's known unknowns are recorded as open questions targeting Milestones 2–8, so accepting now does not hide them.
 - Tradeoffs/risks: Retail task IDs, tool names, and policies are unverified until Milestone 2; autonomy thresholds are illustrative; one maintainer plus automated review is weaker than independent human review.
-- Artifacts affected: `DEVELOPMENT.MD` (Milestone 1 marked complete), `README.md` (status), this log.
+- Artifacts affected: `DEVELOPMENT.md` (Milestone 1 marked complete), `README.md` (status), this log.
 - Verification or reconsideration trigger: Milestone 2 inspection shows the retail tasks or policies do not support the three workflows or the rubric (see the [scope review triggers](PROJECT_BRIEF.md#scope-review-triggers)), or a second maintainer joins.
 
 ### ADR-013 — Adopt the ports-and-adapters architecture
@@ -48,7 +48,7 @@
 - Decision: Use ports-and-adapters for all code under `src/agent_autonomy_lab/`. The core ports are `ToolExecutor`, `AuthorizationGate`, `TraceSink`, `ApprovalSource`, `Evaluator`, and `ModelClient` (see [ARCHITECTURE.md](ARCHITECTURE.md#code-structure-ports-and-adapters)). **Dependency rule:** dependencies point inward; domain and application code never imports τ-bench, LangSmith, or a provider SDK. Only adapters and the composition root do. Feature grouping is kept inside each layer (for example `domain/autonomy/`), so option 3's navigability is not lost.
 - Why: Each external dependency is replaceable behind one port, and every port has an in-memory test double, so gate, policy, and evaluator logic can be unit-tested deterministically. The baseline stays comparable ([ADR-009](#decision-log)) because τ-bench is only reached through adapters, never edited.
 - Tradeoffs/risks: More modules and indirection than a small lab strictly needs; ports designed before real use may have the wrong shape, so each port is kept minimal and revised when its first adapter is built. A port alone does not enforce the gate: `ToolExecutor` must be the only route to τ-bench's mutating tools, which Milestone 6 must still prove (see the open question on the tool-execution boundary). The rule is enforced with `import-linter` contracts once code starts in Milestone 3; until then it is a review rule.
-- Artifacts affected: [ARCHITECTURE.md](ARCHITECTURE.md#code-structure-ports-and-adapters) (ports, adapters, dependency rule), [`DEVELOPMENT.MD`](../DEVELOPMENT.MD#suggested-artifact-layout-as-implementation-grows) (planned `src/` layout, Milestone 3 enforcement step), [CONTRIBUTING.md](../CONTRIBUTING.md#architecture) (architecture rule and pull request checklist item), the pull request template, and the Milestone 6 open question on human approvals below.
+- Artifacts affected: [ARCHITECTURE.md](ARCHITECTURE.md#code-structure-ports-and-adapters) (ports, adapters, dependency rule), [`DEVELOPMENT.md`](../DEVELOPMENT.md#suggested-artifact-layout-as-implementation-grows) (planned `src/` layout, Milestone 3 enforcement step), [CONTRIBUTING.md](../CONTRIBUTING.md#architecture) (architecture rule and pull request checklist item), the pull request template, and the Milestone 6 open question on human approvals below.
 - Verification or reconsideration trigger: From Milestone 3, `import-linter` passes on every pull request. Reconsider if, after Milestone 6, a port still has only one adapter and no test double, or if keeping adapters thin forces business logic out of the core.
 
 ## Open questions to resolve deliberately
@@ -72,7 +72,7 @@
 1. State the decision required and the evidence available.
 2. Record options (including retaining the current choice), their tradeoffs and risks.
 3. Select and assign an effective date; record any migration steps.
-4. Update impacted specs and `DEVELOPMENT.MD`, including milestone tasks, deliverables and acceptance criteria.
+4. Update impacted specs and `DEVELOPMENT.md`, including milestone tasks, deliverables and acceptance criteria.
 5. If the decision affects scoring comparability, **start a new labeled experiment version**.
 
 ## Decision note template

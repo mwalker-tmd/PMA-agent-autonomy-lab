@@ -1,6 +1,6 @@
 # Architecture and Telemetry Contract
 
-[Home](../README.md) · [Master plan](../DEVELOPMENT.MD) · [Autonomy](AUTONOMY.md) · [Evaluation](EVALUATION.md)
+[Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Autonomy](AUTONOMY.md) · [Evaluation](EVALUATION.md)
 
 **Status:** Target architecture, not implemented. Dependencies and APIs will be pinned/validated after the first upstream τ-bench checkout.
 

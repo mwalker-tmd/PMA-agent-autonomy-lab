@@ -1,5 +1,5 @@
 name: Milestone task
-description: A unit of planned work from DEVELOPMENT.MD.
+description: A unit of planned work from DEVELOPMENT.md.
 title: "<short imperative title>"
 body:
   - type: markdown
@@ -17,7 +17,7 @@ body:
     id: plan-step
     attributes:
       label: Plan step
-      description: Step reference(s) in DEVELOPMENT.MD, e.g. "1.4, 1.5". Use "n/a" for process work outside the plan.
+      description: Step reference(s) in DEVELOPMENT.md, e.g. "1.4, 1.5". Use "n/a" for process work outside the plan.
     validations:
       required: true
   - type: textarea

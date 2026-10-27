@@ -18,7 +18,7 @@ It extends an earlier RAGAS/RAG-pipeline evaluation demonstration into **agent o
 
 | Document | Purpose |
 | --- | --- |
-| **[DEVELOPMENT.MD](DEVELOPMENT.MD)** | **Canonical execution plan: the nine delivery milestones (1–9), tasks, deliverables, and acceptance criteria.** |
+| **[DEVELOPMENT.md](DEVELOPMENT.md)** | **Canonical execution plan: the nine delivery milestones (1–9), tasks, deliverables, and acceptance criteria.** |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow: issues, labels, branches, commits, pull requests, Copilot review, and definition of done. |
 | [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md) | Motivation, stakeholders, success outcomes, scope, teaching principles. |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, end-to-end flow, boundaries, metadata, and interfaces. |
@@ -51,7 +51,7 @@ Milestone 0 set up the repository and workflow. Nine delivery milestones follow:
 8. Introduce and diagnose regressions.
 9. Prepare the teaching demonstration.
 
-See [DEVELOPMENT.MD](DEVELOPMENT.MD) for the steps and acceptance criteria for **every** milestone.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the steps and acceptance criteria for **every** milestone.
 
 ## Project state and next action
 

@@ -67,7 +67,7 @@ Every milestone's Acceptance Criteria also include: **each open question in [doc
 ```text
 agent-autonomy-lab/
 ├── README.md
-├── DEVELOPMENT.MD                # authoritative milestone tracker
+├── DEVELOPMENT.md                # authoritative milestone tracker
 ├── docs/                         # project, architecture and teaching specifications
 ├── pyproject.toml                # planned; create when local project code begins
 ├── .env.example                  # planned; placeholders only, never real keys
@@ -127,7 +127,7 @@ These application directories are **planned**, not generated in this documentati
 6. [`docs/SIMULATION.md`](docs/SIMULATION.md) — synthetic customer simulation and traffic strategy.
 7. [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — monitoring, incident response, and recovery specification.
 8. [`docs/DEMO.md`](docs/DEMO.md) — proposed teaching demonstration runbook.
-9. `DEVELOPMENT.MD` (this file) — the canonical plan.
+9. `DEVELOPMENT.md` (this file) — the canonical plan.
 10. [`README.md`](README.md) — project landing page.
 
 ### Acceptance Criteria

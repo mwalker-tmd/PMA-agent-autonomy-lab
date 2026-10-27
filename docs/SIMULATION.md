@@ -1,6 +1,6 @@
 # Synthetic Customer Simulation and Traffic Strategy
 
-[Home](../README.md) · [Master plan](../DEVELOPMENT.MD) · [Evaluation](EVALUATION.md)
+[Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Evaluation](EVALUATION.md)
 
 **Status:** Design specification. The traffic harness and scenario fixtures have not yet been built.
 
@@ -102,7 +102,7 @@ The project regression demonstration focuses on a **behavioral** premature cance
 
 ## Verification checks for Milestone 5
 
-These checks support the canonical [Milestone 5 Acceptance Criteria](../DEVELOPMENT.MD#milestone-5--generate-simulated-production-traffic) in `DEVELOPMENT.MD`.
+These checks support the canonical [Milestone 5 Acceptance Criteria](../DEVELOPMENT.md#milestone-5--generate-simulated-production-traffic) in `DEVELOPMENT.md`.
 
 - 50–100 total synthetic sessions or a documented budget-limited subset.
 - Runs labeled by task, category, model and version; failed/incomplete attempts included in denominators.

@@ -1,6 +1,6 @@
 # Earned Autonomy — Authorization and Governance Specification
 
-[Home](../README.md) · [Master plan](../DEVELOPMENT.MD) · [Evaluation](EVALUATION.md) · [Architecture](ARCHITECTURE.md)
+[Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Evaluation](EVALUATION.md) · [Architecture](ARCHITECTURE.md)
 
 **Status:** Proposed levels and policies. No gate or promotion logic has been implemented. Thresholds below are **illustrative teaching values, not approved production controls**.
 

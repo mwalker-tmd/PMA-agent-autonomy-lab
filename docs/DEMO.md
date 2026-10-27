@@ -1,6 +1,6 @@
 # Office-Hours Teaching Demonstration — Facilitator Runbook
 
-[Home](../README.md) · [Master plan](../DEVELOPMENT.MD) · [Project brief](PROJECT_BRIEF.md)
+[Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Project brief](PROJECT_BRIEF.md)
 
 **Status:** Proposed teaching design, not a record of a completed demo. Actual URLs, screenshots, scores and commands will be filled in after implementation.
 
