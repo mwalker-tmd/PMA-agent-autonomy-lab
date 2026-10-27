@@ -31,4 +31,85 @@ setup:  # M2-00 (#38)
       result: passed          # one completion; response model gpt-6-luna, content "OK"
       cost_pricing_known: false        # not in the pinned LiteLLM price map
 
-# run:        M2-03 (#41) — models, task IDs, seed, trials, concurrency, cost
+run:  # M2-03 (#41) — fields follow the DEVELOPMENT.MD §5 template
+  experiment_id: m2-baseline-2026-10-27-r3
+  started_at_utc: 2026-10-27T06:25:07Z
+  finished_at_utc: 2026-10-27T06:28:25Z
+  traffic_type: synthetic
+  experiment_class: official_upstream_baseline  # zero upstream code changes; CLI flags only
+  tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7
+  tau_bench_task_split: base
+  selected_task_ids: ["0", "1", "2", "3", "4"]  # --num-tasks 5 takes the first five, in order
+  scenario_manifest_version: null   # no lab scenario manifest yet
+  model_id: openai/responses/gpt-6-luna
+  user_model_id: openai/responses/gpt-6-luna
+  llm_args_agent: {reasoning_effort: medium}
+  llm_args_user: {reasoning_effort: medium}
+  judge_model:
+    nl_assertions: gpt-5.4-mini-2026-03-17   # upstream default (src/tau2/config.py); not recorded in results.json
+    communicate: gpt-5.5                      # in the run config; retail reward does not use it
+  agent_version: llm_agent           # upstream agent, unmodified
+  prompt_version: upstream default at tau_bench_commit
+  policy_version: upstream retail policy at tau_bench_commit
+  seed: 42
+  trials_per_task: 1
+  concurrency: 1
+  attempts: 3                        # runs of the command; see failed_attempts
+  completed: 5                       # in the run of record
+  failed_to_run: 0                   # in the run of record
+  langsmith_project: null            # tracing arrives in Milestone 3
+  report_path: ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3/results.json  # not committed
+  command: >-
+    uv run tau2 run --domain retail
+    --agent-llm openai/responses/gpt-6-luna --user-llm openai/responses/gpt-6-luna
+    --agent-llm-args '{"reasoning_effort": "medium"}'
+    --user-llm-args '{"reasoning_effort": "medium"}'
+    --num-trials 1 --num-tasks 5 --seed 42 --max-concurrency 1
+    --save-to m2-baseline-2026-10-27-r3
+  results:  # copied from results.json; no other scores are reported
+    - {task_id: "0", reward: 1.0, db_match: true, nl_assertions_met: null, termination: user_stop}
+    - {task_id: "1", reward: 1.0, db_match: true, nl_assertions_met: null, termination: user_stop}
+    - {task_id: "2", reward: 0.0, db_match: true, nl_assertions_met: [false], termination: user_stop}
+    - {task_id: "3", reward: 1.0, db_match: true, nl_assertions_met: [true], termination: user_stop}
+    - {task_id: "4", reward: 1.0, db_match: true, nl_assertions_met: [true], termination: user_stop}
+  summary:  # as printed by tau2 run
+    average_reward: 0.8
+    pass_hat_1: 0.8
+    infra_errors: 0
+  cost:
+    source: >-
+      Per-message cost computed by LiteLLM during the run and stored in
+      results.json. On the 17 calls without cached input it equals tokens x
+      the OpenAI list price for gpt-6-luna ($0.10 input / $0.50 output per 1M
+      tokens, checked 2026-10-27); the other 63 calls are lower, consistent
+      with a prompt-caching discount.
+    agent_usd: 0.0082337    # sum of assistant message costs; tau2 reports agent_cost null because the fixed greeting has no cost
+    user_usd: 0.0025139     # equals the user_cost tau2 reports
+    total_usd: 0.0107476    # agent + user only
+    list_price_upper_bound_usd: 0.0379601   # all tokens at list price, no caching
+    tokens:
+      agent: {calls: 59, prompt: 320266, completion: 5813}
+      user: {calls: 21, prompt: 20970, completion: 1860}
+    excluded: NL-assertion judge calls (3 tasks have assertions); results.json records no judge usage
+  failed_attempts:
+    - save_to: m2-baseline-2026-10-27
+      started_at_utc: 2026-10-27T06:06:40Z
+      args: {agent: gpt-6-luna, user: gpt-6-luna, llm_args: {temperature: 0.0}}  # upstream default
+      outcome: 5/5 infra errors, 0 evaluated
+      error: "Unsupported value: 'temperature' does not support 0.0 with this model. Only the default (1) value is supported."
+    - save_to: m2-baseline-2026-10-27-r2
+      started_at_utc: 2026-10-27T06:22:11Z
+      args: {agent: gpt-6-luna, user: gpt-6-luna, llm_args: {reasoning_effort: medium}}
+      outcome: 5/5 infra errors, 0 evaluated
+      error: "Function tools with reasoning_effort are not supported for gpt-6-luna in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'."
+  upstream_after_run:
+    git_status: clean
+    git_diff: empty
+  notes: >-
+    Temperature is not passed: frontier models are replacing it with
+    reasoning effort, so reasoning_effort is pinned instead. The
+    openai/responses/ prefix routes calls through LiteLLM's Responses API
+    bridge, which gpt-6-luna requires for tools with reasoning. With
+    reasoning models, seed 42 does not make conversations repeatable.
+    Task 2 scored 0 because its one NL assertion failed (the agent said 11
+    t-shirt options instead of 10); its DB check passed.
