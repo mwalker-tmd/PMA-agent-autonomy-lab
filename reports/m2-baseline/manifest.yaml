@@ -99,6 +99,20 @@ run:  # M2-03 (#41) — fields follow the DEVELOPMENT.md §5 template
       billed, the unrecorded judge calls, or other usage on the key that
       day. Use billed_usd for budgeting; treat agent_usd/user_usd as
       estimates.
+  latency:  # M2-05 (#43); computed from results.json, not printed by tau2 run
+    method: >-
+      Per-call latency is the gap between a model-generated message's
+      timestamp and the previous message's timestamp (local clock;
+      includes LiteLLM and network overhead). generation_time_seconds is
+      null in results.json. Task wall time is the simulation's duration.
+    agent_call_s: {calls: 59, median: 1.86, mean: 2.29, max: 8.57}
+    user_call_s: {calls: 21, median: 2.19, mean: 2.48, max: 4.54}
+    task_wall_s: {"0": 35.0, "1": 39.1, "2": 34.6, "3": 40.0, "4": 38.1, mean: 37.4}
+    run_wall_s: 198   # started_at_utc to finished_at_utc
+  errors:  # M2-05 (#43); run of record only
+    infra_errors: 0
+    tool_errors: 0               # tool messages with error set
+    hallucination_retries: 0
   failed_attempts:
     - save_to: m2-baseline-2026-10-27
       started_at_utc: 2026-10-27T06:06:40Z

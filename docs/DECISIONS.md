@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md)
 
-**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026) and the code architecture (ADR-013, October 26, 2026); nothing here is implemented or tested. “Selected” means selected for the **plan**.
+**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), and the baseline model choice (ADR-014, October 27, 2026); nothing here is implemented or tested. “Selected” means selected for the **plan**.
 
 **Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.md).
 
@@ -23,6 +23,7 @@
 | ADR-011 | 2026-10-18 | **Selected:** README short; `DEVELOPMENT.md` authoritative; domain docs under `docs/` | Clear separation of purpose, execution and technical specifications | Documentation becomes unwieldy |
 | ADR-012 | 2026-10-26 | **Accepted:** Milestone 1 teaching scope and initial rubric ([note](#adr-012--accept-the-milestone-1-scope-and-rubric)) | All Milestone 1 documents merged after review; remaining unknowns are tracked as open questions | Milestone 2 inspection contradicts the workflows or rubric |
 | ADR-013 | 2026-10-26 | **Accepted:** Ports-and-adapters (Clean Architecture) for all lab code ([note](#adr-013--adopt-the-ports-and-adapters-architecture)) | Keeps τ-bench, LangSmith, the model provider, and the approval mechanism swappable, and the gate testable without them | A port has one adapter and no test double after Milestone 6, or the layering costs more than it isolates |
+| ADR-014 | 2026-10-27 | **Accepted:** `gpt-6-luna` for both the agent and the simulated user ([note](#adr-014--use-gpt-6-luna-for-the-agent-and-the-simulated-user)) | Completed all five baseline tasks with no errors once called through the Responses API; about $0.006 billed and under 40 s per task | Repeated runs are too noisy, cost rises, the model changes, or published-result comparability is needed |
 
 ## Decision notes
 
@@ -51,6 +52,32 @@
 - Artifacts affected: [ARCHITECTURE.md](ARCHITECTURE.md#code-structure-ports-and-adapters) (ports, adapters, dependency rule), [`DEVELOPMENT.md`](../DEVELOPMENT.md#suggested-artifact-layout-as-implementation-grows) (planned `src/` layout, Milestone 3 enforcement step), [CONTRIBUTING.md](../CONTRIBUTING.md#architecture) (architecture rule and pull request checklist item), the pull request template, and the Milestone 6 open question on human approvals below.
 - Verification or reconsideration trigger: From Milestone 3, `import-linter` passes on every pull request. Reconsider if, after Milestone 6, a port still has only one adapter and no test double, or if keeping adapters thin forces business logic out of the core.
 
+### ADR-014 — Use `gpt-6-luna` for the agent and the simulated user
+- Date: 2026-10-27
+- Status: Accepted
+- Context: Resolves the open question "Which agent and simulated-user models balance affordability and reliability?" The evidence is the five-task baseline run `m2-baseline-2026-10-27-r3` (retail tasks `0`–`4`, one trial, seed 42, concurrency 1). All figures below come from [`reports/m2-baseline/manifest.yaml`](../reports/m2-baseline/manifest.yaml) and the run's `results.json`. The maintainer has OpenAI and Anthropic accounts.
+  - **Outcome:** 5 of 5 tasks evaluated; rewards 1, 1, 0, 1, 1 (average 0.8). Task 2 failed its one NL assertion; every DB check passed.
+  - **Token use:** agent 59 calls, 320,266 prompt and 5,813 completion tokens; simulated user 21 calls, 20,970 prompt and 1,860 completion tokens.
+  - **Cost:** $0.03 billed (OpenAI usage dashboard, authoritative). LiteLLM's per-message estimate is $0.0107 (agent $0.0082, user $0.0025) and the list-price upper bound is $0.038, at $0.10 input / $0.50 output per 1M tokens. The gap between the estimate and the bill is unexplained. NL-judge calls are not in the estimate because τ-bench does not record their usage.
+  - **Latency:** agent calls median 1.86 s (max 8.57 s); user calls median 2.19 s (max 4.54 s); 34.6–40.0 s per task; 198 s for the run. Measured from message timestamps, so these include LiteLLM and network overhead.
+  - **Errors in the run of record:** 0 infra errors, 0 tool errors, 0 hallucination retries.
+  - **Compatibility issues:** two earlier attempts failed on all five tasks. τ-bench's default `temperature: 0.0` is rejected ("Only the default (1) value is supported"). With `reasoning_effort` set, function tools are rejected on `/v1/chat/completions` ("use /v1/responses"). The bare model name is also missing from the pinned LiteLLM price map, so τ-bench reports a cost of 0.0 for it.
+- Options considered:
+  1. **`gpt-6-luna` for both roles** (measured above).
+  2. **A stronger or different model for the simulated user**, so that user behavior does not share the agent's weaknesses. Not measured; at least doubles the models to pin, price, and debug.
+  3. **An Anthropic model for one or both roles.** Not measured; it would need its own compatibility run through LiteLLM before any result could be trusted.
+  4. **Defer the choice** until more tasks are run. Blocks Milestone 3, which needs a fixed model to instrument.
+- Decision: Use `gpt-6-luna` for both the agent and the simulated user, called as `openai/responses/gpt-6-luna` (LiteLLM's Responses API bridge) with `reasoning_effort: medium` pinned through `--agent-llm-args` and `--user-llm-args`. Never pass `temperature`: frontier models are replacing it with reasoning effort. The judges stay at the pinned upstream defaults (`gpt-5.4-mini-2026-03-17` for NL assertions); they are τ-bench's choice, not this decision's.
+- Why: It completed every task with no infra or tool errors once the call route was fixed, at about $0.006 billed per task and under 40 s per task. That is cheap and fast enough for the repeated runs Milestones 3–8 need. One model means one price, one set of quirks, and one compatibility path to maintain.
+- Tradeoffs/risks:
+  - **One model plays both roles.** The simulated user can share the agent's blind spots, which can inflate rewards. Treat a passing task as weaker evidence than it would be with an independent user model.
+  - **Not comparable with published τ-bench results.** Published results use other agent and user models. When the models differ, a reward comparison is invalid, so this lab's baseline is a reference for its own later experiments only ([ADR-009](#decision-log)).
+  - Five tasks with one trial is a small sample; reliability across repeats is the separate variation question below.
+  - With a reasoning model, seed 42 does not make conversations repeatable.
+  - Budget from `billed_usd`, not τ-bench's or LiteLLM's figures, until the cost gap is explained (tracked in [#49](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/49)).
+- Artifacts affected: [`reports/m2-baseline/manifest.yaml`](../reports/m2-baseline/manifest.yaml) (latency and error counts added), the open question below, and [`DEVELOPMENT.md`](../DEVELOPMENT.md) (step 2.6 ticked).
+- Verification or reconsideration trigger: Reconsider if repeated runs show rewards or error rates swinging enough to hide the lab's own changes, if the billed cost per task rises well above the baseline, if OpenAI deprecates the model or changes the Responses API behavior, or if a lesson needs results comparable with published τ-bench numbers (then use the published models in a separately labeled run).
+
 ## Open questions to resolve deliberately
 
 | Question | Target milestone | Preferred way to decide |
@@ -58,7 +85,7 @@
 | Which actual retail task IDs support order lookup, pending cancellation, and return/exchange? | 2 | Inspect task dataset, policies, tool schema, and sample trajectories |
 | Which agent extension point is the narrowest safe place for LangSmith instrumentation? | 2–3 | Prototype against upstream examples without modifying core benchmark behavior |
 | Which exact tool execution boundary permits complete gate enforcement? | 2, 6 | Trace real call path; test blocked mutations and alternative routes |
-| Which agent and simulated-user models balance affordability and reliability? | 2 | Run five tasks, measure usage and model compatibility |
+| Which agent and simulated-user models balance affordability and reliability? | 2 | **Resolved** in [ADR-014](#adr-014--use-gpt-6-luna-for-the-agent-and-the-simulated-user) (2026-10-27): `gpt-6-luna` for both, from the five-task baseline's usage, cost, latency, and compatibility |
 | How should tool correctness be judged when a task's reference `actions` are one valid trajectory, not the only correct one? (Affects the Tool correctness method in the [evaluation scorecard](EVALUATION.md#initial-scorecard--evidence-matrix).) | 2, 4 | Inspect real retail tasks; compare runs that reach the correct end state by different paths; define allowed-alternative and prohibited-action rules rather than exact trajectory match |
 | Which policy checks can be deterministic from actual data? | 2–4 | Review policy/event/state schema; implement unit-test fixtures |
 | Can the current LangSmith account/region access required thread evaluator/trajectory views? | 3–4 | Validate with one test thread and judge |
