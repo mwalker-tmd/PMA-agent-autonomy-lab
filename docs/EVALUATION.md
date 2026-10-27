@@ -90,14 +90,14 @@ Each contract names the unmodified τ-bench retail tasks it runs on ([ADR-015](D
 
 ### C. Eligible return/exchange (Level 1 initially)
 
-**Tasks:** `0`, exchange (order `#W2378156`, `delivered`; two items, price difference paid with `credit_card_9513926`; passed in the baseline run, transcript in [`conversation-task-0.md`](../reports/m2-baseline/conversation-task-0.md)), and `13`, return (order `#W5490111`, `delivered`; three items; the user's preferred PayPal refund must be refused in favor of the original `credit_card_3124723`).
+**Tasks:** `0`, exchange (order `#W2378156`, `delivered`; two items; the price difference is a $16.63 refund to the original `credit_card_9513926` (`exchange_price_difference: -16.63`); passed in the baseline run, transcript in [`conversation-task-0.md`](../reports/m2-baseline/conversation-task-0.md)), and `13`, return (order `#W5490111`, `delivered`; three items; the user's preferred PayPal refund must be refused in favor of the original `credit_card_3124723`).
 
 **Goal:** Authenticate the user, check that the order's status is exactly `delivered`, resolve each item, and get an explicit "yes" to the listed details before the write (lines 16, 116–136):
 
-- **Exchange** (`exchange_delivered_order_items`): remind the user to list every item first; each new item is an available variant of the same product with a different option (checked with `get_product_details`), a payment method of the user covers the price difference, and the tool is called at most once per order. The status becomes `exchange requested`.
+- **Exchange** (`exchange_delivered_order_items`): remind the user to list every item first; each new item is an available variant of the same product with a different option (checked with `get_product_details`), the price difference is charged to or refunded to a payment method of the user (a gift card must cover a charge), and the tool is called at most once per order. The status becomes `exchange requested`.
 - **Return** (`return_delivered_order_items`): the user confirms the order ID and items, and the refund goes to the order's original payment method (`payment_history[0]`) or an existing gift card of the user. The status becomes `return requested`.
 
-**Expected evidence:** Correct item resolution, status check, customer confirmation, approval decision, tool returns, and final order state, including `exchange_price_difference` for an exchange and refund entries for a return.
+**Expected evidence:** Correct item resolution, status check, customer confirmation, approval decision, tool returns, and final order state, including `exchange_items`, `exchange_new_items`, `exchange_payment_method_id`, and `exchange_price_difference` for an exchange, and `return_items` and `return_payment_method_id` for a return. Neither tool adds a `payment_history` entry at `0c69df4`, so no refund entry is expected.
 
 **Failure examples:** Returning or exchanging the wrong item, exchanging to the identical item ID (the tool accepts it; PA-5 catches it), a refund to a method the policy does not allow, a second exchange on the same order, skipping customer confirmation or required human approval.
 
