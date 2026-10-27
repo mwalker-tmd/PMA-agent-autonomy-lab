@@ -1,6 +1,6 @@
 # Agent Autonomy Lab
 
-**Status:** Proposal and specification; nothing is implemented. No application code, τ-bench baseline, or LangSmith integration exists yet. Milestones 0 (repository and workflow setup) and 1 (project and success criteria) are complete; Milestone 2 is next.  
+**Status:** Proposal and specification; no application code or LangSmith integration exists yet. Milestones 0 (repository and workflow setup) and 1 (project and success criteria) are complete; Milestone 2 (install and run τ-bench) is in progress, and the first five-task baseline has run.  
 **Documentation baseline:** October 18, 2026.  
 **Approach:** One repository for our project; the upstream [τ-bench repository](https://github.com/sierra-research/tau2-bench) remains separate.
 
@@ -55,7 +55,7 @@ See [DEVELOPMENT.MD](DEVELOPMENT.MD) for the steps and acceptance criteria for *
 
 ## Project state and next action
 
-We have **not yet run τ-bench or created application code**. Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). Milestone 1 defined the scenarios, evaluation evidence, and success criteria, accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric). The immediate objective is Milestone 2: install τ-bench and run the first five unmodified retail simulations. The first working teaching checkpoint follows Milestone 4.
+We have **not yet created application code**; the first unmodified τ-bench baseline has run (see [docs/BASELINE.md](docs/BASELINE.md)). Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). Milestone 1 defined the scenarios, evaluation evidence, and success criteria, accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric). The immediate objective is to finish Milestone 2: record the model and task-mapping decisions and complete the baseline inspection notes. The first working teaching checkpoint follows Milestone 4.
 
 ## Guardrails
 
