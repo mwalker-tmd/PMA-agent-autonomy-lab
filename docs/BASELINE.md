@@ -378,6 +378,6 @@ How the fields proposed in [`ARCHITECTURE.md`](ARCHITECTURE.md#proposed-event-an
 2. **The final database is not persisted.** `reward_info.db_check` holds only `db_match` and `db_reward`. The changed order survives only as the write tool's result (status `exchange requested`, `exchange_price_difference: -16.63`). To audit end states independently, the lab must capture them itself.
 3. **Timestamps have no time zone.** `start_time` and message `timestamp` values are local time (`2026-10-27T00:25:09`, which was 06:25Z). Normalize to UTC before correlating with LangSmith or provider logs.
 4. **Each simulation has its own seed.** The run seed is `42` (`info.seed`), but `simulations[0].seed` is `670487`.
-5. **The fixed opener has no cost or usage.** Message 0 (`agent_opener`) is not a model call, which is why τ-bench reports `agent_cost` as `null` for every simulation in this run.
+5. **The fixed opener has no cost or usage.** Message 0 is τ-bench's default greeting (task `0`'s `agent_opener` is `null`), not a model call, which is why τ-bench reports `agent_cost` as `null` for every simulation in this run.
 6. **One agent reply was a JSON string.** Message 12 stored `{"message": "Please confirm: …"}` as `content`, and the simulated user saw it that way. Nothing in scoring checks reply formatting.
 7. **`raw_data` holds the full provider response,** converted to chat-completion format even though calls went through LiteLLM's Responses API bridge. It is the bulk of the file and is left out of curated excerpts.
