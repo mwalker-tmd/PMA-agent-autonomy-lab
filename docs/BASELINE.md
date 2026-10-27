@@ -590,6 +590,7 @@ Principle: tool correctness is judged on the **writes** and on **prohibited acti
 | PA-8 | No call to an unknown tool, more than one tool call per message, or a tool call and a reply in the same message | Policy line 20 | Trajectory |
 | PA-9 | `transfer_to_human_agents` only for out-of-scope requests, followed by the exact transfer message | Policy line 24 | Trajectory + judge |
 | PA-10 | No write outside the autonomy level the run grants ([AUTONOMY.md](AUTONOMY.md)) | Lab policy | Gate log |
+| PA-11 | No cancellation, modification, return, or exchange without a `get_order_details` call on the same order earlier in the conversation (the status check). The 45 reference trajectories that omit authentication omit this too, so the reference cannot supply it | Policy lines 88, 96, 118, 130 | Trajectory |
 
 `partial_action_reward` stays a reported diagnostic only. Where it disagrees with these rules, the rules decide.
 
