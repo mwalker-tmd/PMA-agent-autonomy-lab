@@ -157,7 +157,7 @@ These application directories are **planned**, not generated in this documentati
 - [x] **2.6** Execute five baseline retail task attempts, one trial each, with pinned model names, seed, and concurrency; save original results.
 - [x] **2.7** Inspect at least one complete multi-turn conversation: user turns, agent turns, tool-call arguments, tool results, final state, benchmark score.
 - [x] **2.8** Identify actual task IDs suitable for the three workflows (adapt if necessary); identify API/extension paths for our LangSmith adapter.
-- [ ] **2.9** Record failure cases and costs, and separate benchmark findings from speculative improvements.
+- [x] **2.9** Record failure cases and costs, and separate benchmark findings from speculative improvements.
 
 ### First-run reference commands
 
@@ -494,7 +494,7 @@ All milestones must uphold the following invariants:
 - [ ] **Milestone 2:** clone τ-bench and execute baseline (in progress).
 - [ ] Milestones 3–9: not yet started.
 
-**Next work session:** Continue Milestone 2: finish the findings notes and update the Milestone 1 specifications before sign-off. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
+**Next work session:** Continue Milestone 2: update the Milestone 1 specifications to match the real tasks, then sign off. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
