@@ -12,6 +12,7 @@ Closes #
 
 - [ ] Every Acceptance Criteria item in the linked issue is met
 - [ ] `DEVELOPMENT.MD` updated if scope, order, or acceptance criteria changed
+- [ ] `DEVELOPMENT.MD` status current: milestone marked In progress if this is its first PR; plan steps ticked if this PR closes their last open issue
 - [ ] Decision recorded in `docs/DECISIONS.md` if one was made
 - [ ] Code follows the ports-and-adapters dependency rule (ADR-013); `lint-imports` passes once `pyproject.toml` exists
 - [ ] No secrets, credentials, or real PII committed; data is synthetic
