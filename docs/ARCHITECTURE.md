@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Autonomy](AUTONOMY.md) · [Evaluation](EVALUATION.md)
 
-**Status:** Target architecture, not implemented. Dependencies and APIs will be pinned/validated after the first upstream τ-bench checkout.
+**Status:** Target architecture, not implemented. τ-bench is pinned at commit `0c69df4`; its result structures and extension points are recorded in [BASELINE.md](BASELINE.md).
 
 ## Architectural intent
 
@@ -138,24 +138,26 @@ sequenceDiagram
 
 ## Proposed event and identifier contract
 
-Store these fields in a versioned event schema once we inspect actual τ-bench structures:
+Store these fields in a versioned event schema. The τ-bench source column maps each field to what the pinned commit `0c69df4` persists in `results.json` ([result file structure](BASELINE.md#result-file-structure)); "none" means the lab's adapters assign it.
 
-| Field | Purpose | Example (illustrative) |
-| --- | --- | --- |
-| `event_id` | Uniquely identify one event; the target of evaluator `evidence_ids` in [EVALUATION.md](EVALUATION.md#required-result-format) | `event-101` |
-| `simulation_id` | Correlate one full simulated run | `sim-00023` |
-| `thread_id` | Group multi-turn traces | `thread-00023` |
-| `scenario_id` / `task_id` | Task category and benchmark ground truth index | `retail:<verified-id>` |
-| `turn_index` | Ordered conversation turn | `6` |
-| `run_id` / `parent_run_id` | Link child LLM/tool spans | UUID |
-| `agent_version`, `prompt_version` | Compare releases | `v1.1`, `prompt-003` |
-| `model_id`, `user_model_id` | Agent and user-simulator model provenance | provider-qualified ID |
-| `tool_schema_version`, `policy_version` | Reproduce permissions and API surface | `gate-001` |
-| `autonomy_level` | Active authority at **decision time** | `1` |
-| `traffic_type`, `workflow`, `scenario_category` | Separate synthetic vs. other; segment evaluations by workflow and [scenario category](SIMULATION.md#initial-scenario-taxonomy) | `synthetic`, `cancellation`, `policy_sensitive` |
-| `tool_name`, `argument_hash` | Audit attempted action without dumping secrets | `cancel_order`, safe hash |
-| `decision`, `decision_reason` | Explain gate result | `DENIED`, `missing_customer_confirmation` |
-| `outcome`, `elapsed_ms`, `tokens`, `cost` | Outcome + operations | `EXECUTION_FAILED`, numeric values |
+| Field | Purpose | τ-bench source | Example (illustrative) |
+| --- | --- | --- | --- |
+| `event_id` | Uniquely identify one event; the target of evaluator `evidence_ids` in [EVALUATION.md](EVALUATION.md#required-result-format) | none. A tool result's `id` equals the `tool_calls[].id` it answers, the only persisted link between events | `event-101` |
+| `simulation_id` | Correlate one full simulated run | `simulations[].id` (UUID) | `sim-00023` |
+| `thread_id` | Group multi-turn traces | none | `thread-00023` |
+| `scenario_id` / `task_id` | Task category and benchmark ground truth index | `simulations[].task_id` (string, `"0"`–`"113"`) | `retail:113` |
+| `turn_index` | Ordered conversation turn | `messages[].turn_idx`; starts at 0 with the fixed opener, and tool calls and tool results each take an index | `6` |
+| `run_id` / `parent_run_id` | Link child LLM/tool spans | none | UUID |
+| `agent_version`, `prompt_version` | Compare releases | none; only `info.agent_info.implementation` (`llm_agent`) | `v1.1`, `prompt-003` |
+| `model_id`, `user_model_id` | Agent and user-simulator model provenance | `info.agent_info.llm`, `info.user_info.llm`, per run, not per message | provider-qualified ID |
+| `tool_schema_version`, `policy_version` | Reproduce permissions and API surface | none; the full policy text is in `info.environment_info.policy`, so a version must be derived (for example, a hash) | `gate-001` |
+| `autonomy_level` | Active authority at **decision time** | none | `1` |
+| `traffic_type`, `workflow`, `scenario_category` | Separate synthetic vs. other; segment evaluations by workflow and [scenario category](SIMULATION.md#initial-scenario-taxonomy) | none | `synthetic`, `cancellation`, `policy_sensitive` |
+| `tool_name`, `argument_hash` | Audit attempted action without dumping secrets | `tool_calls[].name`; arguments are stored in full in `tool_calls[].arguments`, and the hash is ours to compute | `cancel_pending_order`, safe hash |
+| `decision`, `decision_reason` | Explain gate result | none; the gate emits them. A denial is persisted as a tool result with `execution_status: rejected` ([gate boundary](BASELINE.md#authorization-gate-boundary)) | `DENIED`, `missing_customer_confirmation` |
+| `outcome`, `elapsed_ms`, `tokens`, `cost` | Outcome + operations | Tool result `execution_status` and `error`; `generation_time_seconds` (agent messages only) and simulation `duration`; `messages[].usage` and `messages[].cost` per model call | `EXECUTION_FAILED`, numeric values |
+
+Gaps the adapters must fill, from the [baseline reconstruction](BASELINE.md#what-reconstruction-showed): τ-bench timestamps are local time with no zone, so normalize them to UTC before correlating with LangSmith; the final database is not persisted, so capture end states the lab audits; there is no per-call timing for the user simulator or tools; and each simulation has its own seed (`simulations[].seed`), separate from the run seed.
 
 Record explicit event state transitions using the gate event classes in [AUTONOMY.md](AUTONOMY.md#distinguish-events-and-metrics) (`ATTEMPTED`, `DENIED`, `PENDING_APPROVAL`, `APPROVED`, `EXECUTED`, `EXECUTION_FAILED`) so they cannot collapse into a single flag. Example policy decision:
 
@@ -165,7 +167,7 @@ Record explicit event state transitions using the gate event classes in [AUTONOM
   "event_type": "gate_decision",
   "simulation_id": "sim-00023",
   "thread_id": "thread-00023",
-  "tool_name": "cancel_order",
+  "tool_name": "cancel_pending_order",
   "decision": "DENIED",
   "decision_reason": "missing_customer_confirmation",
   "autonomy_level": 2,
@@ -174,7 +176,7 @@ Record explicit event state transitions using the gate event classes in [AUTONOM
 }
 ```
 
-**This is a proposed normalized event format, not a representation of current τ-bench output.** Schema mapping will be finalized after Milestone 2 inspection.
+**This is a proposed normalized event format, not a representation of current τ-bench output.** The τ-bench source column above is the mapping observed in the Milestone 2 baseline; Milestone 3 fixes the versioned schema.
 
 ## LangSmith thread contract
 
