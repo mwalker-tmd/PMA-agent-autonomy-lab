@@ -61,6 +61,48 @@ Clone τ-bench **beside** this repository, never inside it: a nested Git reposit
 | Evaluators | Score final state, events, quality, escalation; maintain evidence trail | Treat unavailable ground truth as negative/positive proof |
 | Dashboard and incident workflow | Aggregate quality and operational signals, route investigations | Permit dangerous actions while waiting for async evaluation |
 
+## Code structure: ports and adapters
+
+All lab code follows ports-and-adapters ([ADR-013](DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture)). The **core** (domain and application code) defines what it needs as **ports**: small Python interfaces (`typing.Protocol`). **Adapters** implement those ports for one specific technology. A single **composition root** chooses the adapters and wires them together for each run.
+
+**Dependency rule:** dependencies point inward. Domain and application code never imports τ-bench (`tau2`), LangSmith (`langsmith`), or a provider SDK (`openai`, `anthropic`, `litellm`). Only adapters and the composition root import them. From Milestone 3, `import-linter` contracts enforce this rule (see [CONTRIBUTING.md](../CONTRIBUTING.md#architecture)).
+
+```mermaid
+flowchart LR
+    subgraph Core[Core: no third-party infrastructure imports]
+        D[Domain\ngate policy, events, scoring rules]
+        AP[Application\nrun, evaluate, review use cases]
+        P[[Ports]]
+        AP --> D
+        AP --> P
+    end
+    subgraph Adapters
+        TB[τ-bench]
+        LS[LangSmith]
+        M[Model provider]
+        HA[Approvals]
+    end
+    TB -. implements .-> P
+    LS -. implements .-> P
+    M -. implements .-> P
+    HA -. implements .-> P
+    CR[Composition root\nCLI / scripts] --> AP
+    CR --> Adapters
+```
+
+### Core ports
+
+| Port | Responsibility | Planned adapters | Test double |
+| --- | --- | --- | --- |
+| `ToolExecutor` | Execute an already-authorized tool call against the retail environment and return its result or error | τ-bench retail environment (Milestones 3, 6) | In-memory fake retail state |
+| `AuthorizationGate` | Decide `ALLOWED`, `DENIED`, or `PENDING_APPROVAL` for a proposed tool call from the autonomy level, policy version, and context | Policy-configured gate in the core (Milestone 6); the port lets wrappers such as tracing decorate it | Fixed-decision stub |
+| `TraceSink` | Record runs, spans, and gate events with the [identifier contract](#proposed-event-and-identifier-contract) | LangSmith (Milestone 3); local JSONL file for offline runs | In-memory recorder |
+| `ApprovalSource` | Return a human operational approval or rejection for a pending action | Deterministic fixture (Milestone 6); FastAPI manual-review UI only if Milestone 6 chooses one | Scripted approvals |
+| `Evaluator` | Score a completed simulation and return results with evidence IDs ([result format](EVALUATION.md#required-result-format)) | Deterministic code checks; τ-bench reward reader; LLM judge via `ModelClient` (Milestone 4) | Canned results |
+| `ModelClient` | Send messages and tool schemas to a model and return its response, token usage, and cost | LiteLLM or provider SDK, e.g. OpenAI `gpt-6-luna` (Milestones 3–4) | Scripted responses |
+
+Ports start minimal and change when their first real adapter is built. The gate's decision logic is domain code; the `AuthorizationGate` port exists so the application layer and the τ-bench adapter depend on an interface, not on one implementation. The `ToolExecutor` port does not enforce authority on its own: Milestone 6 must show that the τ-bench adapter is the **only** route to mutating retail tools and that it runs a call only after the gate allows it.
+
 ## End-to-end request sequence
 
 ```mermaid
