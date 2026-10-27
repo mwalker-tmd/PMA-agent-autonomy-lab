@@ -1,0 +1,34 @@
+# Milestone 2 baseline run manifest.
+# Each section is filled in by the ticket that produces it; values are
+# recorded from real commands, never estimated. See docs/BASELINE.md.
+
+setup:  # M2-00 (#38)
+  recorded_on: 2026-10-26
+  host:
+    os: macOS (Darwin 25.5.0, arm64)
+  tools:
+    uv: 0.11.2
+    python: 3.12.0            # uv-managed; selected by upstream .python-version
+    python_required: ">=3.12,<3.14"
+    system_python: 3.14.3     # out of range; not used
+  upstream:
+    repository: https://github.com/sierra-research/tau2-bench
+    location: ../tau2-bench   # sibling clone, not nested in this repository
+    branch: main
+    commit: 0c69df456a96aa76a1162591574dad9c427a34d7
+    commit_date: 2026-10-24T07:04:33-07:00
+    tag: null                 # no tag at this commit
+    describe: v2.0.0-62-g0c69df4
+    local_modifications: none # `git status` clean after uv sync and smoke test
+  dependencies:
+    lock_file: uv.lock        # upstream lock, unchanged
+    litellm: 1.81.11
+  checks:
+    check_data: passed        # `uv run tau2 check-data`
+    model_smoke_test:
+      model: gpt-6-luna
+      litellm_model_name: gpt-6-luna   # bare name resolves; no provider prefix needed
+      result: passed          # one completion; response model gpt-6-luna, content "OK"
+      cost_pricing_known: false        # not in the pinned LiteLLM price map
+
+# run:        M2-03 (#41) — models, task IDs, seed, trials, concurrency, cost
