@@ -39,7 +39,20 @@ git -C ../tau2-bench checkout 0c69df456a96aa76a1162591574dad9c427a34d7
 
 ### Validation
 
-`uv sync` installed the locked dependencies into `../tau2-bench/.venv` (ignored upstream), and the data check passed:
+`uv sync` installed the locked dependencies into `../tau2-bench/.venv` (ignored upstream). Only the last five lines of its output were captured:
+
+```text
+$ uv sync 2>&1 | tail -5
+ + tzdata==2025.2
+ + urllib3==2.8.0
+ + uvicorn==0.38.0
+ + yarl==1.25.1
+ + zipp==3.23.0
+```
+
+Afterwards, `.venv/lib/python3.12/site-packages` held 75 `*.dist-info` directories, including `litellm-1.81.11.dist-info`. The lock lists 187 packages; the rest belong to optional extras (such as voice) that `uv sync` does not install by default.
+
+The interpreter and data checks then passed:
 
 ```text
 $ uv run python --version
