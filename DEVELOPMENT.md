@@ -494,7 +494,7 @@ All milestones must uphold the following invariants:
 - [ ] **Milestone 2:** clone τ-bench and execute baseline (in progress).
 - [ ] Milestones 3–9: not yet started.
 
-**Next work session:** Continue Milestone 2: finish the policy-check and findings notes and update the Milestone 1 specifications before sign-off. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
+**Next work session:** Continue Milestone 2: finish the findings notes and update the Milestone 1 specifications before sign-off. Its tickets cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
