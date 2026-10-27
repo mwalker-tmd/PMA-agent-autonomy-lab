@@ -42,6 +42,14 @@ The canonical label set lives in [`.github/labels.yml`](.github/labels.yml). Lab
 | Status | `needs-review`, `blocked` | Add or remove as the state changes |
 | Other | `hygiene` | Repository upkeep: ignore rules, dependencies, stale docs, broken links |
 
+## Architecture
+
+Lab code follows ports-and-adapters ([ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture); ports and adapters are listed in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#code-structure-ports-and-adapters)).
+
+- **Dependency rule:** code in `domain/`, `ports/`, and `application/` never imports τ-bench (`tau2`), LangSmith (`langsmith`), or a provider SDK (`openai`, `anthropic`, `litellm`). Only `adapters/` and `entrypoints/` do.
+- New infrastructure goes behind an existing port as a new adapter. Add or change a port only when the core needs a capability no port offers, and add an in-memory test double with it.
+- Enforcement: from Milestone 3, `import-linter` contracts in `pyproject.toml` check the rule; run `lint-imports` before opening a pull request. Until code exists, reviewers check it by hand.
+
 ## Branches
 
 Branch from `main` and name branches `m<milestone>/<issue>-<short-slug>`, for example `m1/12-evaluation-metrics`.
@@ -71,6 +79,7 @@ A change is done when:
 - every Acceptance Criteria item in the linked issue is met and verified;
 - `DEVELOPMENT.MD` reflects any change to scope, order, or acceptance criteria;
 - any decision is recorded in `docs/DECISIONS.md`;
+- code follows the [dependency rule](#architecture): no τ-bench, LangSmith, or provider SDK imports outside adapters and the composition root;
 - no secrets, credentials, or real PII are committed (all customer data is synthetic);
 - any reported result comes from a recorded run or is clearly labeled illustrative.
 
