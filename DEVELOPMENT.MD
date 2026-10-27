@@ -159,7 +159,7 @@ These application directories are **planned**, not generated in this documentati
 - [ ] **2.8** Identify actual task IDs suitable for the three workflows (adapt if necessary); identify API/extension paths for our LangSmith adapter.
 - [ ] **2.9** Record failure cases and costs, and separate benchmark findings from speculative improvements.
 
-### First-run reference commands (not yet executed)
+### First-run reference commands
 
 From this repo's root (both repos will then be siblings):
 
@@ -173,8 +173,10 @@ uv run tau2 check-data
 uv run tau2 intro
 uv run tau2 run \
   --domain retail \
-  --agent-llm gpt-4.1 \
-  --user-llm gpt-4.1 \
+  --agent-llm openai/responses/gpt-6-luna \
+  --user-llm openai/responses/gpt-6-luna \
+  --agent-llm-args '{"reasoning_effort": "medium"}' \
+  --user-llm-args '{"reasoning_effort": "medium"}' \
   --num-trials 1 \
   --num-tasks 5 \
   --seed 42 \
@@ -182,7 +184,7 @@ uv run tau2 run \
 uv run tau2 view
 ```
 
-Model names are initial examples, contingent on available API access and cost. The upstream README and CLI reference support the installation, CLI options, and viewer; we must validate the commands **locally** against the checkout actually used. Capture a precise version before comparing results.
+These are the commands the Milestone 2 baseline actually ran ([#41](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/41); manifest in [`reports/m2-baseline/manifest.yaml`](reports/m2-baseline/manifest.yaml)). The model is `gpt-6-luna` for both the agent and the simulated user. τ-bench's default `temperature: 0.0` is rejected by that model, and frontier models are replacing temperature with reasoning effort, so the commands pin `reasoning_effort` instead. The `openai/responses/` prefix routes calls through LiteLLM's Responses API bridge, which `gpt-6-luna` requires to combine tools with reasoning. Capture a precise version before comparing results.
 
 ### Deliverables
 

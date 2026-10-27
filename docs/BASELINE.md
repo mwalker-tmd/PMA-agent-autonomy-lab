@@ -163,7 +163,7 @@ gpt-6-luna OK
 
 ### Deviations from the first-run reference commands
 
-Compared with [`DEVELOPMENT.MD` — First-run reference commands](../DEVELOPMENT.MD#first-run-reference-commands-not-yet-executed):
+Compared with [`DEVELOPMENT.MD` — First-run reference commands](../DEVELOPMENT.MD#first-run-reference-commands):
 
 1. **Pinned commit.** The reference clones `main` without pinning. We record the commit above and check it out explicitly to reproduce.
 2. **Python.** No command changed, but the system Python (3.14.3) is out of range. `uv` selected its managed 3.12.0 from upstream's `.python-version`.
