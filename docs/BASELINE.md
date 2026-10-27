@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Evaluation](EVALUATION.md)
 
-**Status:** In progress (Milestone 2). Each section is added by its own ticket; machine-readable values live in [`reports/m2-baseline/manifest.yaml`](../reports/m2-baseline/manifest.yaml).
+**Status:** Complete (Milestone 2, signed off in [#51](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/51)). Each section was added by its own ticket; machine-readable values live in [`reports/m2-baseline/manifest.yaml`](../reports/m2-baseline/manifest.yaml).
 
 ## Setup
 
