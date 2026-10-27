@@ -1,6 +1,6 @@
 # Project Brief — Purpose, Outcomes and Scope
 
-[Home](../README.md) · [Master implementation plan](../DEVELOPMENT.MD)
+[Home](../README.md) · [Master implementation plan](../DEVELOPMENT.md)
 
 **Status:** Planning proposal; no application implementation has begun.  
 **Baseline:** October 18, 2026.
@@ -87,7 +87,7 @@ The project is successful when it can reproduce one complete evidence chain:
 
 **Customer request → agent/tool attempts → enforced permissions → business outcome → trace → eval score → monitoring signal → human autonomy decision → regression test.**
 
-Every milestone's Acceptance Criteria are maintained in [DEVELOPMENT.MD](../DEVELOPMENT.MD).
+Every milestone's Acceptance Criteria are maintained in [DEVELOPMENT.md](../DEVELOPMENT.md).
 
 ## Core principles
 

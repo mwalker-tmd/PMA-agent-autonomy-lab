@@ -1,6 +1,6 @@
 # Evaluation Framework — Outcomes, Compliance and Quality
 
-[Home](../README.md) · [Master plan](../DEVELOPMENT.MD) · [Simulation](SIMULATION.md) · [Autonomy](AUTONOMY.md)
+[Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Simulation](SIMULATION.md) · [Autonomy](AUTONOMY.md)
 
 **Status:** Proposed rubric pending inspection of actual retail task data in Milestone 2. All scores here are definitions or **illustrations**, not measured performance. No evaluators, judges, or enforcement checks described here have been implemented.
 

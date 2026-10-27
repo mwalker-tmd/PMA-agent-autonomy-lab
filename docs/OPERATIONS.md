@@ -1,6 +1,6 @@
 # Monitoring, Incident Response and Recovery
 
-[Home](../README.md) · [Master plan](../DEVELOPMENT.MD) · [Evaluation](EVALUATION.md) · [Autonomy](AUTONOMY.md)
+[Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Evaluation](EVALUATION.md) · [Autonomy](AUTONOMY.md)
 
 **Status:** Planned operational specification. Actual dashboards, alert delivery and measurements are Milestones 7–8.
 
@@ -115,7 +115,7 @@ follow_up_due: TBD
 
 ## Verification checks for Milestones 7 and 8
 
-These checks support the canonical Acceptance Criteria for [Milestone 7](../DEVELOPMENT.MD#milestone-7--build-operational-monitoring) and [Milestone 8](../DEVELOPMENT.MD#milestone-8--introduce-and-diagnose-regressions) in `DEVELOPMENT.MD`.
+These checks support the canonical Acceptance Criteria for [Milestone 7](../DEVELOPMENT.md#milestone-7--build-operational-monitoring) and [Milestone 8](../DEVELOPMENT.md#milestone-8--introduce-and-diagnose-regressions) in `DEVELOPMENT.md`.
 
 - Alert/signal can be drilled down to at least one relevant trace and gate event.
 - The dashboard shows actual outcome metrics and separate process-compliance metrics.

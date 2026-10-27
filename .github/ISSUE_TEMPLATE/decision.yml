@@ -43,6 +43,6 @@ body:
       label: Acceptance Criteria
       value: |
         - [ ] Decision recorded in docs/DECISIONS.md
-        - [ ] Affected specs and DEVELOPMENT.MD updated
+        - [ ] Affected specs and DEVELOPMENT.md updated
     validations:
       required: true
