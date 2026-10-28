@@ -216,7 +216,7 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 ### Steps
 
-- [ ] **3.1** Configure a separate LangSmith project and local credentials; confirm retention/privacy settings for synthetic data.
+- [x] **3.1** Configure a separate LangSmith project and local credentials; confirm retention/privacy settings for synthetic data.
 - [ ] **3.2** Build the smallest adapter around τ-bench's custom-agent/orchestration extension point rather than forking upstream immediately.
 - [ ] **3.3** Trace each customer session, agent turn, model call, tool call/result, exception, and available token/cost/latency data.
 - [ ] **3.4** Correlate with stable identifiers: simulation ID, thread/conversation ID, scenario/task ID, turn index, model/prompt/agent version, autonomy level.
