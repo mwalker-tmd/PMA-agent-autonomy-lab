@@ -219,6 +219,18 @@ def test_negative_numbers_are_rejected(name):
         make_event(EventType.MODEL_CALL, **{name: -1})
 
 
+@pytest.mark.parametrize("name", ["elapsed_ms", "cost"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_metrics_are_rejected(name, value):
+    with pytest.raises(ValueError, match=name):
+        make_event(EventType.MODEL_CALL, **{name: value})
+
+
+def test_record_is_strict_json():
+    event = make_event(EventType.MODEL_CALL, elapsed_ms=850.0, cost=0.0012)
+    json.dumps(event.to_dict(), allow_nan=False)
+
+
 def test_negative_tokens_are_rejected():
     with pytest.raises(ValueError, match="token"):
         TokenUsage(prompt_tokens=-1, completion_tokens=0)

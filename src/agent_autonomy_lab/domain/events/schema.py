@@ -9,6 +9,7 @@ annotate the tool-call span named by their ``run_id``, so one call's
 Fields shared by every event of a simulation live in ``RunContext``.
 """
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -173,8 +174,8 @@ class TraceEvent:
         self._check_outcome_fields()
         for name in ("turn_index", "elapsed_ms", "cost"):
             value = getattr(self, name)
-            if value is not None and value < 0:
-                raise ValueError(f"{name} cannot be negative")
+            if value is not None and (not math.isfinite(value) or value < 0):
+                raise ValueError(f"{name} must be a finite, non-negative number")
 
     def _check_links(self) -> None:
         if self.event_type is EventType.CONVERSATION and self.parent_run_id is not None:

@@ -191,7 +191,7 @@ The gate event classes from [AUTONOMY.md](AUTONOMY.md#distinguish-events-and-met
 | `cost` | Model cost in US dollars | `messages[].cost` per model call; `0.0` for `gpt-6-luna` at the pinned LiteLLM version ([BASELINE.md](BASELINE.md)), so compute it from tokens instead | `0.0012` |
 | `inputs`, `outputs` | Span content for the trace backend: messages, tool arguments, and results | message `content`, `tool_calls[].arguments`, tool result `content`; never `raw_data`. Not part of the identifier contract; adapters redact them before export | `{"messages": […]}` |
 
-The schema enforces these rules when an event is built: timestamps are timezone-aware UTC; a `conversation` has no parent and `model_call` and `tool_call` spans need one; `tool_call` and `gate` events need a `tool_name`; gate fields appear only on gate events; and counts, latency, and cost are not negative.
+The schema enforces these rules when an event is built: timestamps are timezone-aware UTC; a `conversation` has no parent and `model_call` and `tool_call` spans need one; `tool_call` and `gate` events need a `tool_name`; gate fields appear only on gate events; and counts, latency, and cost are finite and not negative.
 
 Gaps the adapters must fill, from the [baseline reconstruction](BASELINE.md#what-reconstruction-showed): τ-bench timestamps are local time with no zone, so `to_utc()` needs the zone of the machine that ran the simulation (an ambiguous fall-back hour resolves to the earlier instant); the final database is not persisted, so capture end states the lab audits; there is no per-call timing for the user simulator or tools; and each simulation has its own seed (`simulations[].seed`), separate from the run seed.
 
