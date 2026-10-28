@@ -1,0 +1,66 @@
+[project]
+name = "agent-autonomy-lab"
+version = "0.1.0"
+description = "An AI support agent that earns bounded autonomy through demonstrated performance"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "langsmith",
+    # tau2 allows litellm>=1.80.15,<1.82.7; pin the Milestone 2 baseline's version.
+    "litellm==1.81.11",
+    "tau2",
+]
+
+[dependency-groups]
+dev = [
+    "import-linter",
+    "pytest",
+    "ruff",
+]
+
+[tool.uv.sources]
+# The Milestone 2 baseline commit (docs/BASELINE.md).
+tau2 = { git = "https://github.com/sierra-research/tau2-bench.git", rev = "0c69df456a96aa76a1162591574dad9c427a34d7" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_autonomy_lab"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+# ADR-013 dependency rule, checked by `lint-imports`.
+[tool.importlinter]
+root_package = "agent_autonomy_lab"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Core layers do not import infrastructure"
+type = "forbidden"
+source_modules = [
+    "agent_autonomy_lab.domain",
+    "agent_autonomy_lab.ports",
+    "agent_autonomy_lab.application",
+]
+forbidden_modules = ["tau2", "langsmith", "openai", "anthropic", "litellm"]
+
+[[tool.importlinter.contracts]]
+name = "Dependencies point inward"
+type = "layers"
+layers = [
+    "agent_autonomy_lab.entrypoints",
+    "agent_autonomy_lab.adapters",
+    "agent_autonomy_lab.application",
+    "agent_autonomy_lab.ports",
+    "agent_autonomy_lab.domain",
+]
