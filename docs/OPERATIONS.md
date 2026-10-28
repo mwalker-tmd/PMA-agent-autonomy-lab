@@ -13,6 +13,27 @@
 
 These are related disciplines but different responsibilities. Monitoring can be fast and approximate; permission enforcement cannot wait for asynchronous quality evaluation.
 
+## LangSmith project and data settings
+
+Recorded 2026-10-28 for [Milestone 3](../DEVELOPMENT.md#milestone-3--integrate-langsmith-observability) step 3.1. Values come from the LangSmith API for the lab's API key unless a row says otherwise.
+
+| Setting | Value | Source |
+| --- | --- | --- |
+| Organization | `Personal` (single-seat personal organization) | `GET /api/v1/orgs/current/info` |
+| Workspace | `Workspace 1` (the organization's only workspace; the plan allows one) | `GET /api/v1/workspaces` |
+| Region (endpoint) | GCP US, `us-central1`: API `https://api.smith.langchain.com`, UI `https://smith.langchain.com` | `LANGSMITH_ENDPOINT`; [LangSmith Cloud regions](https://docs.langchain.com/langsmith/cloud) |
+| Plan | Developer (`plan_tier: developer_10_2026`) | `GET /api/v1/orgs/current/info` |
+| Project | `agent-autonomy-lab-synthetic` by default; `LANGSMITH_PROJECT` overrides it, so each cohort can use its own project. LangSmith creates the project on the first trace. | `entrypoints/settings.py` |
+| Retention tier | Base (`shortlived`), 14 days, for this project and as the organization default; no project is set to extended | `GET /api/v1/sessions/{id}` (`trace_tier`), `GET /api/v1/orgs/ttl-settings` |
+| Public trace sharing | Allowed (`public_sharing_disabled: false`); no trace is shared | `GET /api/v1/orgs/current/info`, `GET /api/v1/workspaces/current/shared` |
+| Use of trace data for model training | Not exposed by the API and not covered in the LangSmith docs pages consulted; not verified | — |
+
+**Retention and evidence links.** Base-tier traces expire 14 days after they are recorded. After that, a trace is no longer available in the UI or API, and its inputs and outputs are deleted within a day ([data retention](https://docs.langchain.com/langsmith/administration-overview)). So a trace URL or trace ID cited as evidence stops working after 14 days. Every trace cited as milestone evidence is therefore also captured as a screenshot committed under `reports/`; the trace ID stays in the record so a live trace can still be matched while it exists. Some actions upgrade a trace to extended retention (180 days) and cost more: online evaluators and automation rules do so by default, and API feedback does when `extend_trace_retention=true` is passed. Datasets keep their examples indefinitely. Account for these upgrades when Milestones 4 and 7 add evaluators and rules.
+
+**Privacy.** All lab traffic is synthetic τ-bench data tagged `traffic_type=synthetic`, so the project holds no real customer data. Public sharing is allowed by the plan; a public link is visible to anyone who has it, so share traces only deliberately and unshare them under **Settings → Shared URLs**. Never put the API key or `.env` contents in a trace.
+
+**Smoke trace.** `uv run --env-file .env python -m agent_autonomy_lab.entrypoints.smoke_trace` sends one `smoke_trace` run tagged `smoke` with `traffic_type=synthetic` and prints its trace ID. The first run, on 2026-10-28, recorded trace `01a18117-e679-7d13-82cd-cfb6adee0b4d` (status `success`) in `agent-autonomy-lab-synthetic`; the screenshot is `reports/m3-traces/screenshots/m3-01-smoke-trace.png`.
+
 ## Metric dictionary (target)
 
 | Metric | Numerator/aggregation | Denominator or scope | Owner / action |
