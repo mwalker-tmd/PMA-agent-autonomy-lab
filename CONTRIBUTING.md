@@ -45,7 +45,7 @@ The canonical label set lives in [`.github/labels.yml`](.github/labels.yml). Lab
 
 | Group | Labels | Rule |
 | --- | --- | --- |
-| Type | `type:docs`, `type:process`, `type:decision`, `type:review`, `type:bug` | At least one per issue |
+| Type | `type:docs`, `type:process`, `type:decision`, `type:review`, `type:bug`, `type:feature` | At least one per issue |
 | Area | `area:scope`, `area:evaluation`, `area:autonomy`, `area:architecture`, `area:simulation`, `area:operations`, `area:demo`, `area:governance` | One or more for project work |
 | Status | `needs-review`, `blocked` | Add or remove as the state changes |
 | Other | `hygiene` | Repository upkeep: ignore rules, dependencies, stale docs, broken links |

@@ -17,6 +17,9 @@
 - name: "type:bug"
   color: "d73a4a"
   description: "Something is not working as specified"
+- name: "type:feature"
+  color: "a2eeef"
+  description: "Implementation of lab code"
 
 # Area: which part of the project it affects
 - name: "area:scope"
