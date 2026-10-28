@@ -32,7 +32,7 @@ Recorded 2026-10-28 for [Milestone 3](../DEVELOPMENT.md#milestone-3--integrate-l
 
 **Privacy.** All lab traffic is synthetic τ-bench data tagged `traffic_type=synthetic`, so the project holds no real customer data. Public sharing is allowed by the plan; a public link is visible to anyone who has it, so share traces only deliberately and unshare them under **Settings → Shared URLs**. Never put the API key or `.env` contents in a trace.
 
-**Smoke trace.** `uv run --env-file .env python -m agent_autonomy_lab.entrypoints.smoke_trace` sends one `smoke_trace` run tagged `smoke` with `traffic_type=synthetic` and prints its trace ID. The first run, on 2026-10-28, recorded trace `01a18117-e679-7d13-82cd-cfb6adee0b4d` (status `success`) in `agent-autonomy-lab-synthetic`; the screenshot is `reports/m3-traces/screenshots/m3-01-smoke-trace.png`.
+**Smoke trace.** `uv run --env-file .env python -m agent_autonomy_lab.entrypoints.smoke_trace` sends one `smoke_trace` run tagged `smoke` with `traffic_type=synthetic` and prints its trace ID. The first run, at 2026-10-28 05:59 UTC, recorded trace `01a18117-e679-7d13-82cd-cfb6adee0b4d` (status `success`) in `agent-autonomy-lab-synthetic`; the screenshot is `reports/m3-traces/screenshots/m3-01-smoke-trace.png`.
 
 ## Metric dictionary (target)
 
