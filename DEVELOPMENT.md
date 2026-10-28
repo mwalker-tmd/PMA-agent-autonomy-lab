@@ -1,6 +1,6 @@
 # Development Plan — Agent Autonomy Lab
 
-**Status:** Plan and specification; no application implementation has begun. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is next.
+**Status:** Plan and specification; the lab Python project and its dependency-rule checks exist, but no application code yet. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is in progress.
 
 **This file is the canonical implementation plan.** Supporting specifications live in [`docs/`](docs/). When scope, order, or acceptance criteria change, update this file and record the decision in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -8,7 +8,7 @@
 | --- | --- |
 | Baseline date | October 18, 2026 |
 | Plan version | 1.0 |
-| Implementation status | **Not started** |
+| Implementation status | **Started:** project skeleton (Milestone 3) |
 | Repository strategy | Single `agent-autonomy-lab` repository; separate upstream τ-bench checkout |
 | Initial domain | Retail, text-based, multi-turn customer support |
 | Primary observability platform | LangSmith |
@@ -48,7 +48,7 @@ flowchart LR
 | 0 | Repository and workflow setup | Repository, issue templates, labels, protected `main`, [CONTRIBUTING.md](CONTRIBUTING.md) | Complete |
 | 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | Complete |
 | 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | Complete |
-| 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | Not started |
+| 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | In progress |
 | 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | Not started |
 | 5 | Generate simulated production traffic | 50–100 labeled, reproducible multi-turn sessions and traffic analysis | Not started |
 | 6 | Implement earned autonomy | Four-level authorization gate, approval flow, policy tests, review history | Not started |
@@ -69,9 +69,9 @@ agent-autonomy-lab/
 ├── README.md
 ├── DEVELOPMENT.md                # authoritative milestone tracker
 ├── docs/                         # project, architecture and teaching specifications
-├── pyproject.toml                # planned; create when local project code begins
-├── .env.example                  # planned; placeholders only, never real keys
-├── src/agent_autonomy_lab/       # planned; ports-and-adapters (ADR-013)
+├── pyproject.toml                # project, dependencies, import-linter contracts
+├── .env.example                  # placeholders only, never real keys
+├── src/agent_autonomy_lab/       # ports-and-adapters (ADR-013); layer packages exist
 │   ├── domain/                   # pure logic: no τ-bench, LangSmith, or provider SDK imports
 │   │   ├── autonomy/             # levels, permission matrix, gate decisions, review state
 │   │   ├── evaluation/           # scoring rules and result records
@@ -87,14 +87,14 @@ agent-autonomy-lab/
 │   │   ├── approvals/            # ApprovalSource: fixture; FastAPI UI only if M6 chooses one
 │   │   └── evaluators/           # LLM judge and τ-bench reward reader
 │   └── entrypoints/              # composition root: CLI and scripts wire adapters to use cases
-├── tests/                        # planned unit/integration/regression cases
+├── tests/                        # unit/integration/regression cases
 ├── datasets/                     # planned scenario definitions and safe examples
 ├── scripts/                      # planned repeatable run utilities
 ├── reports/                      # planned run manifests and evaluation summaries
 └── demo/                         # planned teaching materials and backup evidence
 ```
 
-These application directories are **planned**, not generated in this documentation-only package. The layout follows [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture): dependencies point inward, and only `adapters/` and `entrypoints/` import τ-bench, LangSmith, or a provider SDK (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#code-structure-ports-and-adapters)). τ-bench remains a sibling clone or separately pinned dependency unless a later decision changes that.
+Milestone 3 created `pyproject.toml`, `.env.example`, the five empty layer packages, and `tests/`; the subpackages and other directories are **planned**. The layout follows [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture): dependencies point inward, and only `adapters/` and `entrypoints/` import τ-bench, LangSmith, or a provider SDK (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#code-structure-ports-and-adapters)). τ-bench remains a sibling clone or separately pinned dependency unless a later decision changes that.
 
 ---
 
@@ -210,7 +210,7 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 ## Milestone 3 — Integrate LangSmith observability
 
-**Objective:** Make a multi-turn customer conversation reconstructable, with LLM calls, tool calls, failures, and version metadata correlated.
+**Objective:** Make a multi-turn customer conversation reconstructable, with LLM calls, tool calls, failures, and version metadata correlated. Observability should let us understand the agent's behavior without changing it.
 
 **Prerequisites:** Milestone 2 baseline and identified supported integration point.
 
@@ -238,9 +238,10 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 - [ ] Given a simulation ID, we can find the corresponding LangSmith conversation and tool trajectory.
 - [ ] At least one full multi-turn interaction is assembled correctly for thread-level evaluation.
-- [ ] A tool failure appears as an inspectable event, not merely a missing final answer.
-- [ ] Agent outputs and benchmark outcome still match the uninstrumented baseline on a controlled case.
+- [ ] Tool failure observability verified: a controlled, one-shot fault injection produces an inspectable LangSmith failure event containing the tool name, triggering arguments, error classification, and correlation to the parent conversation. The agent receives the failure and has an opportunity to respond naturally. The experiment is clearly labeled as synthetic, and the uninstrumented benchmark baseline and deterministic replay cassette remain unchanged.
+- [ ] Behavioral equivalence verified: on a deterministic replay of a known task, enabling tracing changes no agent response, tool call, final state, or benchmark outcome, and the traced run produces complete, correlated traces.
 - [ ] We can answer **what happened** and **why** using trace evidence.
+- [ ] Each open question in `docs/DECISIONS.md` that targets this milestone is resolved (decision recorded) or re-targeted with a stated reason.
 
 **Dependencies / risks:** Tracing overhead, message-shape compatibility, region/plan-specific features (e.g. trajectory variables), avoiding accidental double-counting or credential exposure. Online multi-turn evaluation is asynchronous; do not confuse it with enforcement.
 
@@ -494,9 +495,10 @@ All milestones must uphold the following invariants:
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
 - [x] **Milestone 2:** clone τ-bench and execute baseline; record the inspection, task mapping, and extension points (see [docs/BASELINE.md](docs/BASELINE.md)).
-- [ ] Milestones 3–9: not yet started.
+- [ ] **Milestone 3:** trace τ-bench conversations in LangSmith (in progress; the lab project and its dependency-rule checks exist).
+- [ ] Milestones 4–9: not yet started.
 
-**Next work session:** Plan the Milestone 3 tickets. They must cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 3, including the two re-targeted from Milestone 2.
+**Next work session:** Continue Milestone 3 with its tickets (#71–#83), which cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 3, including the two re-targeted from Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
