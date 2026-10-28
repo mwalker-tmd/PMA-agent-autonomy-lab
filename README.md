@@ -1,6 +1,6 @@
 # Agent Autonomy Lab
 
-**Status:** Proposal and specification; no application code or LangSmith integration exists yet. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is next.  
+**Status:** Proposal and specification; the lab Python project exists, but no application code or LangSmith integration yet. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is in progress.  
 **Documentation baseline:** October 18, 2026.  
 **Approach:** One repository for our project; the upstream [τ-bench repository](https://github.com/sierra-research/tau2-bench) remains separate.
 
@@ -55,7 +55,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the steps and acceptance criteria for *
 
 ## Project state and next action
 
-We have **not yet created application code**; the first unmodified τ-bench baseline has run (see [docs/BASELINE.md](docs/BASELINE.md)). Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). Milestone 1 defined the scenarios, evaluation evidence, and success criteria, accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric). Milestone 2 ran an unmodified five-task τ-bench baseline, recorded what its score does and does not guarantee, mapped real retail tasks to the three workflows ([ADR-015](docs/DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows)), and updated the Milestone 1 specifications to match. The immediate objective is to plan Milestone 3, LangSmith tracing at the extension point Milestone 2 identified. The first working teaching checkpoint follows Milestone 4.
+We have **not yet written application code**; the lab Python project and its dependency-rule checks exist, and the first unmodified τ-bench baseline has run (see [docs/BASELINE.md](docs/BASELINE.md)). Milestone 0 set up the repository, issue templates, labels, and branch protection; see [CONTRIBUTING.md](CONTRIBUTING.md). Milestone 1 defined the scenarios, evaluation evidence, and success criteria, accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric). Milestone 2 ran an unmodified five-task τ-bench baseline, recorded what its score does and does not guarantee, mapped real retail tasks to the three workflows ([ADR-015](docs/DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows)), and updated the Milestone 1 specifications to match. Milestone 3 is under way: LangSmith tracing at the extension point Milestone 2 identified, with the principle that observability should let us understand the agent's behavior without changing it. The first working teaching checkpoint follows Milestone 4.
 
 ## Guardrails
 
