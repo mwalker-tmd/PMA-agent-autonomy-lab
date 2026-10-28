@@ -94,7 +94,7 @@ agent-autonomy-lab/
 └── demo/                         # planned teaching materials and backup evidence
 ```
 
-Milestone 3 created `pyproject.toml`, `.env.example`, the five empty layer packages, and `tests/`; the subpackages and other directories are **planned**. The layout follows [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture): dependencies point inward, and only `adapters/` and `entrypoints/` import τ-bench, LangSmith, or a provider SDK (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#code-structure-ports-and-adapters)). τ-bench remains a sibling clone or separately pinned dependency unless a later decision changes that.
+Milestone 3 created `pyproject.toml`, `.env.example`, the five layer packages, and `tests/`, then the trace event schema (`domain/events/`), the `TraceSink` port (`ports/trace_sink.py`), and the composition-root settings (`entrypoints/`); the other subpackages and directories are **planned**. The layout follows [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture): dependencies point inward, and only `adapters/` and `entrypoints/` import τ-bench, LangSmith, or a provider SDK (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#code-structure-ports-and-adapters)). τ-bench remains a sibling clone or separately pinned dependency unless a later decision changes that.
 
 ---
 
