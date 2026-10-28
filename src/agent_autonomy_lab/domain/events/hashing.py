@@ -11,9 +11,12 @@ def canonical_json(value: Any) -> str:
 
     Keys are sorted and whitespace is removed. Non-JSON values raise
     ``TypeError`` rather than being stringified, so a hash never depends on a
-    ``repr``.
+    ``repr``; NaN and infinities raise ``ValueError`` because JSON has no
+    token for them.
     """
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    )
 
 
 def _sha256(text: str) -> str:

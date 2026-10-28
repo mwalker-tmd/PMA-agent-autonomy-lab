@@ -6,6 +6,7 @@ same UUID version 5 for the same inputs, so re-exporting a saved simulation
 reuses its thread instead of creating a duplicate.
 """
 
+import json
 import os
 import time
 import uuid
@@ -39,10 +40,14 @@ def new_id(now_ms: int | None = None, random_bytes: bytes | None = None) -> uuid
 
 
 def stable_id(*parts: str) -> uuid.UUID:
-    """Return a UUID version 5 derived from ``parts`` under the lab namespace."""
+    """Return a UUID version 5 derived from ``parts`` under the lab namespace.
+
+    The parts are encoded as a JSON array, so part boundaries are preserved
+    whatever characters a part contains.
+    """
     if not parts or any(not part for part in parts):
         raise ValueError("stable_id needs at least one non-empty part")
-    return uuid.uuid5(LAB_NAMESPACE, "\x1f".join(parts))
+    return uuid.uuid5(LAB_NAMESPACE, json.dumps(list(parts), ensure_ascii=False))
 
 
 def thread_id_for(simulation_id: str) -> str:

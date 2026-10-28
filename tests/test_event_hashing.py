@@ -63,3 +63,11 @@ def test_tool_schema_version_ignores_tool_order():
     assert tool_schema_version([cancel, lookup]) == tool_schema_version([lookup, cancel])
     assert tool_schema_version([cancel, lookup]).startswith("tools-")
     assert tool_schema_version([cancel]) != tool_schema_version([cancel, lookup])
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_canonical_json_rejects_non_finite_numbers(value):
+    with pytest.raises(ValueError):
+        argument_hash({"amount": {"nested": [value]}})
+    with pytest.raises(ValueError):
+        tool_schema_version([{"name": "t", "default": value}])

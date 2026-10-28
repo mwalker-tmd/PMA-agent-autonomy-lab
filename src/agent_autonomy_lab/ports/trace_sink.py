@@ -58,9 +58,9 @@ class InMemoryTraceSink:
     def link_errors(self) -> list[str]:
         """Describe every broken link; an empty list means the trace is well formed.
 
-        Checks that each child span's parent was recorded and belongs to the
-        same simulation, and that each gate event points at a recorded
-        tool-call span for the same tool.
+        Checks that each child span's parent is a recorded conversation span
+        in the same simulation, which also rules out cycles, and that each gate
+        event points at a recorded tool-call span for the same tool.
         """
         errors = []
         for event in self.events:
@@ -68,6 +68,8 @@ class InMemoryTraceSink:
                 parent = self._spans.get(event.parent_run_id)
                 if parent is None:
                     errors.append(f"{event.event_id}: parent {event.parent_run_id} not recorded")
+                elif parent.event_type is not EventType.CONVERSATION:
+                    errors.append(f"{event.event_id}: parent is not a conversation span")
                 elif parent.context.simulation_id != event.context.simulation_id:
                     errors.append(f"{event.event_id}: parent is in another simulation")
             elif event.event_type is EventType.GATE:

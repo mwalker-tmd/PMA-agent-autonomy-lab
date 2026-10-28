@@ -29,6 +29,11 @@ def test_ambiguous_fall_back_time_uses_earlier_instant():
     assert to_utc("2026-11-01T01:30:00", DENVER) == datetime(2026, 11, 1, 7, 30, tzinfo=UTC)
 
 
+def test_ambiguous_datetime_input_ignores_its_fold():
+    later_fold = datetime(2026, 11, 1, 1, 30, fold=1)
+    assert to_utc(later_fold, DENVER) == datetime(2026, 11, 1, 7, 30, tzinfo=UTC)
+
+
 def test_aware_timestamp_is_converted_and_source_zone_ignored():
     aware = "2026-10-27T00:25:09+02:00"
     assert to_utc(aware, DENVER) == datetime(2026, 10, 26, 22, 25, 9, tzinfo=UTC)
@@ -70,6 +75,7 @@ def test_stable_id_is_deterministic_and_part_sensitive():
     assert stable_id("thread", "sim-1").version == 5
     assert stable_id("thread", "sim-1") != stable_id("thread", "sim-2")
     assert stable_id("a", "bc") != stable_id("ab", "c")
+    assert stable_id("a\x1fb", "c") != stable_id("a", "b\x1fc")
 
 
 @pytest.mark.parametrize("parts", [(), ("thread", "")])

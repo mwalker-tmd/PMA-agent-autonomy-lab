@@ -140,3 +140,16 @@ def test_gate_event_tool_must_match_its_span(context):
     for event in (root, tool, gate):
         sink.record(event)
     assert sink.link_errors() == [f"{gate.event_id}: tool_name differs from its tool-call span"]
+
+
+def test_parent_must_be_a_conversation(context):
+    sink = InMemoryTraceSink()
+    first_run, second_run = new_id(), new_id()
+    first = make_event(EventType.MODEL_CALL, context, run_id=first_run, parent_run_id=second_run)
+    second = make_event(EventType.MODEL_CALL, context, run_id=second_run, parent_run_id=first_run)
+    sink.record(first)
+    sink.record(second)
+    assert sink.link_errors() == [
+        f"{first.event_id}: parent is not a conversation span",
+        f"{second.event_id}: parent is not a conversation span",
+    ]

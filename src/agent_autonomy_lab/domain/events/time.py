@@ -14,5 +14,5 @@ def to_utc(value: str | datetime, source_tz: tzinfo) -> datetime:
     """
     parsed = datetime.fromisoformat(value) if isinstance(value, str) else value
     if parsed.tzinfo is None or parsed.utcoffset() is None:
-        parsed = parsed.replace(tzinfo=source_tz)
+        parsed = parsed.replace(tzinfo=source_tz, fold=0)
     return parsed.astimezone(UTC)
