@@ -15,7 +15,7 @@ These are related disciplines but different responsibilities. Monitoring can be 
 
 ## LangSmith project and data settings
 
-Recorded 2026-10-28 for [Milestone 3](../DEVELOPMENT.md#milestone-3--integrate-langsmith-observability) step 3.1. Values come from the LangSmith API for the lab's API key unless a row says otherwise.
+Recorded 2026-10-28 for [Milestone 3](../DEVELOPMENT.md#milestone-3--integrate-langsmith-observability) step 3.1. Values come from the LangSmith API for the lab's API key unless the Source column says otherwise.
 
 | Setting | Value | Source |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Recorded 2026-10-28 for [Milestone 3](../DEVELOPMENT.md#milestone-3--integrate-l
 | Project | `agent-autonomy-lab-synthetic` by default; `LANGSMITH_PROJECT` overrides it, so each cohort can use its own project. LangSmith creates the project on the first trace. | `entrypoints/settings.py` |
 | Retention tier | Base (`shortlived`), 14 days, for this project and as the organization default; no project is set to extended | `GET /api/v1/sessions/{id}` (`trace_tier`), `GET /api/v1/orgs/ttl-settings` |
 | Public trace sharing | Allowed (`public_sharing_disabled: false`); no trace is shared | `GET /api/v1/orgs/current/info`, `GET /api/v1/workspaces/current/shared` |
-| Use of trace data for model training | Not exposed by the API and not covered in the LangSmith docs pages consulted; not verified | — |
+| Use of trace data for model training | Not used. LangChain "will not use Customer Data to train on, develop, or otherwise improve its products", and Customer Data includes trace inputs and outputs. Operational metadata, which excludes Customer Data, may be used to improve the platform. This is a contractual term, not an account setting, so there is nothing to opt out of. | [LangSmith Terms of Service](https://www.langchain.com/terms-of-service) §1, §4.2, §4.3 (last updated 2026-06-02) |
 
 **Retention and evidence links.** Base-tier traces expire 14 days after they are recorded. After that, a trace is no longer available in the UI or API, and its inputs and outputs are deleted within a day ([data retention](https://docs.langchain.com/langsmith/administration-overview)). So a trace URL or trace ID cited as evidence stops working after 14 days. Every trace cited as milestone evidence is therefore also captured as a screenshot committed under `reports/`; the trace ID stays in the record so a live trace can still be matched while it exists. Some actions upgrade a trace to extended retention (180 days) and cost more: online evaluators and automation rules do so by default, and API feedback does when `extend_trace_retention=true` is passed. Datasets keep their examples indefinitely. Account for these upgrades when Milestones 4 and 7 add evaluators and rules.
 
