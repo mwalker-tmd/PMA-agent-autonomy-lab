@@ -14,6 +14,7 @@ machine that ran the simulation.
 import json
 import os
 from collections.abc import Mapping
+from datetime import tzinfo
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -61,23 +62,27 @@ def read_results(path: Path, source_tz: ZoneInfo) -> SavedRun:
         model_id=agent.get("llm"),
         user_model_id=user.get("llm"),
         policy_text=environment.get("policy"),
-        simulations=tuple(_simulation(s, source_tz) for s in data.get("simulations") or []),
+        simulations=tuple(
+            simulation_from_dict(s, source_tz) for s in data.get("simulations") or []
+        ),
     )
 
 
-def _simulation(raw: Mapping[str, Any], source_tz: ZoneInfo) -> SavedSimulation:
+def simulation_from_dict(raw: Mapping[str, Any], source_tz: tzinfo) -> SavedSimulation:
+    """Build a simulation record from one τ-bench ``SimulationRun`` as JSON data."""
     return SavedSimulation(
         simulation_id=raw["id"],
         task_id=str(raw["task_id"]),
         start_time=to_utc(raw["start_time"], source_tz),
         duration_seconds=float(raw["duration"]),
         termination_reason=raw.get("termination_reason"),
-        messages=tuple(_message(m, source_tz) for m in raw.get("messages") or []),
+        messages=tuple(message_from_dict(m, source_tz) for m in raw.get("messages") or []),
         reward=_reward(raw.get("reward_info")),
     )
 
 
-def _message(raw: Mapping[str, Any], source_tz: ZoneInfo) -> Message:
+def message_from_dict(raw: Mapping[str, Any], source_tz: tzinfo) -> Message:
+    """Build a message record from one τ-bench message as JSON data."""
     usage = raw.get("usage")
     return Message(
         role=raw["role"],
