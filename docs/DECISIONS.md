@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md)
 
-**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), the baseline model choice (ADR-014, October 27, 2026), and the task-to-workflow mapping (ADR-015, October 27, 2026); nothing here is implemented or tested. “Selected” means selected for the **plan**.
+**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), the baseline model choice (ADR-014, October 27, 2026), the task-to-workflow mapping (ADR-015, October 27, 2026), and how traces older than LangSmith accepts are exported (ADR-017, October 29, 2026; ADR-016 is reserved for the instrumentation point, [#80](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/80)); nothing here is implemented or tested. “Selected” means selected for the **plan**.
 
 **Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.md).
 
@@ -25,6 +25,7 @@
 | ADR-013 | 2026-10-26 | **Accepted:** Ports-and-adapters (Clean Architecture) for all lab code ([note](#adr-013--adopt-the-ports-and-adapters-architecture)) | Keeps τ-bench, LangSmith, the model provider, and the approval mechanism swappable, and the gate testable without them | A port has one adapter and no test double after Milestone 6, or the layering costs more than it isolates |
 | ADR-014 | 2026-10-27 | **Accepted:** `gpt-6-luna` for both the agent and the simulated user ([note](#adr-014--use-gpt-6-luna-for-the-agent-and-the-simulated-user)) | Completed all five baseline tasks with no errors once called through the Responses API; about $0.006 billed and under 40 s per task | Repeated runs are too noisy, cost rises, the model changes, or published-result comparability is needed |
 | ADR-015 | 2026-10-27 | **Accepted:** Real retail tasks for the three workflows; order lookup adapted to order detail lookup ([note](#adr-015--map-real-retail-tasks-to-the-three-workflows)) | Every workflow has verified tasks at `0c69df4`; no task is a pure status lookup, but the tools support one | Upstream tasks change, a lesson needs a pure status lookup, or a selected task proves unstable |
+| ADR-017 | 2026-10-29 | **Accepted:** The LangSmith adapter shifts a trace older than LangSmith accepts to export time and keeps the real time in metadata ([note](#adr-017--shift-old-traces-to-export-time-in-the-langsmith-adapter)) | LangSmith rejects start times more than 24 hours from now; shifting in the adapter keeps the event schema truthful and re-exports free of duplicates | LangSmith accepts historical start times, or time-based views of exported runs mislead a lesson or dashboard |
 
 ## Decision notes
 
@@ -102,6 +103,27 @@
 - Scope review: Checked against the [scope review triggers](PROJECT_BRIEF.md#scope-review-triggers) and ADR-012's reconsideration trigger. The retail tools support all three workflows, so the "retail tools don't support planned workflows" trigger is not met, and ADR-012's scope and rubric stand. The adaptation is a wording change to workflow 1 and to scenario contract A in [EVALUATION.md](EVALUATION.md#a-order-detail-lookup-level-0--read-only); [#50](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/50) makes those edits.
 - Artifacts affected: [BASELINE.md](BASELINE.md#task-to-workflow-mapping) (mapping section), the open question below, and, through #50, `PROJECT_BRIEF.md` and `EVALUATION.md`.
 - Verification or reconsideration trigger: Reconsider if the pinned τ-bench commit changes and the tasks change, if a lesson needs a status-only lookup (then add a separately labeled custom task, option 3), or if repeated runs show a selected task is too unstable to demonstrate its workflow.
+
+### ADR-017 — Shift old traces to export time in the LangSmith adapter
+- Date: 2026-10-29
+- Status: Accepted
+- Context: M3-04 ([#74](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/74)) exports saved τ-bench simulations to LangSmith. The first live export of the Milestone 2 baseline, about 47 hours after the run, was rejected for every run: `422 … start_time for post must be within ±24 hours of current time`. LangSmith's API accepts no older start time, so any trace exported more than a day after it was recorded hits this limit: the baseline, later re-exports for new cohorts, and saved runs replayed in later milestones. The same attempt showed that the SDK's background batching only logs such rejections, so the command reported success (fixed separately: the export uses a synchronous client).
+- Options considered:
+  1. **Shift the whole trace in the LangSmith adapter.** The root starts at export time, every span keeps its offset from the root, and each run's metadata keeps the event's real `timestamp`. Event timestamps and run IDs are untouched.
+  2. **Rewrite the timestamps in the core** (the export use case) before recording. Every sink, including future file sinks and evaluators, would then record a time the event did not happen, breaking the [event contract](ARCHITECTURE.md#fields).
+  3. **Export only within 24 hours of a run.** Simple, but the baseline could never be exported, and every re-export or late fix would need a new run with new model spend and different conversations.
+  4. **Send every run at the current time without keeping offsets.** Loses order and duration inside the trace.
+  5. **Re-run the baseline live.** New spend, and the result is a different set of conversations, not the baseline.
+- Decision: Option 1. In `LangSmithTraceSink`, a trace whose root starts more than 23 hours from now (an hour inside LangSmith's limit) is moved by `now − root start`: start and end times, `dotted_order`, and gate-event times all move by the same amount. Every run's metadata carries the event's real `timestamp`. Run IDs come from the real times (`stable_time_id()`), so exporting again sends the same IDs and LangSmith keeps the first copy (409 on a known run ID). A trace within 23 hours is sent as recorded.
+- Why: The limit belongs to one backend, so the workaround stays in that backend's adapter ([ADR-013](#adr-013--adopt-the-ports-and-adapters-architecture)); the domain events and every other sink keep the true time. Keeping offsets preserves latency and order inside the trace, and stable IDs keep re-exports free of duplicates.
+- Tradeoffs/risks:
+  - **LangSmith time views show export time.** The Start Time column, time-range filters such as "Last 1 day", and time-series charts place a shifted trace at its export, not at its simulation. Use metadata `timestamp` for when it happened.
+  - **A shifted run is only recognizable** by comparing its start time with metadata `timestamp`; there is no explicit flag.
+  - **The first export's time sticks.** A later re-export is answered with 409, so LangSmith keeps the first export's start times.
+  - **Retention counts from export**, so a shifted trace stays in LangSmith longer after its simulation than a live trace would.
+  - Mixing shifted and live traces on one time chart can mislead; label exported runs by `experiment_class` and filter on it.
+- Artifacts affected: [`adapters/langsmith/trace_sink.py`](../src/agent_autonomy_lab/adapters/langsmith/trace_sink.py) (`MAX_CLOCK_DISTANCE`, `_shift`), its tests, and [ARCHITECTURE.md](ARCHITECTURE.md#langsmith-run-mapping) (run mapping).
+- Verification or reconsideration trigger: Verified by the M3-04 export: all 128 runs of the five baseline simulations were accepted, LangSmith shows them at export time, and their metadata keeps the 2026-10-27 times. Reconsider if LangSmith accepts historical start times (then send real times), if a Milestone 7 dashboard needs simulation time on its axis, or if students misread exported runs as live traffic (then add an explicit shift flag to metadata).
 
 ## Open questions to resolve deliberately
 
