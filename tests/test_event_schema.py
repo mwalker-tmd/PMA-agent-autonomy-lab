@@ -359,3 +359,12 @@ def test_context_field_types(overrides):
 def test_structured_fields_must_have_their_types(overrides):
     with pytest.raises(ValueError, match=next(iter(overrides))):
         make_event(EventType.MODEL_CALL, **overrides)
+
+
+def test_event_with_nested_content_can_be_replaced():
+    content = {"messages": [{"role": "user", "content": "Hi", "tags": ["a"]}]}
+    event = make_event(EventType.MODEL_CALL, inputs=content, outputs=content)
+    copy = replace(event, context=make_context(agent_version="v2"))
+    assert copy.to_dict()["inputs"] == content
+    assert copy.to_dict()["outputs"] == content
+    assert copy.context.agent_version == "v2"

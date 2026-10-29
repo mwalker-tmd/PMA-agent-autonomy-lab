@@ -110,7 +110,7 @@ def _snapshot(name: str, content: Mapping[str, Any] | None) -> Mapping[str, Any]
     if content is None:
         return None
     try:
-        detached = json.loads(json.dumps(dict(content), allow_nan=False))
+        detached = json.loads(json.dumps(_thaw(content), allow_nan=False))
     except (TypeError, ValueError) as error:
         raise ValueError(f"{name} must be JSON-serializable without NaN or infinity") from error
     return _freeze(detached)
