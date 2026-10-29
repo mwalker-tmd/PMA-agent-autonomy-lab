@@ -94,7 +94,44 @@ def _snapshot(name: str, content: Mapping[str, Any] | None) -> dict[str, Any] | 
         raise ValueError(f"{name} must be JSON-serializable without NaN or infinity") from error
 
 
+def _require_str(obj: object, names: tuple[str, ...], *, required: bool) -> None:
+    for name in names:
+        value = getattr(obj, name)
+        if value is None and not required:
+            continue
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{name} must be a non-empty string")
+
+
+def _require_type(name: str, value: object, kind: type, *, optional: bool = False) -> None:
+    if value is None and optional:
+        return
+    if not isinstance(value, kind):
+        raise ValueError(f"{name} must be a {kind.__name__}")
+
+
+def _coerce_enum(obj: object, name: str, enum: type[StrEnum], *, optional: bool = False) -> None:
+    """Accept an enum member or its value; store the member so ``is`` checks hold."""
+    value = getattr(obj, name)
+    if value is None and optional:
+        return
+    try:
+        object.__setattr__(obj, name, enum(value))
+    except ValueError as error:
+        raise ValueError(f"{name} must be one of {[m.value for m in enum]}") from error
+
+
+def _require_number(name: str, value: object, *, integer: bool) -> None:
+    """Require a finite, non-negative number; booleans are rejected."""
+    kinds = (int,) if integer else (int, float)
+    if isinstance(value, bool) or not isinstance(value, kinds):
+        raise ValueError(f"{name} must be {'an integer' if integer else 'a number'}")
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"{name} must be finite and non-negative")
+
+
 def _require_utc(name: str, value: datetime) -> None:
+    _require_type(name, value, datetime)
     if value.tzinfo is None or value.utcoffset() != timedelta(0):
         raise ValueError(f"{name} must be timezone-aware UTC; normalize it with to_utc()")
 
@@ -121,9 +158,18 @@ class RunContext:
     policy_version: str | None = None
 
     def __post_init__(self) -> None:
-        for name in ("simulation_id", "thread_id", "task_id"):
-            if not getattr(self, name):
-                raise ValueError(f"{name} is required")
+        _require_str(self, ("simulation_id", "thread_id", "task_id"), required=True)
+        _require_str(
+            self,
+            (
+                "scenario_id", "workflow", "scenario_category", "agent_version", "prompt_version",
+                "model_id", "user_model_id", "tool_schema_version", "policy_version",
+            ),
+            required=False,
+        )  # fmt: skip
+        _coerce_enum(self, "experiment_class", ExperimentClass)
+        _coerce_enum(self, "traffic_type", TrafficType)
+        _require_type("fault_injected", self.fault_injected, bool)
         level = self.autonomy_level
         if level != NO_GATE and (
             isinstance(level, bool) or not isinstance(level, int) or level not in AUTONOMY_LEVELS
@@ -138,9 +184,7 @@ class TokenUsage:
 
     def __post_init__(self) -> None:
         for name in ("prompt_tokens", "completion_tokens"):
-            value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-                raise ValueError(f"{name} must be a non-negative integer")
+            _require_number(name, getattr(self, name), integer=True)
 
     @property
     def total_tokens(self) -> int:
@@ -181,6 +225,25 @@ class TraceEvent:
 
     def __post_init__(self) -> None:
         _require_utc("timestamp", self.timestamp)
+        for name in ("event_id", "run_id"):
+            _require_type(name, getattr(self, name), UUID)
+        _require_type("parent_run_id", self.parent_run_id, UUID, optional=True)
+        _require_type("context", self.context, RunContext)
+        _require_type("tokens", self.tokens, TokenUsage, optional=True)
+        _coerce_enum(self, "event_type", EventType)
+        _coerce_enum(self, "gate_event", GateEventClass, optional=True)
+        _coerce_enum(self, "decision", GateDecision, optional=True)
+        _coerce_enum(self, "outcome", Outcome, optional=True)
+        _require_str(
+            self,
+            ("tool_name", "argument_hash", "decision_reason", "error_class", "error_message"),
+            required=False,
+        )
+        if self.turn_index is not None:
+            _require_number("turn_index", self.turn_index, integer=True)
+        for name in ("elapsed_ms", "cost"):
+            if getattr(self, name) is not None:
+                _require_number(name, getattr(self, name), integer=False)
         object.__setattr__(self, "inputs", _snapshot("inputs", self.inputs))
         object.__setattr__(self, "outputs", _snapshot("outputs", self.outputs))
         if self.schema_version != SCHEMA_VERSION:
@@ -189,10 +252,6 @@ class TraceEvent:
         self._check_gate_fields()
         self._check_tool_fields()
         self._check_outcome_fields()
-        for name in ("turn_index", "elapsed_ms", "cost"):
-            value = getattr(self, name)
-            if value is not None and (not math.isfinite(value) or value < 0):
-                raise ValueError(f"{name} must be a finite, non-negative number")
 
     def _check_links(self) -> None:
         if self.event_type is EventType.CONVERSATION and self.parent_run_id is not None:

@@ -1,5 +1,5 @@
 import json
-from dataclasses import fields
+from dataclasses import fields, replace
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -269,3 +269,82 @@ def test_exported_content_is_detached():
 def test_content_must_be_strict_json(content):
     with pytest.raises(ValueError, match="inputs"):
         make_event(EventType.MODEL_CALL, inputs=content)
+
+
+# field types
+
+
+@pytest.mark.parametrize("value", [True, 1.0, 1.5, "1", float("nan")])
+def test_turn_index_must_be_an_integer(value):
+    with pytest.raises(ValueError, match="turn_index"):
+        make_event(EventType.MODEL_CALL, turn_index=value)
+
+
+@pytest.mark.parametrize("name", ["elapsed_ms", "cost"])
+@pytest.mark.parametrize("value", [True, "1.0"])
+def test_metrics_must_be_numbers(name, value):
+    with pytest.raises(ValueError, match=name):
+        make_event(EventType.MODEL_CALL, **{name: value})
+
+
+def test_integer_metrics_are_accepted():
+    assert make_event(EventType.MODEL_CALL, elapsed_ms=850, cost=0).elapsed_ms == 850
+
+
+@pytest.mark.parametrize("name", ["event_id", "run_id", "parent_run_id"])
+def test_identifiers_must_be_uuids(name):
+    with pytest.raises(ValueError, match=name):
+        make_event(EventType.MODEL_CALL, **{name: "not-a-uuid"})
+
+
+def test_enum_values_are_coerced_to_members():
+    base = make_event(EventType.GATE, gate_event=GateEventClass.ATTEMPTED)
+    event = replace(base, event_type="gate", gate_event="DENIED", decision="DENIED")
+    assert event.event_type is EventType.GATE
+    assert event.gate_event is GateEventClass.DENIED
+    assert event.decision is GateDecision.DENIED
+    ctx = make_context(experiment_class="official_upstream_baseline", traffic_type="synthetic")
+    assert ctx.experiment_class is ExperimentClass.OFFICIAL_UPSTREAM_BASELINE
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"event_type": "span"}, {"outcome": "failed"}, {"gate_event": "BLOCKED"}],
+)
+def test_unknown_enum_values_are_rejected(overrides):
+    with pytest.raises(ValueError):
+        replace(make_event(EventType.TOOL_CALL), **overrides)
+
+
+@pytest.mark.parametrize("name", ["tool_name", "argument_hash", "error_message"])
+@pytest.mark.parametrize("value", ["", 7])
+def test_optional_strings_must_be_non_empty_strings(name, value):
+    with pytest.raises(ValueError, match=name):
+        make_event(EventType.TOOL_CALL, **{name: value})
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"task_id": 0},
+        {"model_id": ""},
+        {"fault_injected": "false"},
+        {"experiment_class": "baseline"},
+    ],
+)
+def test_context_field_types(overrides):
+    with pytest.raises(ValueError, match=next(iter(overrides))):
+        make_context(**overrides)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"timestamp": "2026-10-27T06:25:09+00:00"},
+        {"context": {"simulation_id": "sim-1"}},
+        {"tokens": (1, 2)},
+    ],
+)
+def test_structured_fields_must_have_their_types(overrides):
+    with pytest.raises(ValueError, match=next(iter(overrides))):
+        make_event(EventType.MODEL_CALL, **overrides)
