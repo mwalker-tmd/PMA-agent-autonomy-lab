@@ -141,14 +141,16 @@ def _name(span: TraceEvent) -> str:
 def _outputs(span: TraceEvent) -> dict[str, Any]:
     """Span outputs, with token usage and cost where LangSmith reads them for LLM runs."""
     outputs = json_data(span.outputs) or {}
-    if span.event_type is EventType.MODEL_CALL and span.tokens and "usage_metadata" not in outputs:
-        usage = {
-            "input_tokens": span.tokens.prompt_tokens,
-            "output_tokens": span.tokens.completion_tokens,
-            "total_tokens": span.tokens.total_tokens,
-        }
-        if span.cost is not None:
-            usage["total_cost"] = span.cost
+    if span.event_type is not EventType.MODEL_CALL or "usage_metadata" in outputs:
+        return outputs
+    usage: dict[str, Any] = {}
+    if span.tokens is not None:
+        usage["input_tokens"] = span.tokens.prompt_tokens
+        usage["output_tokens"] = span.tokens.completion_tokens
+        usage["total_tokens"] = span.tokens.total_tokens
+    if span.cost is not None:
+        usage["total_cost"] = span.cost
+    if usage:
         outputs["usage_metadata"] = usage
     return outputs
 
@@ -194,7 +196,7 @@ def message_errors(message: Any) -> list[str]:
         return ["message must be an object"]
     errors = []
     role = message.get("role")
-    if role not in MESSAGE_ROLES:
+    if not isinstance(role, str) or role not in MESSAGE_ROLES:
         errors.append(f"role must be one of {sorted(MESSAGE_ROLES)}")
     content = message.get("content")
     if content is not None and not isinstance(content, str):
