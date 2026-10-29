@@ -1,6 +1,6 @@
 # Development Plan — Agent Autonomy Lab
 
-**Status:** Plan and specification; the lab Python project, its dependency-rule checks, the trace event schema, and the LangSmith trace adapter exist, but nothing sends simulations to LangSmith yet. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is in progress.
+**Status:** Plan and specification; the lab Python project, its dependency-rule checks, the trace event schema, and the LangSmith trace adapter exist; the Milestone 2 baseline has been exported to LangSmith, and one task has been run live through a traced lab agent. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is in progress.
 
 **This file is the canonical implementation plan.** Supporting specifications live in [`docs/`](docs/). When scope, order, or acceptance criteria change, update this file and record the decision in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -218,8 +218,8 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 - [x] **3.1** Configure a separate LangSmith project and local credentials; confirm retention/privacy settings for synthetic data.
 - [ ] **3.2** Build the smallest adapter around τ-bench's custom-agent/orchestration extension point rather than forking upstream immediately.
-- [ ] **3.3** Trace each customer session, agent turn, model call, tool call/result, exception, and available token/cost/latency data.
-- [ ] **3.4** Correlate with stable identifiers: simulation ID, thread/conversation ID, scenario/task ID, turn index, model/prompt/agent version, autonomy level.
+- [x] **3.3** Trace each customer session, agent turn, model call, tool call/result, exception, and available token/cost/latency data.
+- [x] **3.4** Correlate with stable identifiers: simulation ID, thread/conversation ID, scenario/task ID, turn index, model/prompt/agent version, autonomy level.
 - [ ] **3.5** Ensure top-level LangSmith thread runs contain supported `messages` input/output structures. Where relevant, test visibility of child tool spans separately.
 - [ ] **3.6** Attach `traffic_type=synthetic`; redact secrets; ensure no hidden answer keys appear in agent-visible traces.
 - [ ] **3.7** Run one known customer task and one failing/exceptional case through the adapter. Compare traced behavior to the τ-bench saved result.
@@ -495,10 +495,10 @@ All milestones must uphold the following invariants:
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
 - [x] **Milestone 2:** clone τ-bench and execute baseline; record the inspection, task mapping, and extension points (see [docs/BASELINE.md](docs/BASELINE.md)).
-- [ ] **Milestone 3:** trace τ-bench conversations in LangSmith (in progress; the lab project and its dependency-rule checks exist).
+- [ ] **Milestone 3:** trace τ-bench conversations in LangSmith (in progress; saved runs export as LangSmith threads, and live runs are traced through a registered lab agent).
 - [ ] Milestones 4–9: not yet started.
 
-**Next work session:** Continue Milestone 3 with its tickets (#71–#83), which cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 3, including the two re-targeted from Milestone 2.
+**Next work session:** Continue Milestone 3 with its remaining tickets (#76–#83), which cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 3, including the two re-targeted from Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 

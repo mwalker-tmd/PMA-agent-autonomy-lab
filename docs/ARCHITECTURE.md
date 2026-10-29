@@ -262,6 +262,34 @@ uv run --env-file .env python -m agent_autonomy_lab.entrypoints.export_simulatio
 
 Not exported: `raw_data` (the full provider response), the task's hidden user instructions, and the policy text (only its version). Every event, run, and feedback ID derives from the simulation, so exporting the same run again with the same `--source-tz` adds no threads, runs, or feedback; a different zone moves the timestamps the run IDs are built from and would duplicate the runs. To find a simulation in LangSmith, type `metadata.simulation_id:<id>` in the project's search bar (the sidebar's metadata list does not show every key), or open its thread by `thread_id`.
 
+### Tracing a live run (hook A)
+
+A live run goes through a lab agent registered with τ-bench's `register_agent_factory` ([hook A](BASELINE.md#langsmith-hook-points)). [`TracedAgentFactory`](../src/agent_autonomy_lab/adapters/tau2/traced_agent.py) builds upstream's `LLMAgent` with upstream's `create_llm_agent` and wraps it in a `TracedAgent`, which forwards every call unchanged and records, as lab [records](../src/agent_autonomy_lab/domain/agent_turns.py), what passed through: the transcript, each agent turn's input messages, reply, timing, and any exception, and a **fingerprint** of what the agent sent its model besides the conversation (`prompt_version`, `tool_schema_version`, and `model_args_version` hashes). [`live_run`](../src/agent_autonomy_lab/adapters/tau2/live_run.py) runs one task through τ-bench's public `get_tasks` and `run_single_task`; τ-bench itself is not modified.
+
+```bash
+uv run --env-file .env --env-file ../tau2-bench/.env \
+    python -m agent_autonomy_lab.entrypoints.trace_live_run --task-id 0
+```
+
+Every default matches the [Milestone 2 baseline run](../reports/m2-baseline/manifest.yaml) (`gpt-6-luna` through `openai/responses/`, `reasoning_effort: medium` for agent and user, run seed 42, so trial seed 670487, as `tau2 run` derives it). The second `--env-file` supplies `OPENAI_API_KEY`, which lives only in the τ-bench checkout. The run calls the model, so it costs money. τ-bench's `SimulationRun` and a JSON summary go to `$TAU2_DATA_DIR/simulations/<--save-to>/`, outside the repository; `--dry-run` runs the task and checks the trace but sends nothing.
+
+**Same requests as the baseline agent.** Before the run, the entrypoint builds upstream's `llm_agent` for the same task and seed with τ-bench's own `build_text_orchestrator` (no model call) and fingerprints it. Each traced turn's fingerprint must equal it, or the command exits 1. The summary lists both.
+
+**Linking to the simulation.** The agent factory never receives the simulation ID; τ-bench assigns it inside `run_single_task`. The wrapper buffers its recording, and [`trace_live_run`](../src/agent_autonomy_lab/application/trace_live_run.py) builds the trace after the run from the recording and the returned `SimulationRun`:
+
+| Recorded | Traced as |
+| --- | --- |
+| simulation | one `conversation` root, timed by the wrapper from the agent's first state to `stop`; `thread_id` is `thread_id_for(simulation_id)`, as in the export; the transcript split into `inputs.messages` and `outputs.messages` as in the export |
+| agent turn | one `model_call` child: `turn_index` (the reply's position in the transcript, which equals τ-bench's `turn_idx`), start time and `elapsed_ms` measured around the delegated call, tokens and cost from the reply, `inputs` holding the messages the turn answered plus `model` and `model_args`, the reply as `outputs.messages`. A call that raised is an `error` span with `error_class` (the exception type) and `error_message` |
+| simulated-user message with usage | one `model_call` child, as in the export (no timing) |
+| tool result | one `tool_call` child, as in the export: the tool result arrives as the next turn's input; τ-bench records no tool timing ([hook E](BASELINE.md#langsmith-hook-points) would add it) |
+| `reward_info` | feedback on the root, as in the export |
+| run settings | `RunContext`: `experiment_class` `custom_lab_experiment`, `traffic_type` `synthetic`, `autonomy_level` `"n/a"`, `agent_version` (the registered agent name, `lab_traced_llm_agent`), `model_id`, `user_model_id`, `prompt_version`, `tool_schema_version`, and `policy_version` from the environment's policy, as in the export |
+
+The agent's copy of the policy ends with τ-bench's language clause ("Respond in English using Latin script; …"), so it hashes differently from the environment policy; `policy_version` names the retail policy in both hooks, and `prompt_version` covers the text the agent actually received. Live trace IDs include `live`, so they never collide with an export of the same simulation; a live run is traced by hook A only, and exporting it with hook D as well would add a second conversation root to its thread.
+
+**Overhead.** The wrapper times its own work separately from the agent calls it delegates: fingerprinting and converting messages during the run (in the loop, so it adds to conversation latency), then building and sending the trace after the run returns (outside the conversation). A traced-versus-untraced wall-clock comparison would not isolate this, because reasoning models do not repeat a conversation from a seed. Measured values are in [`reports/m3-traces/manifest.yaml`](../reports/m3-traces/manifest.yaml).
+
 ### Rechecking LangSmith behavior on upgrade
 
 The adapter relies on behavior we observed against the live service and SDK, not only on our own code. The tests run the real `langsmith.Client` with a fake HTTP session, so they catch a change in what the SDK sends, but not in how the service answers. Recheck these after upgrading `langsmith` or when LangSmith announces API changes:
