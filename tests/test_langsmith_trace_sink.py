@@ -15,8 +15,12 @@ from langsmith import Client
 
 from agent_autonomy_lab.adapters.langsmith import LangSmithTraceSink, TraceShapeError
 from agent_autonomy_lab.adapters.langsmith.trace_sink import message_errors
+from agent_autonomy_lab.adapters.tau2 import read_results
+from agent_autonomy_lab.application.export_simulation import export_run
 from agent_autonomy_lab.domain.events import (
     EventType,
+    ExperimentClass,
+    Feedback,
     GateEventClass,
     Outcome,
     TokenUsage,
@@ -25,10 +29,10 @@ from agent_autonomy_lab.domain.events import (
     parent_first,
 )
 from agent_autonomy_lab.ports.trace_sink import InMemoryTraceSink
-from tests.conftest import T0, make_context, make_event
+from tests.conftest import DENVER, NOT_EXPORTED, SAMPLE_RUN, T0, make_context, make_event
 
 PROJECT = "agent-autonomy-lab-test"
-NOT_METADATA = ("inputs", "outputs", "run_id", "parent_run_id", "timestamp")
+NOT_METADATA = ("inputs", "outputs", "run_id", "parent_run_id")
 
 OPENER = {"role": "assistant", "content": "Hi! How can I help you today?"}
 ASK = {"role": "user", "content": "Where is order #W2378156?"}
@@ -50,19 +54,37 @@ RESULT = {"role": "tool", "tool_call_id": "call_1", "content": "Error: Order not
 REPLY = {"role": "assistant", "content": "I could not find that order. Can you check the ID?"}
 
 
+PROJECT_ID = "11111111-1111-4111-8111-111111111111"
+NOW = T0 + timedelta(minutes=5)  # the sink's clock: shortly after the scenario
+
+
 class FakeSession(requests.Session):
-    """Records requests and answers each with an empty 200 response."""
+    """Records runs and feedback; knows one project; answers everything else with ``{}``."""
 
     def __init__(self) -> None:
         super().__init__()
         self.posted: list[dict] = []
+        self.feedback: list[dict] = []
 
     def request(self, method, url, **kwargs):
+        body = {}
         if method == "POST" and url.endswith("/runs"):
             self.posted.append(json.loads(kwargs["data"]))
+        elif method == "POST" and url.endswith("/feedback"):
+            self.feedback.append(json.loads(kwargs["data"]))
+        elif method == "GET" and url.endswith("/sessions"):
+            tenant = "22222222-2222-4222-8222-222222222222"
+            body = [
+                {
+                    "id": PROJECT_ID,
+                    "name": PROJECT,
+                    "tenant_id": tenant,
+                    "reference_dataset_id": None,
+                }
+            ]
         response = requests.Response()
         response.status_code = 200
-        response._content = b"{}"
+        response._content = json.dumps(body).encode()
         response.url = url
         return response
 
@@ -81,7 +103,7 @@ def sink(session) -> LangSmithTraceSink:
         auto_batch_tracing=False,
         info={},
     )
-    return LangSmithTraceSink(client, PROJECT)
+    return LangSmithTraceSink(client, PROJECT, clock=lambda: NOW)
 
 
 def scenario_events(context, *, fail_tool: bool = True):
@@ -431,3 +453,102 @@ def test_object_valued_role_is_a_trace_shape_error(sink, session, context):
     with pytest.raises(TraceShapeError, match="role must be one of"):
         sink.flush()
     assert session.posted == []
+
+
+def reward_feedback(conversation, **overrides):
+    fields = {
+        "feedback_id": new_id(),
+        "run_id": conversation.run_id,
+        "context": conversation.context,
+        "key": "reward",
+        "score": 1.0,
+        "comment": "τ-bench reward breakdown: DB 1",
+        "value": {"reward_breakdown": {"DB": 1.0}},
+    }
+    return Feedback(**(fields | overrides))
+
+
+def test_feedback_is_sent_to_its_run_after_the_runs(sink, session, context):
+    conversation, *_ = record_scenario(sink, context)
+    item = reward_feedback(conversation)
+    sink.record_feedback(item)
+    sink.flush()
+    (sent,) = session.feedback
+    assert sent["id"] == str(item.feedback_id)
+    assert sent["run_id"] == sent["trace_id"] == str(conversation.run_id)
+    assert sent["session_id"] == PROJECT_ID
+    assert (sent["key"], sent["score"]) == ("reward", 1.0)
+    assert sent["value"] == {"reward_breakdown": {"DB": 1.0}}
+    assert sent["comment"] == "τ-bench reward breakdown: DB 1"
+    source = sent["feedback_source"]["metadata"]
+    assert source["simulation_id"] == context.simulation_id
+    assert source["schema_version"] == "trace-event/1"
+
+
+def test_feedback_on_a_child_run_carries_the_root_trace_id(sink, session, context):
+    conversation, _, tool, _ = record_scenario(sink, context)
+    sink.record_feedback(reward_feedback(conversation, run_id=tool.run_id, key="tool_ok"))
+    sink.flush()
+    (sent,) = session.feedback
+    assert (sent["run_id"], sent["trace_id"]) == (str(tool.run_id), str(conversation.run_id))
+
+
+def test_feedback_on_an_unrecorded_run_rejects_the_whole_flush(sink, session, context):
+    conversation, *_ = record_scenario(sink, context)
+    item = reward_feedback(conversation, run_id=new_id())
+    sink.record_feedback(item)
+    with pytest.raises(TraceShapeError, match="is not a recorded span"):
+        sink.flush()
+    assert session.posted == [] and session.feedback == []
+
+
+def test_exported_saved_run_reaches_langsmith_without_unexported_content(sink, session):
+    run = read_results(SAMPLE_RUN, DENVER)
+    (exported,) = export_run(run, sink, ExperimentClass.OFFICIAL_UPSTREAM_BASELINE)
+    assert len(session.posted) == exported.spans == 6
+    assert len(session.feedback) == exported.feedback == 3
+    root = session.posted[0]
+    assert root["extra"]["metadata"]["simulation_id"] == exported.simulation_id
+    assert root["extra"]["metadata"]["thread_id"] == exported.thread_id
+    payload = json.dumps(session.posted) + json.dumps(session.feedback)
+    for marker in NOT_EXPORTED:
+        assert marker not in payload
+    assert "reward" not in json.dumps(root["inputs"]) + json.dumps(root["outputs"])
+
+
+def test_exporting_a_saved_run_again_sends_the_same_ids(sink, session):
+    run = read_results(SAMPLE_RUN, DENVER)
+    for _ in range(2):
+        export_run(run, sink, ExperimentClass.OFFICIAL_UPSTREAM_BASELINE)
+    first, second = session.posted[:6], session.posted[6:]
+    assert [r["id"] for r in first] == [r["id"] for r in second]
+    assert [f["id"] for f in session.feedback[:3]] == [f["id"] for f in session.feedback[3:]]
+
+
+def test_trace_older_than_langsmith_accepts_is_shifted_whole(session, context):
+    later = T0 + timedelta(hours=49)
+    client = Client(
+        api_url="http://langsmith.invalid",
+        api_key="fake-key",
+        session=session,
+        auto_batch_tracing=False,
+        info={},
+    )
+    sink = LangSmithTraceSink(client, PROJECT, clock=lambda: later)
+    conversation, model, tool, _ = record_scenario(sink, context)
+    sink.flush()
+    runs = runs_by_id(session)
+    root, llm = runs[str(conversation.run_id)], runs[str(model.run_id)]
+    assert root["start_time"] == later.isoformat()
+    assert llm["start_time"] == (later + timedelta(seconds=1)).isoformat()
+    assert llm["end_time"] == (later + timedelta(seconds=1.85)).isoformat()
+    assert llm["dotted_order"].startswith(f"{later:%Y%m%dT%H%M%S%fZ}{conversation.run_id}.")
+    assert runs[str(tool.run_id)]["events"][0]["time"] == (later + timedelta(seconds=2)).isoformat()
+    assert root["extra"]["metadata"]["timestamp"] == T0.isoformat()
+    assert llm["extra"]["metadata"]["timestamp"] == (T0 + timedelta(seconds=1)).isoformat()
+
+
+def test_recent_trace_keeps_its_times(sink, session, context):
+    conversation, *_ = record_scenario(sink, context)
+    sink.flush()
+    assert runs_by_id(session)[str(conversation.run_id)]["start_time"] == T0.isoformat()

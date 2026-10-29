@@ -6,24 +6,40 @@ contract"): the ``conversation`` event is the root run, with top-level
 and tool calls are ``llm`` and ``tool`` child runs under it; gate events are
 attached to their tool run's ``events``. Every run's metadata carries the
 event's identifier fields, and LangSmith groups runs into a thread by the
-``thread_id`` metadata key.
+``thread_id`` metadata key. Feedback becomes LangSmith feedback on its run.
 
-Events are buffered and exported at ``flush``, after the same trace-shape
-checks ``InMemoryTraceSink.link_errors()`` runs, so a malformed trace is
-rejected whole instead of reaching LangSmith in pieces. Span content is
-exported as recorded; redaction is added in M3-06 (#76).
+Events and feedback are buffered and exported at ``flush``, after the same
+trace-shape checks ``InMemoryTraceSink.link_errors()`` runs, so a malformed
+trace is rejected whole instead of reaching LangSmith in pieces. Span content
+is exported as recorded; redaction is added in M3-06 (#76).
+
+LangSmith rejects a run whose start time is more than 24 hours from now. A
+trace recorded earlier, such as a saved simulation exported later, is shifted
+whole so its root starts at export time and every span keeps its offset from
+the root; each run's metadata keeps the event's real ``timestamp``.
+
+Run and feedback IDs come from the events, so sending the same events again
+does not duplicate anything: LangSmith answers a known run ID with a 409
+conflict, which the SDK ignores, and replaces feedback that has a known ID.
+With ``auto_batch_tracing`` on, the SDK sends runs in the background and only
+logs a rejected run, so a caller that must know every run arrived passes a
+client with ``auto_batch_tracing=False``; then a rejected run raises.
 """
 
-from collections.abc import Mapping, Sequence
-from datetime import timedelta
+from collections.abc import Callable, Mapping, Sequence
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from langsmith import Client
+from langsmith.utils import LangSmithNotFoundError
 
 from agent_autonomy_lab.domain.events import (
     EventType,
+    Feedback,
     Outcome,
+    RunContext,
     TraceEvent,
+    feedback_errors,
     json_data,
     link_errors,
     parent_first,
@@ -37,8 +53,12 @@ RUN_TYPES = {
 
 MESSAGE_ROLES = frozenset({"system", "user", "assistant", "tool"})
 
-# Event fields that become run fields instead of metadata.
-_NOT_METADATA = frozenset({"inputs", "outputs", "run_id", "parent_run_id", "timestamp"})
+# Event fields that become run fields instead of metadata. ``timestamp`` stays in
+# metadata: a shifted run's start time is not when the event happened.
+_NOT_METADATA = frozenset({"inputs", "outputs", "run_id", "parent_run_id"})
+
+# LangSmith accepts start times within 24 hours of now; leave an hour of margin.
+MAX_CLOCK_DISTANCE = timedelta(hours=23)
 _GATE_FIELDS = ("event_id", "gate_event", "decision", "decision_reason", "argument_hash")
 
 
@@ -51,41 +71,64 @@ class TraceShapeError(ValueError):
 
 
 class LangSmithTraceSink:
-    """Buffers trace events and exports them to a LangSmith project on ``flush``.
+    """Buffers trace events and feedback and exports them to a LangSmith project on ``flush``.
 
     ``client`` is a ``langsmith.Client``; tests pass one with a fake HTTP
     session, so no test needs network access. If ``flush`` raises
     ``TraceShapeError``, nothing is sent and the buffer is kept.
     """
 
-    def __init__(self, client: Client, project_name: str) -> None:
+    def __init__(
+        self,
+        client: Client,
+        project_name: str,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ) -> None:
         self._client = client
         self._project_name = project_name
+        self._clock = clock
         self._events: list[TraceEvent] = []
+        self._feedback: list[Feedback] = []
 
     def record(self, event: TraceEvent) -> None:
         self._events.append(event)
 
+    def record_feedback(self, feedback: Feedback) -> None:
+        self._feedback.append(feedback)
+
     def flush(self) -> None:
-        runs = to_runs(self._events, self._project_name)
+        _check_shape(self._events, self._feedback)
+        runs = to_runs(self._events, self._project_name, now=self._clock())
         for run in runs:
             self._client.create_run(**run)
         self._client.flush()
+        if self._feedback:
+            project_id = self._project_id()
+            for item in to_feedback(self._events, self._feedback):
+                self._client.create_feedback(**item, session_id=project_id)
+            self._client.flush()
         self._events.clear()
+        self._feedback.clear()
+
+    def _project_id(self) -> Any:
+        """The project's ID, which LangSmith needs to find a run for feedback."""
+        try:
+            return self._client.read_project(project_name=self._project_name).id
+        except LangSmithNotFoundError:
+            return self._client.create_project(self._project_name).id
 
 
-def to_runs(events: Sequence[TraceEvent], project_name: str) -> list[dict[str, Any]]:
+def to_runs(
+    events: Sequence[TraceEvent], project_name: str, now: datetime | None = None
+) -> list[dict[str, Any]]:
     """Return ``Client.create_run`` keyword arguments for ``events``, roots first.
 
-    Raises ``TraceShapeError`` if the events fail ``link_errors()`` or a
-    conversation lacks well-formed top-level ``messages``.
+    With ``now``, a trace whose root starts more than ``MAX_CLOCK_DISTANCE``
+    from it is shifted to start at ``now``. Raises ``TraceShapeError`` if the
+    events fail ``link_errors()`` or a conversation lacks well-formed
+    top-level ``messages``.
     """
-    errors = link_errors(events)
-    for event in events:
-        if event.event_type is EventType.CONVERSATION:
-            errors += [f"{event.event_id}: {e}" for e in _conversation_errors(event)]
-    if errors:
-        raise TraceShapeError(errors)
+    _check_shape(events, ())
 
     gates: dict[Any, list[TraceEvent]] = {}
     for event in events:
@@ -96,16 +139,74 @@ def to_runs(events: Sequence[TraceEvent], project_name: str) -> list[dict[str, A
     runs = []
     for span in parent_first(events):
         root = roots[span.parent_run_id] if span.parent_run_id else span
-        runs.append(_run(span, root, gates.get(span.run_id, []), project_name))
+        shift = _shift(root.timestamp, now)
+        runs.append(_run(span, root, gates.get(span.run_id, []), project_name, shift))
     return runs
 
 
+def _shift(root_start: datetime, now: datetime | None) -> timedelta:
+    """How far to move a trace so LangSmith accepts its start times."""
+    if now is None or abs(now - root_start) <= MAX_CLOCK_DISTANCE:
+        return timedelta(0)
+    return now - root_start
+
+
+def to_feedback(events: Sequence[TraceEvent], feedback: Sequence[Feedback]) -> list[dict[str, Any]]:
+    """Return ``Client.create_feedback`` keyword arguments, without the project ID.
+
+    Raises ``TraceShapeError`` if the feedback fails ``feedback_errors()``.
+    """
+    _check_shape(events, feedback)
+    spans = {e.run_id: e for e in events if e.is_span}
+    return [
+        {
+            "run_id": item.run_id,
+            "trace_id": spans[item.run_id].parent_run_id or item.run_id,
+            "key": item.key,
+            "score": item.score,
+            "value": json_data(item.value),
+            "comment": item.comment,
+            "feedback_id": item.feedback_id,
+            "feedback_source_type": "api",
+            "source_info": {
+                "schema_version": item.schema_version,
+                **_context_metadata(item.context),
+            },
+        }
+        for item in feedback
+    ]
+
+
+def _check_shape(events: Sequence[TraceEvent], feedback: Sequence[Feedback]) -> None:
+    errors = link_errors(events) + feedback_errors(events, feedback)
+    for event in events:
+        if event.event_type is EventType.CONVERSATION:
+            errors += [f"{event.event_id}: {e}" for e in _conversation_errors(event)]
+    if errors:
+        raise TraceShapeError(errors)
+
+
+def _context_metadata(context: RunContext) -> dict[str, Any]:
+    """The run context's non-null fields, as LangSmith metadata."""
+    fields = {name: getattr(context, name) for name in RunContext.__dataclass_fields__}
+    return {
+        name: value.value if hasattr(value, "value") else value
+        for name, value in fields.items()
+        if value is not None
+    }
+
+
 def _run(
-    span: TraceEvent, root: TraceEvent, gates: Sequence[TraceEvent], project_name: str
+    span: TraceEvent,
+    root: TraceEvent,
+    gates: Sequence[TraceEvent],
+    project_name: str,
+    shift: timedelta,
 ) -> dict[str, Any]:
-    dotted_order = _segment(span)
+    start = span.timestamp + shift
+    dotted_order = _segment(start, span)
     if span is not root:
-        dotted_order = f"{_segment(root)}.{dotted_order}"
+        dotted_order = f"{_segment(root.timestamp + shift, root)}.{dotted_order}"
     run: dict[str, Any] = {
         "name": _name(span),
         "run_type": RUN_TYPES[span.event_type],
@@ -114,8 +215,8 @@ def _run(
         "trace_id": root.run_id,
         "parent_run_id": span.parent_run_id,
         "dotted_order": dotted_order,
-        "start_time": span.timestamp,
-        "end_time": span.timestamp + timedelta(milliseconds=span.elapsed_ms or 0),
+        "start_time": start,
+        "end_time": start + timedelta(milliseconds=span.elapsed_ms or 0),
         "inputs": json_data(span.inputs) or {},
         "outputs": _outputs(span),
         "extra": {"metadata": _metadata(span)},
@@ -123,13 +224,13 @@ def _run(
     if span.outcome is Outcome.ERROR:
         run["error"] = ": ".join(filter(None, (span.error_class, span.error_message))) or "error"
     if gates:
-        run["events"] = [_gate_event(gate) for gate in gates]
+        run["events"] = [_gate_event(gate, shift) for gate in gates]
     return run
 
 
-def _segment(span: TraceEvent) -> str:
+def _segment(start: datetime, span: TraceEvent) -> str:
     """One ``dotted_order`` segment: the start time in UTC, then the run ID."""
-    return f"{span.timestamp:%Y%m%dT%H%M%S%fZ}{span.run_id}"
+    return f"{start:%Y%m%dT%H%M%S%fZ}{span.run_id}"
 
 
 def _name(span: TraceEvent) -> str:
@@ -163,11 +264,11 @@ def _metadata(span: TraceEvent) -> dict[str, Any]:
     }
 
 
-def _gate_event(gate: TraceEvent) -> dict[str, Any]:
+def _gate_event(gate: TraceEvent, shift: timedelta) -> dict[str, Any]:
     record = gate.to_dict()
     return {
         "name": f"gate:{gate.gate_event}",
-        "time": gate.timestamp.isoformat(),
+        "time": (gate.timestamp + shift).isoformat(),
         "kwargs": {key: record[key] for key in _GATE_FIELDS if record[key] is not None},
     }
 
