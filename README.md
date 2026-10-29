@@ -1,6 +1,6 @@
 # Agent Autonomy Lab
 
-**Status:** Proposal and specification; the lab Python project exists, but no application code or LangSmith integration yet. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is in progress.  
+**Status:** Proposal and specification; the lab Python project, its trace event schema, and a LangSmith trace adapter exist, but nothing sends simulations to LangSmith yet. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is in progress.  
 **Documentation baseline:** October 18, 2026.  
 **Approach:** One repository for our project; the upstream [τ-bench repository](https://github.com/sierra-research/tau2-bench) remains separate.
 

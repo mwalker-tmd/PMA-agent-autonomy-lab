@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Autonomy](AUTONOMY.md) · [Evaluation](EVALUATION.md)
 
-**Status:** Target architecture. The [event and identifier contract](#event-and-identifier-contract) is implemented as schema `trace-event/1` with the `TraceSink` port; the adapters, gate, and evaluators are not implemented yet. τ-bench is pinned at commit `0c69df4`; its result structures and extension points are recorded in [BASELINE.md](BASELINE.md).
+**Status:** Target architecture. The [event and identifier contract](#event-and-identifier-contract) is implemented as schema `trace-event/1` with the `TraceSink` port and its [LangSmith adapter](#langsmith-thread-contract); the τ-bench adapters, gate, and evaluators are not implemented yet. τ-bench is pinned at commit `0c69df4`; its result structures and extension points are recorded in [BASELINE.md](BASELINE.md).
 
 ## Architectural intent
 
@@ -151,7 +151,7 @@ A trace is a tree of **spans** with gate events attached:
 | `tool_call` | yes | the conversation | One tool call and its result, including a call the gate rejected |
 | `gate` | no | none | One gate state transition. Its `run_id` is the `tool_call` span it annotates, so one call's `ATTEMPTED` → `APPROVED` → `EXECUTED` stay separate events |
 
-Spans are recorded when they finish, so a child is usually recorded before its parent; sinks must not require parents first. Each span's `run_id` is unique. `InMemoryTraceSink.link_errors()` checks the links: every parent is a recorded `conversation` span in the same simulation and thread (which also rules out cycles), and every gate event points at a `tool_call` span for the same tool, simulation, and thread.
+Spans are recorded when they finish, so a child is usually recorded before its parent; sinks must not require parents first. `link_errors()` in [`trace_shape.py`](../src/agent_autonomy_lab/domain/events/trace_shape.py) checks the shape, and both `InMemoryTraceSink.link_errors()` and the LangSmith adapter run it: event IDs and span `run_id`s are unique; each simulation has exactly one `conversation` root; every parent is a recorded `conversation` span with the same `RunContext` (which also rules out cycles); and every gate event points at a `tool_call` span for the same tool, with the same `RunContext`. Linked events must share the whole `RunContext`, not only `simulation_id` and `thread_id`, so a child cannot carry a different model, autonomy level, or fault flag from its conversation.
 
 The gate event classes from [AUTONOMY.md](AUTONOMY.md#distinguish-events-and-metrics) are `ATTEMPTED`, `DENIED`, `PENDING_APPROVAL`, `APPROVED`, `EXECUTED`, and `EXECUTION_FAILED`, recorded as separate events so they cannot collapse into a single flag. The schema defines them now; the gate emits them from Milestone 6.
 
@@ -223,6 +223,19 @@ Example gate event (`to_dict()`, `null` fields and content omitted; illustrative
 ## LangSmith thread contract
 
 [Current multi-turn evaluator documentation](https://docs.langchain.com/langsmith/online-evaluations-multi-turn) specifies that thread-level evaluators require supported **top-level `messages` inputs and outputs** and correlated threads. Model and tool calls can be traced as child runs, but child spans alone are not necessarily present in the assembled `all_messages` view. If the account supports it, a **trajectory** view can provide ordered tool-call evidence; availability varies by region/deployment.
+
+### LangSmith run mapping
+
+[`LangSmithTraceSink`](../src/agent_autonomy_lab/adapters/langsmith/trace_sink.py) buffers events and exports them on `flush()`. If the buffered events fail `link_errors()`, or a conversation lacks well-formed `messages`, it raises `TraceShapeError`, sends nothing, and keeps the buffer, so a malformed trace never reaches LangSmith in pieces. Each simulation becomes one trace, sent root first:
+
+| Event | LangSmith run | Mapping |
+| --- | --- | --- |
+| `conversation` | root `chain` run named `conversation`; `trace_id` is its `run_id` | `inputs` and `outputs` must each hold a non-empty top-level `messages` list in OpenAI chat format (`role`; string or null `content`; assistant `tool_calls` with an `id` and a `function` whose `arguments` are a JSON string; tool messages with a `tool_call_id`) |
+| `model_call` | `llm` child run named `model_call` | token counts and cost go to `outputs.usage_metadata` (`input_tokens`, `output_tokens`, `total_tokens`, `total_cost`) |
+| `tool_call` | `tool` child run named after the tool | the tool arguments and result as recorded |
+| `gate` | not a run | an entry `gate:<class>` in its tool run's `events`, with `event_id`, `gate_event`, `decision`, `decision_reason`, and `argument_hash` |
+
+Every run's metadata carries the event's non-null [fields](#fields) except content and links, including `event_id`, `simulation_id`, and `thread_id`; LangSmith groups runs into a thread by the `thread_id` metadata key. A span's `timestamp` is its start time; its end time is `timestamp` plus `elapsed_ms` (the start time when latency is unknown). `dotted_order` is built from start times and run IDs. A span with `outcome` `error` becomes an error-status run whose `error` is `<error_class>: <error_message>`, with `error_class` also in metadata; its outputs are kept. Content is exported as recorded; redaction comes with M3-06.
 
 Acceptance test: one task is navigable as a complete conversation; its child spans include tool invocations; a thread-level evaluator can consume the assembled messages without schema errors.
 
