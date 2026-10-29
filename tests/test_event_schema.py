@@ -231,9 +231,15 @@ def test_record_is_strict_json():
     json.dumps(event.to_dict(), allow_nan=False)
 
 
-def test_negative_tokens_are_rejected():
-    with pytest.raises(ValueError, match="token"):
-        TokenUsage(prompt_tokens=-1, completion_tokens=0)
+@pytest.mark.parametrize("value", [-1, 1.5, float("nan"), float("inf"), True, "10"])
+@pytest.mark.parametrize("name", ["prompt_tokens", "completion_tokens"])
+def test_token_counts_must_be_non_negative_integers(name, value):
+    counts = {"prompt_tokens": 0, "completion_tokens": 0, name: value}
+    with pytest.raises(ValueError, match=name):
+        TokenUsage(**counts)
+
+
+def test_token_counts():
     assert TokenUsage(prompt_tokens=10, completion_tokens=5).total_tokens == 15
 
 
@@ -242,3 +248,24 @@ def test_events_are_immutable():
     with pytest.raises(AttributeError):
         event.run_id = new_id()  # type: ignore[misc]
     assert "inputs" in {f.name for f in fields(event)}
+
+
+def test_content_is_snapshotted_at_construction():
+    history = [{"role": "user", "content": "Hi"}]
+    event = make_event(EventType.MODEL_CALL, inputs={"messages": history})
+    history.append({"role": "assistant", "content": "Hello"})
+    history[0]["content"] = "changed"
+    assert event.inputs == {"messages": [{"role": "user", "content": "Hi"}]}
+
+
+def test_exported_content_is_detached():
+    event = make_event(EventType.MODEL_CALL, outputs={"messages": [{"content": "secret"}]})
+    record = event.to_dict()
+    record["outputs"]["messages"][0]["content"] = "[redacted]"
+    assert event.outputs == {"messages": [{"content": "secret"}]}
+
+
+@pytest.mark.parametrize("content", [{"when": object()}, {"score": float("nan")}])
+def test_content_must_be_strict_json(content):
+    with pytest.raises(ValueError, match="inputs"):
+        make_event(EventType.MODEL_CALL, inputs=content)

@@ -9,6 +9,8 @@ annotate the tool-call span named by their ``run_id``, so one call's
 Fields shared by every event of a simulation live in ``RunContext``.
 """
 
+import copy
+import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -82,6 +84,16 @@ class ExperimentClass(StrEnum):
     CUSTOM_LAB_EXPERIMENT = "custom_lab_experiment"
 
 
+def _snapshot(name: str, content: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """Return a detached, JSON-only copy of span content, or raise ``ValueError``."""
+    if content is None:
+        return None
+    try:
+        return json.loads(json.dumps(dict(content), allow_nan=False))
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{name} must be JSON-serializable without NaN or infinity") from error
+
+
 def _require_utc(name: str, value: datetime) -> None:
     if value.tzinfo is None or value.utcoffset() != timedelta(0):
         raise ValueError(f"{name} must be timezone-aware UTC; normalize it with to_utc()")
@@ -125,8 +137,10 @@ class TokenUsage:
     completion_tokens: int
 
     def __post_init__(self) -> None:
-        if self.prompt_tokens < 0 or self.completion_tokens < 0:
-            raise ValueError("token counts cannot be negative")
+        for name in ("prompt_tokens", "completion_tokens"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"{name} must be a non-negative integer")
 
     @property
     def total_tokens(self) -> int:
@@ -138,8 +152,9 @@ class TraceEvent:
     """One versioned trace event.
 
     ``inputs`` and ``outputs`` carry span content (messages, tool arguments and
-    results) for the trace backend. They are not part of the identifier
-    contract, and adapters redact them before export.
+    results) for the trace backend. They are copied at construction, so later
+    changes to the caller's objects do not alter a recorded event. They are not
+    part of the identifier contract, and adapters redact them before export.
     """
 
     event_id: UUID
@@ -166,6 +181,8 @@ class TraceEvent:
 
     def __post_init__(self) -> None:
         _require_utc("timestamp", self.timestamp)
+        object.__setattr__(self, "inputs", _snapshot("inputs", self.inputs))
+        object.__setattr__(self, "outputs", _snapshot("outputs", self.outputs))
         if self.schema_version != SCHEMA_VERSION:
             raise ValueError(f"unsupported schema_version {self.schema_version!r}")
         self._check_links()
@@ -250,6 +267,6 @@ class TraceEvent:
             "prompt_tokens": self.tokens.prompt_tokens if self.tokens else None,
             "completion_tokens": self.tokens.completion_tokens if self.tokens else None,
             "cost": self.cost,
-            "inputs": dict(self.inputs) if self.inputs is not None else None,
-            "outputs": dict(self.outputs) if self.outputs is not None else None,
+            "inputs": copy.deepcopy(self.inputs),
+            "outputs": copy.deepcopy(self.outputs),
         }
