@@ -1,0 +1,236 @@
+{
+ "timestamp": "2026-10-27T00:25:20.000000",
+ "info": {
+  "git_commit": "0c69df456a96aa76a1162591574dad9c427a34d7",
+  "seed": 42,
+  "agent_info": {
+   "implementation": "llm_agent",
+   "llm": "openai/responses/gpt-6-luna",
+   "llm_args": {
+    "reasoning_effort": "medium"
+   }
+  },
+  "user_info": {
+   "implementation": "user_simulator",
+   "llm": "openai/responses/gpt-6-luna",
+   "llm_args": {
+    "reasoning_effort": "medium"
+   }
+  },
+  "environment_info": {
+   "domain_name": "retail",
+   "policy": "# Retail agent policy (synthetic test fixture)\n",
+   "tool_defs": null
+  }
+ },
+ "tasks": [
+  {
+   "id": "0",
+   "description": null,
+   "user_scenario": {
+    "instructions": {
+     "reason_for_call": "HIDDEN-INSTRUCTIONS-SENTINEL",
+     "known_info": "",
+     "unknown_info": "",
+     "task_instructions": ""
+    }
+   },
+   "evaluation_criteria": {
+    "actions": [],
+    "nl_assertions": [
+     "Agent should say the order was not found"
+    ],
+    "reward_basis": [
+     "DB",
+     "NL_ASSERTION"
+    ]
+   },
+   "agent_opener": null
+  }
+ ],
+ "simulations": [
+  {
+   "id": "00000000-0000-4000-8000-000000000001",
+   "task_id": "0",
+   "trial": 0,
+   "seed": 670487,
+   "start_time": "2026-10-27T00:25:09.000000",
+   "end_time": "2026-10-27T00:25:17.500000",
+   "duration": 8.5,
+   "termination_reason": "user_stop",
+   "agent_cost": null,
+   "user_cost": 0.0002,
+   "policy": "# Retail agent policy (synthetic test fixture)\n",
+   "mode": "half_duplex",
+   "messages": [
+    {
+     "role": "assistant",
+     "content": "Hi! How can I help you today?",
+     "turn_idx": 0,
+     "timestamp": "2026-10-27T00:25:09.000100",
+     "tool_calls": null,
+     "cost": null,
+     "usage": null,
+     "raw_data": null,
+     "generation_time_seconds": null
+    },
+    {
+     "role": "user",
+     "content": "Where is order #W0000001?",
+     "turn_idx": 1,
+     "timestamp": "2026-10-27T00:25:11.500000",
+     "tool_calls": null,
+     "cost": 0.0001,
+     "usage": {
+      "prompt_tokens": 700,
+      "completion_tokens": 20
+     },
+     "raw_data": {
+      "id": "chatcmpl-RAWDATA-SENTINEL",
+      "model": "gpt-6-luna",
+      "choices": [
+       {
+        "message": {
+         "content": "RAWDATA-SENTINEL"
+        }
+       }
+      ]
+     },
+     "generation_time_seconds": null
+    },
+    {
+     "role": "assistant",
+     "content": null,
+     "turn_idx": 2,
+     "timestamp": "2026-10-27T00:25:13.000000",
+     "tool_calls": [
+      {
+       "id": "call_1",
+       "name": "get_order_details",
+       "arguments": {
+        "order_id": "#W0000001"
+       },
+       "requestor": "assistant"
+      }
+     ],
+     "cost": 0.0004,
+     "usage": {
+      "prompt_tokens": 3600,
+      "completion_tokens": 60
+     },
+     "raw_data": {
+      "id": "chatcmpl-RAWDATA-SENTINEL",
+      "model": "gpt-6-luna",
+      "choices": [
+       {
+        "message": {
+         "content": "RAWDATA-SENTINEL"
+        }
+       }
+      ]
+     },
+     "generation_time_seconds": 1.5
+    },
+    {
+     "id": "call_1",
+     "role": "tool",
+     "content": "Error: Order not found",
+     "requestor": "assistant",
+     "error": true,
+     "execution_status": "executed",
+     "turn_idx": 3,
+     "timestamp": "2026-10-27T00:25:13.001000"
+    },
+    {
+     "role": "assistant",
+     "content": "I could not find that order. Can you check the ID?",
+     "turn_idx": 4,
+     "timestamp": "2026-10-27T00:25:15.000000",
+     "tool_calls": null,
+     "cost": 0.0002,
+     "usage": {
+      "prompt_tokens": 3700,
+      "completion_tokens": 30
+     },
+     "raw_data": {
+      "id": "chatcmpl-RAWDATA-SENTINEL",
+      "model": "gpt-6-luna",
+      "choices": [
+       {
+        "message": {
+         "content": "RAWDATA-SENTINEL"
+        }
+       }
+      ]
+     },
+     "generation_time_seconds": 1.25
+    },
+    {
+     "role": "user",
+     "content": "Thanks, I will check. ###STOP###",
+     "turn_idx": 5,
+     "timestamp": "2026-10-27T00:25:17.000000",
+     "tool_calls": null,
+     "cost": 0.0001,
+     "usage": {
+      "prompt_tokens": 760,
+      "completion_tokens": 15
+     },
+     "raw_data": {
+      "id": "chatcmpl-RAWDATA-SENTINEL",
+      "model": "gpt-6-luna",
+      "choices": [
+       {
+        "message": {
+         "content": "RAWDATA-SENTINEL"
+        }
+       }
+      ]
+     },
+     "generation_time_seconds": null
+    }
+   ],
+   "reward_info": {
+    "reward": 0.0,
+    "db_check": {
+     "db_match": true,
+     "db_reward": 1.0
+    },
+    "env_assertions": [],
+    "action_checks": [
+     {
+      "action": {
+       "action_id": "0_0",
+       "requestor": "assistant",
+       "name": "get_order_details",
+       "arguments": {
+        "order_id": "#W0000001"
+       }
+      },
+      "action_match": true,
+      "action_reward": 1.0,
+      "tool_type": "read"
+     }
+    ],
+    "nl_assertions": [
+     {
+      "nl_assertion": "Agent should say the order was not found",
+      "met": false,
+      "justification": "Synthetic fixture."
+     }
+    ],
+    "communicate_checks": null,
+    "reward_basis": [
+     "DB",
+     "NL_ASSERTION"
+    ],
+    "reward_breakdown": {
+     "DB": 1.0,
+     "NL_ASSERTION": 0.0
+    },
+    "info": null
+   }
+  }
+ ],
+ "simulation_index": null
+}
