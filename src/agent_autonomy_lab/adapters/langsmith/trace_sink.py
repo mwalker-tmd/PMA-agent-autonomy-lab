@@ -11,8 +11,8 @@ event's identifier fields, and LangSmith groups runs into a thread by the
 Events and feedback are buffered and exported at ``flush``, after the same
 trace-shape checks ``InMemoryTraceSink.link_errors()`` runs, so a malformed
 trace is rejected whole instead of reaching LangSmith in pieces. Secrets are
-removed from every run and feedback item as it is sent (``redaction``): span
-content, metadata, errors, gate events, and feedback values and comments.
+removed from every argument of every run and feedback item as it is sent
+(``redaction``), so no field can be missed.
 
 LangSmith rejects a run whose start time is more than 24 hours from now. A
 trace recorded earlier, such as a saved simulation exported later, is shifted
@@ -144,14 +144,12 @@ class LangSmithTraceSink:
         if late:
             raise StaleTraceError(late)
         for run in runs:
-            self._client.create_run(**redact_run(run, self._redact))
+            self._client.create_run(**self._redact(run))
         self._client.flush()
         if self._feedback:
             project_id = self._project_id()
             for item in to_feedback(self._events, self._feedback):
-                self._client.create_feedback(
-                    **redact_feedback(item, self._redact), session_id=project_id
-                )
+                self._client.create_feedback(**self._redact(item), session_id=project_id)
             self._client.flush()
         self._events.clear()
         self._feedback.clear()
@@ -229,21 +227,6 @@ def to_runs(
             shift = _shift(root.timestamp, now)
         runs.append(_run(span, root, gates.get(span.run_id, []), project_name, shift))
     return runs
-
-
-# ``create_run`` and ``create_feedback`` arguments that can carry recorded text.
-_RUN_CONTENT = ("inputs", "outputs", "extra", "error", "events")
-_FEEDBACK_CONTENT = ("value", "comment")
-
-
-def redact_run(run: Mapping[str, Any], redactor: Redactor) -> dict[str, Any]:
-    """A copy of ``create_run`` arguments with secrets removed from their content."""
-    return {k: redactor(v) if k in _RUN_CONTENT else v for k, v in run.items()}
-
-
-def redact_feedback(item: Mapping[str, Any], redactor: Redactor) -> dict[str, Any]:
-    """A copy of ``create_feedback`` arguments with secrets removed from their content."""
-    return {k: redactor(v) if k in _FEEDBACK_CONTENT else v for k, v in item.items()}
 
 
 def _shift(root_start: datetime, now: datetime | None) -> timedelta:
