@@ -372,6 +372,8 @@ def test_well_formed_messages_pass(message):
     [
         ("hello", "message must be an object"),
         ({"content": "hi"}, "role must be one of"),
+        ({"role": {}, "content": "hi"}, "role must be one of"),
+        ({"role": ["user"], "content": "hi"}, "role must be one of"),
         ({"role": "user", "content": ["hi"]}, "content must be a string or null"),
         ({"role": "user", "content": None}, "a user message needs content"),
         ({"role": "assistant", "content": None}, "needs content or tool_calls"),
@@ -389,3 +391,43 @@ def test_well_formed_messages_pass(message):
 )
 def test_malformed_messages_are_described(message, problem):
     assert any(problem in error for error in message_errors(message))
+
+
+@pytest.mark.parametrize(
+    "fields, usage",
+    [
+        ({"cost": 0.0012}, {"total_cost": 0.0012}),
+        (
+            {"tokens": TokenUsage(prompt_tokens=10, completion_tokens=2)},
+            {"input_tokens": 10, "output_tokens": 2, "total_tokens": 12},
+        ),
+        ({}, None),
+    ],
+)
+def test_model_call_usage_is_exported_when_known(sink, session, context, fields, usage):
+    root = make_event(
+        EventType.CONVERSATION,
+        context,
+        inputs={"messages": [OPENER]},
+        outputs={"messages": [REPLY]},
+    )
+    model = make_event(EventType.MODEL_CALL, context, parent_run_id=root.run_id, **fields)
+    sink.record(model)
+    sink.record(root)
+    sink.flush()
+    assert runs_by_id(session)[str(model.run_id)]["outputs"].get("usage_metadata") == usage
+
+
+def test_object_valued_role_is_a_trace_shape_error(sink, session, context):
+    bad = {"role": {}, "content": "hi"}
+    sink.record(
+        make_event(
+            EventType.CONVERSATION,
+            context,
+            inputs={"messages": [bad]},
+            outputs={"messages": [REPLY]},
+        )
+    )
+    with pytest.raises(TraceShapeError, match="role must be one of"):
+        sink.flush()
+    assert session.posted == []
