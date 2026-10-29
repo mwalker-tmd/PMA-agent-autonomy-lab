@@ -96,7 +96,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | `ToolExecutor` | Execute an already-authorized tool call against the retail environment and return its result or error | τ-bench retail environment (Milestones 3, 6) | In-memory fake retail state |
 | `AuthorizationGate` | Decide `ALLOWED`, `DENIED`, or `PENDING_APPROVAL` for a proposed tool call from the autonomy level, policy version, and context | Policy-configured gate in the core (Milestone 6); the port lets wrappers such as tracing decorate it | Fixed-decision stub |
-| `TraceSink` | Record runs, spans, and gate events with the [identifier contract](#event-and-identifier-contract) | LangSmith (Milestone 3); local JSONL file for offline runs | In-memory recorder |
+| `TraceSink` | Record runs, spans, and gate events with the [identifier contract](#event-and-identifier-contract), and feedback (scores such as the benchmark reward) on recorded spans | LangSmith (Milestone 3); local JSONL file for offline runs | In-memory recorder |
 | `ApprovalSource` | Return a human operational approval or rejection for a pending action | Deterministic fixture (Milestone 6); FastAPI manual-review UI only if Milestone 6 chooses one | Scripted approvals |
 | `Evaluator` | Score a completed simulation and return results with evidence IDs ([result format](EVALUATION.md#required-result-format)) | Deterministic code checks; τ-bench reward reader; LLM judge via `ModelClient` (Milestone 4) | Canned results |
 | `ModelClient` | Send messages and tool schemas to a model and return its response, token usage, and cost | LiteLLM or provider SDK, e.g. OpenAI `gpt-6-luna` (Milestones 3–4) | Scripted responses |
@@ -162,7 +162,7 @@ The gate event classes from [AUTONOMY.md](AUTONOMY.md#distinguish-events-and-met
 | Field | Purpose | τ-bench source | Example (illustrative) |
 | --- | --- | --- | --- |
 | `schema_version` | Identify the schema an event follows | lab-assigned | `trace-event/1` |
-| `event_id` | Uniquely identify one event; the target of evaluator `evidence_ids` in [EVALUATION.md](EVALUATION.md#required-result-format) | lab-assigned (`new_id()`, UUIDv7). A tool result's `id` equals the `tool_calls[].id` it answers, the only persisted link between messages | UUID |
+| `event_id` | Uniquely identify one event; the target of evaluator `evidence_ids` in [EVALUATION.md](EVALUATION.md#required-result-format) | lab-assigned (`new_id()`, UUIDv7; an export of a saved simulation derives it with `stable_id()` so it repeats). A tool result's `id` equals the `tool_calls[].id` it answers, the only persisted link between messages | UUID |
 | `event_type` | Span or gate event (see [Event types](#event-types)) | lab-assigned | `tool_call` |
 | `timestamp` | When the event happened, in UTC | `messages[].timestamp`, `simulations[].start_time`, local time with no zone, normalized with `to_utc()`; lab clock for lab-only events | `2026-10-27T06:25:09+00:00` |
 | `simulation_id` | Correlate one full simulated run | `simulations[].id` (UUID) | UUID |
@@ -178,7 +178,7 @@ The gate event classes from [AUTONOMY.md](AUTONOMY.md#distinguish-events-and-met
 | `experiment_class` | Separate the untouched upstream baseline from lab experiments | lab-assigned: `official_upstream_baseline` or `custom_lab_experiment` | `custom_lab_experiment` |
 | `fault_injected` | Mark runs with a deliberately injected fault | lab-assigned; `false` unless set | `true` |
 | `workflow`, `scenario_category` | Segment evaluations by workflow ([ADR-015](DECISIONS.md#adr-015--map-real-retail-tasks-to-the-three-workflows)) and [scenario category](SIMULATION.md#initial-scenario-taxonomy) | lab-assigned | `cancellation`, `policy_sensitive` |
-| `run_id`, `parent_run_id` | Link child spans to their parent | lab-assigned (`new_id()`, UUIDv7, the form LangSmith uses for run IDs) | UUID |
+| `run_id`, `parent_run_id` | Link child spans to their parent | lab-assigned (`new_id()`, UUIDv7, the form LangSmith uses for run IDs). An export of a saved simulation uses `stable_time_id()`, a UUIDv7 whose time is the span's start and whose random bits derive from the simulation and the span, so exporting again sends the same IDs | UUID |
 | `turn_index` | Ordered conversation turn | `messages[].turn_idx`; starts at 0 with the fixed opener, and tool calls and tool results each take an index | `6` |
 | `tool_name` | Audit which tool was attempted | `tool_calls[].name` | `cancel_pending_order` |
 | `argument_hash` | Audit the attempted arguments without storing them in the event | computed from `tool_calls[].arguments` with `argument_hash()`: `sha256:` and the SHA-256 of their canonical JSON. Unsalted, so the same call hashes the same way across runs; it is not redaction | `sha256:…` |
@@ -188,7 +188,7 @@ The gate event classes from [AUTONOMY.md](AUTONOMY.md#distinguish-events-and-met
 | `error_message` | The error text | tool result `content` (`Error: …`) when `error` is true | `Error: Order not found` |
 | `elapsed_ms` | Latency | `generation_time_seconds` × 1000 (agent messages only); `simulations[].duration` × 1000 for the conversation. No per-call timing for the user simulator or tools | `850.0` |
 | `prompt_tokens`, `completion_tokens` | Token usage | `messages[].usage` per model call; `null` on the fixed opener | `1200`, `80` |
-| `cost` | Model cost in US dollars | `messages[].cost` per model call; `0.0` for `gpt-6-luna` at the pinned LiteLLM version ([BASELINE.md](BASELINE.md)), so compute it from tokens instead | `0.0012` |
+| `cost` | Model cost in US dollars | `messages[].cost` per model call, computed by LiteLLM during the run; `null` on the fixed opener. The baseline's billed total differs from the sum of these values ([manifest](../reports/m2-baseline/manifest.yaml) `cost.reconciliation`) | `0.0012` |
 | `inputs`, `outputs` | Span content for the trace backend: messages, tool arguments, and results | message `content`, `tool_calls[].arguments`, tool result `content`; never `raw_data`. Must be strict JSON (string keys only, so no key can collide on export); copied when the event is built into read-only structures, so neither the caller's objects nor code holding the event can change it; `to_dict()` returns mutable copies. Not part of the identifier contract; adapters redact them before export | `{"messages": […]}` |
 
 The schema enforces these rules when an event is built: every field has its declared type (identifiers are UUIDs, enum fields accept a member or its value, strings are non-empty, and booleans are not accepted as numbers); timestamps are timezone-aware UTC; a `conversation` has no parent and `model_call` and `tool_call` spans need one; `tool_call` and `gate` events need a `tool_name`; gate fields appear only on gate events; `turn_index` and token counts are non-negative integers; and latency and cost are finite and not negative.
@@ -226,7 +226,7 @@ Example gate event (`to_dict()`, `null` fields and content omitted; illustrative
 
 ### LangSmith run mapping
 
-[`LangSmithTraceSink`](../src/agent_autonomy_lab/adapters/langsmith/trace_sink.py) buffers events and exports them on `flush()`. If the buffered events fail `link_errors()`, or a conversation lacks well-formed `messages`, it raises `TraceShapeError`, sends nothing, and keeps the buffer, so a malformed trace never reaches LangSmith in pieces. Each simulation becomes one trace, sent root first:
+[`LangSmithTraceSink`](../src/agent_autonomy_lab/adapters/langsmith/trace_sink.py) buffers events and feedback and exports them on `flush()`. If the buffered events fail `link_errors()`, the feedback fails `feedback_errors()`, or a conversation lacks well-formed `messages`, it raises `TraceShapeError`, sends nothing, and keeps the buffer, so a malformed trace never reaches LangSmith in pieces. Each simulation becomes one trace, sent root first:
 
 | Event | LangSmith run | Mapping |
 | --- | --- | --- |
@@ -234,8 +234,33 @@ Example gate event (`to_dict()`, `null` fields and content omitted; illustrative
 | `model_call` | `llm` child run named `model_call` | token counts and cost go to `outputs.usage_metadata` (`input_tokens`, `output_tokens`, `total_tokens`, `total_cost`) |
 | `tool_call` | `tool` child run named after the tool | the tool arguments and result as recorded |
 | `gate` | not a run | an entry `gate:<class>` in its tool run's `events`, with `event_id`, `gate_event`, `decision`, `decision_reason`, and `argument_hash` |
+| `Feedback` (not an event) | feedback on its run, sent after the runs | `key`, `score`, `comment`, and `value` (JSON detail); its `id` is the `feedback_id`; `trace_id` is the root run; `session_id` is the project's ID; `feedback_source.metadata` holds the `RunContext` and `schema_version` |
 
-Every run's metadata carries the event's non-null [fields](#fields) except content and links, including `event_id`, `simulation_id`, and `thread_id`; LangSmith groups runs into a thread by the `thread_id` metadata key. A span's `timestamp` is its start time; its end time is `timestamp` plus `elapsed_ms` (the start time when latency is unknown). `dotted_order` is built from start times and run IDs. A span with `outcome` `error` becomes an error-status run whose `error` is `<error_class>: <error_message>`, with `error_class` also in metadata; its outputs are kept. Content is exported as recorded; redaction comes with M3-06.
+Every run's metadata carries the event's non-null [fields](#fields) except content and links, including `event_id`, `timestamp`, `simulation_id`, and `thread_id`; LangSmith groups runs into a thread by the `thread_id` metadata key. A span's `timestamp` is its start time; its end time is `timestamp` plus `elapsed_ms` (the start time when latency is unknown). `dotted_order` is built from start times and run IDs. LangSmith rejects a run whose start time is more than 24 hours from now, so a trace whose root started more than 23 hours ago (or ahead) is **shifted whole**: its root starts at export time and every span keeps its offset from the root. The real time stays in metadata `timestamp`, so filter and sort on that, not on the LangSmith start time, when a trace may have been shifted.
+
+Run and feedback IDs come from the events. LangSmith answers a known run ID with a 409 conflict, which the SDK ignores, and replaces feedback that has a known ID, so sending the same events twice adds nothing. With `auto_batch_tracing` on (the SDK default), runs are sent in the background and a rejected run is only logged, so callers that must know every run arrived, such as the export below, pass a client with `auto_batch_tracing=False`. A span with `outcome` `error` becomes an error-status run whose `error` is `<error_class>: <error_message>`, with `error_class` also in metadata; its outputs are kept. Content is exported as recorded; redaction comes with M3-06.
+
+### Exporting a saved simulation (hook D)
+
+A saved τ-bench run can be exported after the fact, with no model calls ([hook D](BASELINE.md#langsmith-hook-points)). The [results reader](../src/agent_autonomy_lab/adapters/tau2/results_reader.py) parses `results.json` into the lab's [simulation records](../src/agent_autonomy_lab/domain/simulations.py), and the [export use case](../src/agent_autonomy_lab/application/export_simulation.py) records each simulation in a `TraceSink`:
+
+```bash
+uv run --env-file .env python -m agent_autonomy_lab.entrypoints.export_simulation \
+    m2-baseline-2026-10-27-r3 --source-tz America/Denver \
+    --experiment-class official_upstream_baseline
+```
+
+`RUN` is a `--save-to` name under `$TAU2_DATA_DIR/simulations`, or a path to a `results.json` or its directory. `--source-tz` is the zone of the machine that ran the simulations (τ-bench writes local time with no zone; the Milestone 2 baseline ran in `America/Denver`). `--dry-run` builds and checks the traces in an `InMemoryTraceSink` and sends nothing.
+
+| τ-bench | Exported as |
+| --- | --- |
+| simulation | one `conversation` root; `thread_id` is `thread_id_for(simulation_id)`; `elapsed_ms` is `duration`. `inputs.messages` hold the transcript up to and including the first customer message and `outputs.messages` the rest, so together they are the whole conversation in OpenAI chat format |
+| message with `usage` or `cost` (agent or simulated user) | one `model_call` child: `turn_index`, tokens, cost, and the message as `outputs.messages`. An agent call starts `generation_time_seconds` before its message's timestamp; a user call has no timing. The fixed opener is not a model call |
+| tool result | one `tool_call` child named after the tool, with the call's arguments as `inputs`, the result `content` as `outputs`, and `argument_hash`; `outcome` from `execution_status` and `error` (`error_message` is the content). τ-bench records no tool timing |
+| `reward_info` | feedback on the root, never in the messages: `reward` (score; `value` holds `reward_basis`, `reward_breakdown`, `termination_reason`, `db_check`, `nl_assertions`, `action_checks`, and `env_assertions`) and one `reward_<component>` per breakdown component, such as `reward_db` |
+| run `info` | `RunContext`: `model_id`, `user_model_id`, `agent_version` (`agent_info.implementation`), `policy_version` (from `environment_info.policy`); `autonomy_level` `"n/a"`; `experiment_class` from the command line |
+
+Not exported: `raw_data` (the full provider response), the task's hidden user instructions, and the policy text (only its version). Every event, run, and feedback ID derives from the simulation, so exporting the same run again with the same `--source-tz` adds no threads, runs, or feedback; a different zone moves the timestamps the run IDs are built from and would duplicate the runs. To find a simulation in LangSmith, filter the project's runs on metadata `simulation_id` (or open its thread by `thread_id`).
 
 Acceptance test: one task is navigable as a complete conversation; its child spans include tool invocations; a thread-level evaluator can consume the assembled messages without schema errors.
 
