@@ -13,7 +13,11 @@ import pytest
 import requests
 from langsmith import Client
 
-from agent_autonomy_lab.adapters.langsmith import LangSmithTraceSink, TraceShapeError
+from agent_autonomy_lab.adapters.langsmith import (
+    LangSmithTraceSink,
+    StaleTraceError,
+    TraceShapeError,
+)
 from agent_autonomy_lab.adapters.langsmith.trace_sink import message_errors
 from agent_autonomy_lab.adapters.tau2 import read_results
 from agent_autonomy_lab.application.export_simulation import export_run
@@ -525,8 +529,8 @@ def test_exporting_a_saved_run_again_sends_the_same_ids(sink, session):
     assert [f["id"] for f in session.feedback[:3]] == [f["id"] for f in session.feedback[3:]]
 
 
-def test_trace_older_than_langsmith_accepts_is_shifted_whole(session, context):
-    later = T0 + timedelta(hours=49)
+def old_sink(session, now, stored=None, lookups=None):
+    """A sink whose clock is ``now`` and whose LangSmith holds ``stored`` runs."""
     client = Client(
         api_url="http://langsmith.invalid",
         api_key="fake-key",
@@ -534,7 +538,18 @@ def test_trace_older_than_langsmith_accepts_is_shifted_whole(session, context):
         auto_batch_tracing=False,
         info={},
     )
-    sink = LangSmithTraceSink(client, PROJECT, clock=lambda: later)
+
+    def stored_runs(trace_id):
+        if lookups is not None:
+            lookups.append(trace_id)
+        return stored or {}
+
+    return LangSmithTraceSink(client, PROJECT, clock=lambda: now, stored_runs=stored_runs)
+
+
+def test_trace_older_than_langsmith_accepts_is_shifted_whole(session, context):
+    later = T0 + timedelta(hours=49)
+    sink = old_sink(session, later)
     conversation, model, tool, _ = record_scenario(sink, context)
     sink.flush()
     runs = runs_by_id(session)
@@ -546,6 +561,56 @@ def test_trace_older_than_langsmith_accepts_is_shifted_whole(session, context):
     assert runs[str(tool.run_id)]["events"][0]["time"] == (later + timedelta(seconds=2)).isoformat()
     assert root["extra"]["metadata"]["timestamp"] == T0.isoformat()
     assert llm["extra"]["metadata"]["timestamp"] == (T0 + timedelta(seconds=1)).isoformat()
+
+
+def test_retry_after_a_partial_upload_reuses_the_stored_root_time(session, context):
+    first_export = T0 + timedelta(hours=49)
+    events, conversation, model, tool, _ = scenario_events(context)
+    stored = {conversation.run_id: first_export, model.run_id: first_export}
+    sink = old_sink(session, first_export + timedelta(hours=3), stored)
+    for event in events:
+        sink.record(event)
+    sink.flush()
+    assert [run["id"] for run in session.posted] == [str(tool.run_id)]
+    (sent,) = session.posted
+    assert sent["start_time"] == (first_export + timedelta(seconds=2)).isoformat()
+    assert sent["dotted_order"].startswith(f"{first_export:%Y%m%dT%H%M%S%fZ}{conversation.run_id}.")
+
+
+def test_missing_runs_anchored_to_a_day_old_root_are_refused(session, context):
+    first_export = T0 + timedelta(hours=49)
+    events, conversation, model, tool, _ = scenario_events(context)
+    sink = old_sink(
+        session, first_export + timedelta(hours=30), {conversation.run_id: first_export}
+    )
+    for event in events:
+        sink.record(event)
+    sink.record_feedback(reward_feedback(conversation))
+    with pytest.raises(StaleTraceError) as raised:
+        sink.flush()
+    assert set(raised.value.run_ids) == {model.run_id, tool.run_id}
+    assert session.posted == [] and session.feedback == []
+
+
+def test_fully_stored_old_trace_sends_no_runs(session, context):
+    first_export = T0 + timedelta(hours=49)
+    events, conversation, model, tool, _ = scenario_events(context)
+    stored = {run_id: first_export for run_id in (conversation.run_id, model.run_id, tool.run_id)}
+    sink = old_sink(session, first_export + timedelta(hours=30), stored)
+    for event in events:
+        sink.record(event)
+    sink.record_feedback(reward_feedback(conversation))
+    sink.flush()
+    assert session.posted == []
+    assert len(session.feedback) == 1
+
+
+def test_recent_trace_is_not_looked_up(session, context):
+    lookups = []
+    sink = old_sink(session, NOW, lookups=lookups)
+    record_scenario(sink, context)
+    sink.flush()
+    assert lookups == []
 
 
 def test_recent_trace_keeps_its_times(sink, session, context):
