@@ -6,6 +6,10 @@ for every message a model produced and a ``tool_call`` child for every tool
 result. The benchmark reward is recorded as feedback on the root, outside the
 messages. Every ID is derived from the simulation, so exporting the same run
 again produces the same threads, runs, and feedback instead of duplicates.
+
+A thread needs messages on both sides of the root, so a simulation with fewer
+than two messages (for example one that failed before the customer spoke) has
+no conversation to show; it is skipped and reported, not exported.
 """
 
 import json
@@ -40,16 +44,20 @@ from agent_autonomy_lab.domain.simulations import (
 from agent_autonomy_lab.ports.trace_sink import TraceSink
 
 REWARD_KEY = "reward"
+MIN_MESSAGES = 2
 
 
 @dataclass(frozen=True)
 class ExportedSimulation:
+    """One simulation's export; ``skipped`` gives the reason when nothing was recorded."""
+
     simulation_id: str
     task_id: str
     thread_id: str
-    root_run_id: UUID
+    root_run_id: UUID | None
     spans: int
     feedback: int
+    skipped: str | None = None
 
 
 def export_run(
@@ -58,10 +66,25 @@ def export_run(
     """Record every simulation of ``run`` in ``sink``, then flush it once.
 
     A sink that checks trace shape rejects the whole run if any simulation is
-    malformed, so a run is never half exported.
+    malformed, so a run is never half exported. A simulation with too few
+    messages to form a conversation is skipped and returned with its reason.
     """
     exported = []
     for simulation in run.simulations:
+        if len(simulation.messages) < MIN_MESSAGES:
+            exported.append(
+                ExportedSimulation(
+                    simulation_id=simulation.simulation_id,
+                    task_id=simulation.task_id,
+                    thread_id=thread_id_for(simulation.simulation_id),
+                    root_run_id=None,
+                    spans=0,
+                    feedback=0,
+                    skipped=f"{len(simulation.messages)} message(s); a conversation needs "
+                    f"{MIN_MESSAGES}",
+                )
+            )
+            continue
         events, feedback = simulation_trace(run, simulation, experiment_class)
         for event in events:
             sink.record(event)
@@ -84,7 +107,15 @@ def export_run(
 def simulation_trace(
     run: SavedRun, simulation: SavedSimulation, experiment_class: ExperimentClass
 ) -> tuple[list[TraceEvent], list[Feedback]]:
-    """Return the trace events, root first, and the reward feedback for one simulation."""
+    """Return the trace events, root first, and the reward feedback for one simulation.
+
+    Raises ``ValueError`` for a simulation with fewer than ``MIN_MESSAGES`` messages.
+    """
+    if len(simulation.messages) < MIN_MESSAGES:
+        raise ValueError(
+            f"simulation {simulation.simulation_id}: {len(simulation.messages)} message(s) "
+            "cannot form a conversation"
+        )
     context = RunContext(
         simulation_id=simulation.simulation_id,
         thread_id=thread_id_for(simulation.simulation_id),
@@ -131,15 +162,19 @@ def _ms(timestamp: datetime) -> int:
 
 
 def _split_transcript(messages: tuple[Message, ...]) -> tuple[list[Message], list[Message]]:
-    """Split at the first customer message: it and the opener are the inputs.
+    """Split after the first customer message: it and the opener are the inputs.
 
     A thread view joins inputs and outputs, so together they are the whole
-    transcript in order.
+    transcript in order. When nothing follows that message (or no customer
+    message exists), the last message moves to the outputs, so both sides of
+    a transcript of at least two messages are non-empty.
     """
-    for index, message in enumerate(messages):
-        if message.role is Role.USER:
-            return list(messages[: index + 1]), list(messages[index + 1 :])
-    return list(messages), []
+    split = next(
+        (index + 1 for index, message in enumerate(messages) if message.role is Role.USER),
+        len(messages),
+    )
+    split = min(split, len(messages) - 1)
+    return list(messages[:split]), list(messages[split:])
 
 
 def _chat_message(message: Message) -> dict[str, Any]:
