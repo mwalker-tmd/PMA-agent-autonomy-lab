@@ -131,3 +131,42 @@ def test_simulation_without_a_reward_gets_no_feedback(run):
     simulation = replace(run.simulations[0], reward=None)
     _, feedback = simulation_trace(run, simulation, BASELINE)
     assert feedback == []
+
+
+def conversation_roles(run, messages):
+    simulation = replace(run.simulations[0], messages=messages, reward=None)
+    events, _ = simulation_trace(run, simulation, BASELINE)
+    record = events[0].to_dict()
+    return (
+        [m["role"] for m in record["inputs"]["messages"]],
+        [m["role"] for m in record["outputs"]["messages"]],
+    )
+
+
+def test_transcript_ending_at_the_first_customer_message_keeps_both_sides(run):
+    opener, ask, *_ = run.simulations[0].messages
+    assert conversation_roles(run, (opener, ask)) == (["assistant"], ["user"])
+
+
+def test_transcript_without_a_customer_message_keeps_both_sides(run):
+    opener, _, call, *_ = run.simulations[0].messages
+    reply = replace(call, tool_calls=(), content="Are you still there?")
+    assert conversation_roles(run, (opener, reply)) == (["assistant"], ["assistant"])
+
+
+@pytest.mark.parametrize("count", [0, 1])
+def test_too_short_simulation_is_skipped_and_reported(run, count):
+    short = replace(
+        run.simulations[0], simulation_id="short-sim", messages=run.simulations[0].messages[:count]
+    )
+    sink = InMemoryTraceSink()
+    skipped, exported = export_run(
+        replace(run, simulations=(short, run.simulations[0])), sink, BASELINE
+    )
+    assert skipped.skipped == f"{count} message(s); a conversation needs 2"
+    assert (skipped.spans, skipped.feedback, skipped.root_run_id) == (0, 0, None)
+    assert exported.skipped is None and exported.spans == 6
+    assert [root.context.simulation_id for root in sink.roots()] == [SAMPLE_SIMULATION_ID]
+    assert sink.link_errors() == []
+    with pytest.raises(ValueError, match="cannot form a conversation"):
+        simulation_trace(run, short, BASELINE)
