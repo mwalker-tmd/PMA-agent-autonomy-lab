@@ -1,6 +1,10 @@
 import json
+from dataclasses import replace
+from uuid import uuid4
 
-from agent_autonomy_lab.entrypoints.trace_live_run import _parser, main
+from agent_autonomy_lab.application.trace_live_run import LiveTrace
+from agent_autonomy_lab.entrypoints.trace_live_run import _parser, _summary, main
+from tests.test_trace_live_run import SENT, recording
 
 
 def test_defaults_match_the_milestone_2_baseline():
@@ -32,3 +36,14 @@ def test_a_run_never_overwrites_a_saved_one(capsys, monkeypatch, tmp_path):
     (tmp_path / "simulations" / "taken").mkdir(parents=True)
     assert main(["--dry-run", "--save-to", "taken"]) == 1
     assert "already exists" in capsys.readouterr().err
+
+
+def test_summary_records_the_values_a_mismatched_turn_sent():
+    changed = replace(SENT, prompt_version="prompt-dddddddddddd")
+    trace = LiveTrace("sim", "thread", uuid4(), 5, 0, 0.1, 1.0)
+    summary = _summary(recording(), changed, "lab", trace, "project", dry_run=True)
+    assert summary["fingerprint"]["match"] is False
+    assert summary["fingerprint"]["mismatched_turns"] == {
+        "2": {"prompt_version": SENT.prompt_version},
+        "4": {"prompt_version": SENT.prompt_version},
+    }
