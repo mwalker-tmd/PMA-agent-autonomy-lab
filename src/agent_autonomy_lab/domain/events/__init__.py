@@ -4,7 +4,9 @@ from agent_autonomy_lab.domain.events.hashing import (
     argument_hash,
     canonical_json,
     json_data,
+    model_args_version,
     policy_version,
+    prompt_version,
     tool_schema_version,
 )
 from agent_autonomy_lab.domain.events.identifiers import (
@@ -58,9 +60,11 @@ __all__ = [
     "feedback_errors",
     "json_data",
     "link_errors",
+    "model_args_version",
     "new_id",
     "parent_first",
     "policy_version",
+    "prompt_version",
     "stable_id",
     "stable_time_id",
     "thread_id_for",
