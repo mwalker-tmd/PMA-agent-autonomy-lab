@@ -31,6 +31,10 @@ packages = ["src/agent_autonomy_lab"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    # Upstream tau2 imports audioop (removed in Python 3.13) when the agent module loads.
+    "ignore:'audioop' is deprecated:DeprecationWarning:tau2.voice.utils.audio_preprocessing",
+]
 
 [tool.ruff]
 line-length = 100
