@@ -20,10 +20,22 @@ DENVER = ZoneInfo("America/Denver")
 
 # A synthetic results.json in τ-bench's format at the pinned commit: one
 # simulation with a failed tool call. Sentinel strings mark content that must
-# never be exported (raw_data, the task's hidden user instructions).
+# never be exported (raw_data, the task's hidden user instructions) and the
+# answer key, which may reach only feedback (an NL assertion, and a reference
+# action the agent never took).
 SAMPLE_RUN = Path(__file__).parent / "fixtures" / "sample-run" / "results.json"
 SAMPLE_SIMULATION_ID = "00000000-0000-4000-8000-000000000001"
-NOT_EXPORTED = ("RAWDATA-SENTINEL", "HIDDEN-INSTRUCTIONS-SENTINEL", "raw_data")
+NOT_EXPORTED = (
+    "RAWDATA-SENTINEL",
+    "HIDDEN-INSTRUCTIONS-SENTINEL",
+    "HIDDEN-KNOWN-INFO-SENTINEL",
+    "HIDDEN-UNKNOWN-INFO-SENTINEL",
+    "HIDDEN-TASK-INSTRUCTIONS-SENTINEL",
+    "raw_data",
+    "user_scenario",
+    "evaluation_criteria",
+)
+ANSWER_KEY = ("NL-ASSERTION-SENTINEL", "REFERENCE-ACTION-SENTINEL")
 
 
 def make_context(simulation_id: str = "sim-00023", **overrides) -> RunContext:
