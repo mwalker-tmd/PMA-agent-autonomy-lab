@@ -3,7 +3,7 @@
 from typing import Protocol
 from uuid import UUID
 
-from agent_autonomy_lab.domain.events import EventType, TraceEvent
+from agent_autonomy_lab.domain.events import EventType, TraceEvent, link_errors
 
 
 class TraceSink(Protocol):
@@ -11,7 +11,9 @@ class TraceSink(Protocol):
 
     Spans are recorded when they finish, so a child is usually recorded before
     its parent; a sink must not require parents first. ``flush`` blocks until
-    every recorded event has been delivered.
+    every recorded event has been delivered. A sink that exports whole traces
+    may raise ``ValueError`` from ``flush`` when the recorded events fail
+    ``link_errors()``.
     """
 
     def record(self, event: TraceEvent) -> None: ...
@@ -58,36 +60,7 @@ class InMemoryTraceSink:
     def link_errors(self) -> list[str]:
         """Describe every broken link; an empty list means the trace is well formed.
 
-        Checks that each child span's parent is a recorded conversation span
-        in the same simulation and thread, which also rules out cycles, and
-        that each gate event points at a recorded tool-call span for the same
-        tool, simulation, and thread.
+        See ``domain.events.trace_shape.link_errors`` for the checks; trace
+        backend adapters run the same checks before they export.
         """
-        errors = []
-        for event in self.events:
-            if event.is_span and event.parent_run_id is not None:
-                parent = self._spans.get(event.parent_run_id)
-                if parent is None:
-                    errors.append(f"{event.event_id}: parent {event.parent_run_id} not recorded")
-                elif parent.event_type is not EventType.CONVERSATION:
-                    errors.append(f"{event.event_id}: parent is not a conversation span")
-                elif not _same_trace(parent, event):
-                    errors.append(f"{event.event_id}: parent is in another simulation or thread")
-            elif event.event_type is EventType.GATE:
-                span = self._spans.get(event.run_id)
-                if span is None or span.event_type is not EventType.TOOL_CALL:
-                    errors.append(f"{event.event_id}: run {event.run_id} is not a tool-call span")
-                elif span.tool_name != event.tool_name:
-                    errors.append(f"{event.event_id}: tool_name differs from its tool-call span")
-                elif not _same_trace(span, event):
-                    errors.append(
-                        f"{event.event_id}: tool-call span is in another simulation or thread"
-                    )
-        return errors
-
-
-def _same_trace(a: TraceEvent, b: TraceEvent) -> bool:
-    return (a.context.simulation_id, a.context.thread_id) == (
-        b.context.simulation_id,
-        b.context.thread_id,
-    )
+        return link_errors(self.events)

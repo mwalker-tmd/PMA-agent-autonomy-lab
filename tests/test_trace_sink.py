@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from agent_autonomy_lab.domain.events import (
@@ -103,7 +105,10 @@ def test_missing_parent_is_reported():
     sink = InMemoryTraceSink()
     orphan = make_event(EventType.MODEL_CALL)
     sink.record(orphan)
-    assert sink.link_errors() == [f"{orphan.event_id}: parent {orphan.parent_run_id} not recorded"]
+    assert sink.link_errors() == [
+        "simulation sim-00023: 0 conversation roots, expected 1",
+        f"{orphan.event_id}: parent {orphan.parent_run_id} not recorded",
+    ]
 
 
 def test_parent_in_another_simulation_is_reported():
@@ -112,7 +117,10 @@ def test_parent_in_another_simulation_is_reported():
     child = make_event(EventType.MODEL_CALL, make_context("sim-b"), parent_run_id=root.run_id)
     sink.record(root)
     sink.record(child)
-    assert sink.link_errors() == [f"{child.event_id}: parent is in another simulation or thread"]
+    assert sink.link_errors() == [
+        "simulation sim-b: 0 conversation roots, expected 1",
+        f"{child.event_id}: parent has a different run context",
+    ]
 
 
 def test_gate_event_must_point_at_a_tool_call(context):
@@ -150,6 +158,7 @@ def test_parent_must_be_a_conversation(context):
     sink.record(first)
     sink.record(second)
     assert sink.link_errors() == [
+        "simulation sim-00023: 0 conversation roots, expected 1",
         f"{first.event_id}: parent is not a conversation span",
         f"{second.event_id}: parent is not a conversation span",
     ]
@@ -165,7 +174,7 @@ def test_parent_in_another_thread_is_reported():
     )
     sink.record(root)
     sink.record(child)
-    assert sink.link_errors() == [f"{child.event_id}: parent is in another simulation or thread"]
+    assert sink.link_errors() == [f"{child.event_id}: parent has a different run context"]
 
 
 def test_gate_event_in_another_thread_is_reported(context):
@@ -180,6 +189,37 @@ def test_gate_event_in_another_thread_is_reported(context):
     )
     for event in (root, tool, gate):
         sink.record(event)
-    assert sink.link_errors() == [
-        f"{gate.event_id}: tool-call span is in another simulation or thread"
-    ]
+    assert sink.link_errors() == [f"{gate.event_id}: tool-call span has a different run context"]
+
+
+def test_parent_with_another_run_context_is_reported(context):
+    sink = InMemoryTraceSink()
+    root = make_event(EventType.CONVERSATION, context)
+    child = make_event(
+        EventType.MODEL_CALL, replace(context, fault_injected=True), parent_run_id=root.run_id
+    )
+    sink.record(root)
+    sink.record(child)
+    assert sink.link_errors() == [f"{child.event_id}: parent has a different run context"]
+
+
+def test_gate_event_with_another_run_context_is_reported(context):
+    sink = InMemoryTraceSink()
+    root = make_event(EventType.CONVERSATION, context)
+    tool = make_event(EventType.TOOL_CALL, context, parent_run_id=root.run_id)
+    gate = make_event(
+        EventType.GATE,
+        replace(context, autonomy_level=2),
+        run_id=tool.run_id,
+        gate_event=GateEventClass.ATTEMPTED,
+    )
+    for event in (root, tool, gate):
+        sink.record(event)
+    assert sink.link_errors() == [f"{gate.event_id}: tool-call span has a different run context"]
+
+
+def test_simulation_needs_exactly_one_conversation_root(context):
+    sink = InMemoryTraceSink()
+    sink.record(make_event(EventType.CONVERSATION, context))
+    sink.record(make_event(EventType.CONVERSATION, context))
+    assert sink.link_errors() == ["simulation sim-00023: 2 conversation roots, expected 1"]
