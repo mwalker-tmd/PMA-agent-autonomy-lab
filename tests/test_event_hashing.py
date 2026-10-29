@@ -3,11 +3,13 @@ import hashlib
 import pytest
 
 from agent_autonomy_lab.domain.events import (
+    EventType,
     argument_hash,
     canonical_json,
     policy_version,
     tool_schema_version,
 )
+from tests.conftest import make_event
 
 ARGS = {"order_id": "#W2378156", "reason": "no longer needed"}
 
@@ -71,3 +73,22 @@ def test_canonical_json_rejects_non_finite_numbers(value):
         argument_hash({"amount": {"nested": [value]}})
     with pytest.raises(ValueError):
         tool_schema_version([{"name": "t", "default": value}])
+
+
+@pytest.mark.parametrize("value", [{1: "x"}, {"nested": {1: "x"}}, {"a": [{None: "x"}]}])
+def test_hashes_reject_non_string_keys(value):
+    with pytest.raises(TypeError, match="keys must be strings"):
+        argument_hash(value)
+    with pytest.raises(TypeError, match="keys must be strings"):
+        tool_schema_version([value])
+
+
+def test_hashes_reject_mixed_keys_that_would_collide():
+    with pytest.raises(TypeError, match="keys must be strings"):
+        argument_hash({1: "a", "1": "b"})
+
+
+def test_stored_event_content_can_be_hashed():
+    content = {"order_id": "#W2378156", "items": [{"id": "1"}]}
+    event = make_event(EventType.TOOL_CALL, inputs=content)
+    assert argument_hash(event.inputs) == argument_hash(content)

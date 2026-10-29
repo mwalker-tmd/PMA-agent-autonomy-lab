@@ -25,7 +25,7 @@ CONTRACT_FIELDS = {
     "user_model_id", "tool_schema_version", "policy_version", "autonomy_level",
     "traffic_type", "workflow", "scenario_category", "tool_name", "argument_hash",
     "decision", "decision_reason", "outcome", "elapsed_ms", "cost",
-    "error_class", "experiment_class", "fault_injected",
+    "error_class", "experiment_class", "fault_injected", "gate_event",
 }  # fmt: skip
 
 
@@ -389,3 +389,10 @@ def test_stored_history_can_be_extended_and_recorded_again():
             {"role": "assistant", "content": "Hello"},
         ]
     }
+
+
+@pytest.mark.parametrize("name", ["inputs", "outputs"])
+@pytest.mark.parametrize("value", [{1: "x"}, {1: "a", "1": "b"}, {"messages": [{2: "x"}]}])
+def test_content_rejects_non_string_keys(name, value):
+    with pytest.raises(ValueError, match=f"{name} must be strict JSON data"):
+        make_event(EventType.MODEL_CALL, **{name: value})

@@ -9,7 +9,6 @@ annotate the tool-call span named by their ``run_id``, so one call's
 Fields shared by every event of a simulation live in ``RunContext``.
 """
 
-import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -18,6 +17,8 @@ from enum import StrEnum
 from types import MappingProxyType
 from typing import Any, Literal
 from uuid import UUID
+
+from agent_autonomy_lab.domain.events.hashing import json_data
 
 SCHEMA_VERSION = "trace-event/1"
 
@@ -93,19 +94,6 @@ def _freeze(value: Any) -> Any:
     return value
 
 
-def _thaw(value: Any) -> Any:
-    """Return a new, mutable copy of data that may contain ``_freeze`` output.
-
-    Recurses through lists as well as tuples, so a list built from a stored
-    message history can be recorded again.
-    """
-    if isinstance(value, Mapping):
-        return {key: _thaw(item) for key, item in value.items()}
-    if isinstance(value, (tuple, list)):
-        return [_thaw(item) for item in value]
-    return value
-
-
 def _snapshot(name: str, content: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
     """Return a detached, read-only, JSON-only copy of span content.
 
@@ -116,9 +104,9 @@ def _snapshot(name: str, content: Mapping[str, Any] | None) -> Mapping[str, Any]
     if not isinstance(content, Mapping):
         raise ValueError(f"{name} must be a mapping")
     try:
-        detached = json.loads(json.dumps(_thaw(content), allow_nan=False))
+        detached = json_data(content)
     except (TypeError, ValueError) as error:
-        raise ValueError(f"{name} must be JSON-serializable without NaN or infinity") from error
+        raise ValueError(f"{name} must be strict JSON data: {error}") from error
     return _freeze(detached)
 
 
@@ -356,6 +344,6 @@ class TraceEvent:
             "prompt_tokens": self.tokens.prompt_tokens if self.tokens else None,
             "completion_tokens": self.tokens.completion_tokens if self.tokens else None,
             "cost": self.cost,
-            "inputs": _thaw(self.inputs),
-            "outputs": _thaw(self.outputs),
+            "inputs": json_data(self.inputs),
+            "outputs": json_data(self.outputs),
         }

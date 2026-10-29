@@ -3,6 +3,7 @@
 from agent_autonomy_lab.domain.events.hashing import (
     argument_hash,
     canonical_json,
+    json_data,
     policy_version,
     tool_schema_version,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "TrafficType",
     "argument_hash",
     "canonical_json",
+    "json_data",
     "new_id",
     "policy_version",
     "stable_id",

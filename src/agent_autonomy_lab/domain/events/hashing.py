@@ -2,21 +2,43 @@
 
 import hashlib
 import json
+import math
 from collections.abc import Mapping, Sequence
 from typing import Any
+
+
+def json_data(value: Any) -> Any:
+    """Return a plain, detached copy of ``value`` if it is strict JSON data.
+
+    Mappings become dicts and lists or tuples become lists, so read-only
+    content stored in a ``TraceEvent`` is accepted. ``json.dumps`` would turn
+    a key such as ``1`` into ``"1"`` and let it collide with a real ``"1"``,
+    so a key that is not a string raises ``TypeError``, as does any other
+    non-JSON value. NaN and infinities raise ``ValueError`` because JSON has
+    no token for them.
+    """
+    if isinstance(value, Mapping):
+        for key in value:
+            if not isinstance(key, str):
+                raise TypeError(f"JSON object keys must be strings, not {type(key).__name__}")
+        return {key: json_data(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_data(item) for item in value]
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("JSON has no NaN or infinity")
+    if value is None or isinstance(value, (str, int, float)):
+        return value
+    raise TypeError(f"{type(value).__name__} is not JSON data")
 
 
 def canonical_json(value: Any) -> str:
     """Serialize ``value`` so equal data always gives the same string.
 
-    Keys are sorted and whitespace is removed. Non-JSON values raise
-    ``TypeError`` rather than being stringified, so a hash never depends on a
-    ``repr``; NaN and infinities raise ``ValueError`` because JSON has no
-    token for them.
+    Keys are sorted and whitespace is removed. ``value`` must be strict JSON
+    data (see ``json_data``), so a hash never depends on a ``repr`` or on a
+    key that JSON would coerce.
     """
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
-    )
+    return json.dumps(json_data(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def _sha256(text: str) -> str:
