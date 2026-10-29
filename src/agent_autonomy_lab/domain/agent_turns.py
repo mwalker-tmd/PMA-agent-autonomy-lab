@@ -108,3 +108,37 @@ class LiveRecording:
         """The fingerprint every turn shares, or ``None`` if there are no turns or they differ."""
         prints = {turn.fingerprint for turn in self.turns}
         return prints.pop() if len(prints) == 1 else None
+
+
+UNFINISHED_PREFIX = "unfinished-"
+
+
+@dataclass(frozen=True)
+class UnfinishedSimulation:
+    """A live run that raised before the benchmark returned a simulation.
+
+    τ-bench assigns its simulation ID inside the runner and does not expose
+    it when the run raises, so the lab assigns ``simulation_id`` itself. It
+    starts with ``unfinished-`` so it is never mistaken for a benchmark ID.
+    An unfinished run has no reward and no termination reason; ``error_class``
+    and ``error_message`` describe the exception that ended it.
+    """
+
+    simulation_id: str
+    task_id: str
+    error_class: str
+    error_message: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.simulation_id.startswith(UNFINISHED_PREFIX):
+            raise ValueError(f"an unfinished run's ID starts with {UNFINISHED_PREFIX!r}")
+        if not self.task_id or not self.error_class:
+            raise ValueError("an unfinished run needs a task_id and an error_class")
+
+    @property
+    def reward(self) -> None:
+        return None
+
+    @property
+    def termination_reason(self) -> None:
+        return None
