@@ -32,7 +32,7 @@ It extends an earlier RAGAS/RAG-pipeline evaluation demonstration into **agent o
 ## Planned stack
 
 - **Simulation:** τ-bench (the upstream `tau2-bench` repository), retail domain, text-mode multi-turn conversations.
-- **Implementation:** Python 3.12 or 3.13; `uv`.
+- **Implementation:** Python 3.12 (τ-bench at the pinned commit does not import on 3.13); `uv`.
 - **Telemetry/evaluation:** LangSmith (existing account); Python deterministic evaluators; sampled LLM and human judgments.
 - **Authorization:** A custom, synchronous tool-boundary authorization gate independent of agent prompts.
 - **Presentation:** Existing τ-bench viewer and LangSmith dashboards first; no custom UI unless required.
