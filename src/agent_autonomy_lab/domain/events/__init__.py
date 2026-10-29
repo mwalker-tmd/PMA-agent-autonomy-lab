@@ -25,6 +25,7 @@ from agent_autonomy_lab.domain.events.schema import (
     TrafficType,
 )
 from agent_autonomy_lab.domain.events.time import to_utc
+from agent_autonomy_lab.domain.events.trace_shape import link_errors, parent_first
 
 __all__ = [
     "AUTONOMY_LEVELS",
@@ -44,7 +45,9 @@ __all__ = [
     "argument_hash",
     "canonical_json",
     "json_data",
+    "link_errors",
     "new_id",
+    "parent_first",
     "policy_version",
     "stable_id",
     "thread_id_for",
