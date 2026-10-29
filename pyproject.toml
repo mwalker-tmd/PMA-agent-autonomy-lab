@@ -3,7 +3,9 @@ name = "agent-autonomy-lab"
 version = "0.1.0"
 description = "An AI support agent that earns bounded autonomy through demonstrated performance"
 readme = "README.md"
-requires-python = ">=3.12,<3.14"
+# tau2 declares <3.14, but at the pinned commit it imports audioop (removed in
+# Python 3.13) from tau2.registry, so it runs only on 3.12.
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "langsmith",
     # tau2 allows litellm>=1.80.15,<1.82.7; pin the Milestone 2 baseline's version.
