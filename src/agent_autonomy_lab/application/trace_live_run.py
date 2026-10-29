@@ -4,7 +4,9 @@ The wrapper records what the agent saw and did but cannot know the
 simulation ID, which τ-bench assigns inside its runner. Once the run returns,
 ``live_trace`` combines the recording with the returned simulation: the
 thread is ``thread_id_for(simulation_id)``, as in the saved-run export, and
-the benchmark reward becomes feedback on the root.
+the benchmark reward becomes feedback on the root. Each agent turn's span
+carries the fingerprint versions that turn sent; the run context carries
+only the versions every turn shares.
 
 When the run raised, τ-bench returns no simulation and exposes no ID, so
 the caller passes an ``UnfinishedSimulation`` with a lab-assigned
@@ -85,7 +87,6 @@ def live_trace(
             f"simulation {simulation.simulation_id}: {len(recording.transcript)} message(s) "
             "cannot form a conversation"
         )
-    sent = recording.fingerprint or (recording.turns[0].fingerprint if recording.turns else None)
     context = RunContext(
         simulation_id=simulation.simulation_id,
         thread_id=thread_id_for(simulation.simulation_id),
@@ -93,10 +94,10 @@ def live_trace(
         autonomy_level=NO_GATE,
         experiment_class=experiment_class,
         agent_version=recording.agent_version,
-        prompt_version=sent.prompt_version if sent else None,
-        model_id=sent.model_id if sent else None,
+        prompt_version=_shared(recording, "prompt_version"),
+        model_id=_shared(recording, "model_id"),
         user_model_id=user_model_id,
-        tool_schema_version=sent.tool_schema_version if sent else None,
+        tool_schema_version=_shared(recording, "tool_schema_version"),
         policy_version=policy_version,
     )
     sim_id = simulation.simulation_id
@@ -165,6 +166,16 @@ def record_live_run(
     )
 
 
+def _shared(recording: LiveRecording, name: str) -> str | None:
+    """A fingerprint field every turn sent with the same value, else ``None``.
+
+    The run context describes the whole thread, so a field the turns
+    disagree on is left out of it; each turn's span keeps its own value.
+    """
+    values = {getattr(turn.fingerprint, name) for turn in recording.turns}
+    return values.pop() if len(values) == 1 else None
+
+
 def _agent_turn(turn: AgentTurn, context: RunContext, root_id: UUID) -> TraceEvent:
     """One agent call, timed by the wrapper, with the messages it answered and its reply."""
     sim_id = context.simulation_id
@@ -189,6 +200,9 @@ def _agent_turn(turn: AgentTurn, context: RunContext, root_id: UUID) -> TraceEve
             "messages": [chat_message(m) for m in turn.inputs],
             "model": turn.fingerprint.model_id,
             "model_args": turn.fingerprint.model_args,
+            "prompt_version": turn.fingerprint.prompt_version,
+            "tool_schema_version": turn.fingerprint.tool_schema_version,
+            "model_args_version": turn.fingerprint.model_args_version,
         },
         outputs=None if failed else {"messages": [chat_message(output)]},
     )

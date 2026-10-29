@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -174,6 +175,9 @@ def test_every_agent_turn_is_a_timed_model_call_with_usage():
     ]
     assert first.inputs["model"] == SENT.model_id
     assert dict(first.inputs["model_args"]) == {"reasoning_effort": "medium", "seed": 670487}
+    assert first.inputs["prompt_version"] == SENT.prompt_version
+    assert first.inputs["tool_schema_version"] == SENT.tool_schema_version
+    assert first.inputs["model_args_version"] == SENT.model_args_version
     assert first.outputs["messages"][0]["tool_calls"][0]["function"]["name"] == CALL.name
     assert second.inputs["messages"][0]["role"] == "tool"
 
@@ -257,3 +261,22 @@ def test_record_live_run_flushes_once_and_times_both_steps():
 def test_recording_reports_its_shared_fingerprint():
     assert recording().fingerprint == SENT
     assert recording(turns=()).fingerprint is None
+
+
+def test_turns_that_send_different_requests_keep_their_own_versions():
+    changed = replace(SENT, prompt_version="prompt-dddddddddddd")
+    messages = transcript()
+    turns = (
+        AgentTurn(2, at(2.4), 1600.0, SENT, inputs=(messages[1],), output=messages[2]),
+        AgentTurn(4, at(4.2), 1700.0, changed, inputs=(messages[3],), output=messages[4]),
+    )
+    events, _ = trace(recording=recording(turns=turns))
+    ctx = events[0].context
+    assert ctx.prompt_version is None
+    assert ctx.tool_schema_version == SENT.tool_schema_version
+    assert ctx.model_id == SENT.model_id
+    agent_calls = [e for e in events if e.event_type is EventType.MODEL_CALL and e.inputs]
+    assert [e.inputs["prompt_version"] for e in agent_calls] == [
+        SENT.prompt_version,
+        "prompt-dddddddddddd",
+    ]

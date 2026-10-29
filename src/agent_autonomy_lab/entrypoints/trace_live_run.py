@@ -94,7 +94,7 @@ def _summary(
     """Summary fields shared by finished and unfinished runs."""
     turns = recording.turns
     mismatched = {
-        str(turn.turn_index): diff
+        str(turn.turn_index): {name: getattr(turn.fingerprint, name) for name in diff}
         for turn in turns
         if (diff := turn.fingerprint.differences(reference))
     }
