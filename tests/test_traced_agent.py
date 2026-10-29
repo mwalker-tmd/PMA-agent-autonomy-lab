@@ -186,6 +186,17 @@ def test_tool_results_in_one_message_are_separate_inputs():
     agent.generate_next_message(MultiToolMessage(role="tool", tool_messages=results), state)
     turn = agent.recorder.recording().turns[1]
     assert [m.tool_call_id for m in turn.inputs] == ["a", "b"]
+    assert [m.turn_index for m in turn.inputs] == [3, 4]
+    assert turn.turn_index == 5
+
+
+def test_every_path_gives_each_message_its_own_position():
+    agent = TracedAgent(StubInner([text_reply()]), TurnRecorder("lab", FakeClock()))
+    state = agent.get_init_state([opener(), user("earlier"), text_reply("earlier reply")])
+    agent.generate_next_message(user(), state)
+    agent.stop(MultiToolMessage(role="tool", tool_messages=[tool_result(), tool_result()]), state)
+    transcript = agent.recorder.recording().transcript
+    assert [m.turn_index for m in transcript] == list(range(len(transcript))) == list(range(7))
 
 
 def test_a_failed_call_is_recorded_and_reraised():
