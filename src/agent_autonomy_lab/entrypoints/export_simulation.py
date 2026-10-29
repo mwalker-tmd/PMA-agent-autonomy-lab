@@ -18,12 +18,11 @@ import os
 import sys
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from langsmith import Client
-
 from agent_autonomy_lab.adapters.langsmith import (
     LangSmithTraceSink,
     StaleTraceError,
     TraceShapeError,
+    langsmith_client,
     shape_errors,
 )
 from agent_autonomy_lab.adapters.tau2 import read_results, results_path
@@ -79,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
         sink = InMemoryTraceSink()
     else:
         # Synchronous sends, so a run LangSmith rejects raises instead of only being logged.
-        sink = LangSmithTraceSink(Client(auto_batch_tracing=False), project)
+        sink = LangSmithTraceSink(langsmith_client(auto_batch_tracing=False), project)
     try:
         exported = export_run(run, sink, args.experiment_class)
     except (TraceShapeError, StaleTraceError) as error:
