@@ -375,3 +375,17 @@ def test_event_with_nested_content_can_be_replaced():
 def test_content_must_be_a_mapping(name, value):
     with pytest.raises(ValueError, match=f"{name} must be a mapping"):
         make_event(EventType.MODEL_CALL, **{name: value})
+
+
+def test_stored_history_can_be_extended_and_recorded_again():
+    first = make_event(
+        EventType.MODEL_CALL, inputs={"messages": [{"role": "user", "content": "Hi"}]}
+    )
+    history = [*first.inputs["messages"], {"role": "assistant", "content": "Hello"}]
+    second = make_event(EventType.MODEL_CALL, inputs={"messages": history})
+    assert second.to_dict()["inputs"] == {
+        "messages": [
+            {"role": "user", "content": "Hi"},
+            {"role": "assistant", "content": "Hello"},
+        ]
+    }

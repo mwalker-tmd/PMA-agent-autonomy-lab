@@ -94,10 +94,14 @@ def _freeze(value: Any) -> Any:
 
 
 def _thaw(value: Any) -> Any:
-    """Return a new, mutable copy of data made by ``_freeze``."""
+    """Return a new, mutable copy of data that may contain ``_freeze`` output.
+
+    Recurses through lists as well as tuples, so a list built from a stored
+    message history can be recorded again.
+    """
     if isinstance(value, Mapping):
         return {key: _thaw(item) for key, item in value.items()}
-    if isinstance(value, tuple):
+    if isinstance(value, (tuple, list)):
         return [_thaw(item) for item in value]
     return value
 
