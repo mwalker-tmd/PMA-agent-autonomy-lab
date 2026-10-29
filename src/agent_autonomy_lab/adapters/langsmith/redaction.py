@@ -5,7 +5,10 @@ JSON data, by three rules:
 
 - **Known values.** The value of every environment variable whose name marks
   it as a secret (``OPENAI_API_KEY``, ``LANGSMITH_API_KEY``, ``*_TOKEN``,
-  ``*_SECRET``, ...) is replaced wherever it appears, whatever its format.
+  ``*_SECRET``, ...) is replaced wherever it appears, whatever its format,
+  in mapping keys as well as values, and also JSON-escaped once, as it
+  appears inside JSON-encoded text such as tool-call ``arguments``. If two
+  keys of one mapping redact to the same text, the last one's value is kept.
   Importing τ-bench loads the working directory's ``.env``, so these are the
   keys a lab process actually holds.
 - **Known formats.** The LangSmith SDK's ``DEFAULT_SECRET_RULES``: provider key
@@ -16,13 +19,14 @@ JSON data, by three rules:
   ``password`` is replaced whole. ``prompt_tokens`` and ``max_tokens`` are
   not secret names.
 
-The trace sink redacts run inputs, outputs, metadata, errors, and events, and
-feedback values and comments. The SDK adds metadata of its own (some
-``LANGSMITH_*`` variables and a git revision) after the sink hands over a
-run, so ``langsmith_client()`` also installs the redactor as the client's
-``anonymizer``, which the SDK applies to that metadata.
+The trace sink redacts every argument of every run and feedback item it
+sends. The SDK adds metadata of its own (some ``LANGSMITH_*`` variables and a
+git revision) after the sink hands over a run, so ``langsmith_client()``
+also installs the redactor as the client's ``anonymizer``, which the SDK
+applies to that metadata.
 """
 
+import json
 import os
 import re
 from collections.abc import Iterable, Mapping
@@ -59,7 +63,10 @@ class Redactor:
     """
 
     def __init__(self, secrets: Iterable[str] = ()) -> None:
-        values = {s for s in secrets if isinstance(s, str) and len(s) >= MIN_SECRET_LENGTH}
+        values = set()
+        for secret in secrets:
+            if isinstance(secret, str) and len(secret) >= MIN_SECRET_LENGTH:
+                values.update(_escaped_forms(secret))
         # Longest first, so a secret that contains another is removed whole.
         self._secrets = sorted(values, key=len, reverse=True)
 
@@ -71,17 +78,20 @@ class Redactor:
 
     def __call__(self, data: Any) -> Any:
         if isinstance(data, Mapping):
-            return {
-                key: REDACTED
-                if isinstance(key, str) and is_secret_name(key) and value not in (None, "")
-                else self(value)
-                for key, value in data.items()
-            }
+            return dict(self._entry(key, value) for key, value in data.items())
         if isinstance(data, list | tuple):
             return [self(item) for item in data]
         if isinstance(data, str):
             return self.text(data)
         return data
+
+    def _entry(self, key: Any, value: Any) -> tuple[Any, Any]:
+        """One mapping entry, redacted: the key is checked by its original name."""
+        if not isinstance(key, str):
+            return key, self(value)
+        if is_secret_name(key) and value not in (None, ""):
+            return self.text(key), REDACTED
+        return self.text(key), self(value)
 
     def text(self, value: str) -> str:
         for secret in self._secrets:
@@ -89,6 +99,15 @@ class Redactor:
         for rule in DEFAULT_SECRET_RULES:
             value = rule["pattern"].sub(rule["replace"] or REDACTED, value)
         return value
+
+
+def _escaped_forms(secret: str) -> set[str]:
+    """``secret`` as written, and as it appears inside JSON-encoded text."""
+    return {
+        secret,
+        json.dumps(secret)[1:-1],
+        json.dumps(secret, ensure_ascii=False)[1:-1],
+    }
 
 
 def langsmith_client(redactor: Redactor | None = None, **kwargs: Any) -> Client:

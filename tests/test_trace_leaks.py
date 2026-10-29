@@ -28,9 +28,14 @@ from agent_autonomy_lab.domain.events import (
 from agent_autonomy_lab.domain.simulations import Role
 from tests.conftest import ANSWER_KEY, DENVER, NOT_EXPORTED, SAMPLE_RUN, make_event
 from tests.test_langsmith_trace_sink import NOW, PROJECT, FakeSession
-from tests.test_redaction import FAKE_LANGSMITH_KEY, FAKE_OPENAI_KEY, FAKE_PLAIN_TOKEN
+from tests.test_redaction import (
+    FAKE_LANGSMITH_KEY,
+    FAKE_OPENAI_KEY,
+    FAKE_PLAIN_TOKEN,
+    FAKE_QUOTED_SECRET,
+)
 
-PLANTED = (FAKE_OPENAI_KEY, FAKE_LANGSMITH_KEY, FAKE_PLAIN_TOKEN)
+PLANTED = (FAKE_OPENAI_KEY, FAKE_LANGSMITH_KEY, FAKE_PLAIN_TOKEN, FAKE_QUOTED_SECRET)
 SENT = AgentFingerprint(
     model_id="openai/responses/gpt-6-luna",
     prompt_version="prompt-aaaaaaaaaaaa",
@@ -154,21 +159,47 @@ def planted_environment(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", FAKE_OPENAI_KEY)
     monkeypatch.setenv("LANGSMITH_API_KEY", FAKE_LANGSMITH_KEY)
     monkeypatch.setenv("TAU2_SERVICE_TOKEN", FAKE_PLAIN_TOKEN)
+    monkeypatch.setenv("TAU2_QUOTED_SECRET", FAKE_QUOTED_SECRET)
     monkeypatch.setenv("LANGSMITH_ENDPOINT", f"https://lab:{FAKE_PLAIN_TOKEN}@langsmith.invalid")
     get_langchain_env_var_metadata.cache_clear()
     yield
     get_langchain_env_var_metadata.cache_clear()
 
 
+def written_forms(secret: str) -> set[str]:
+    """``secret`` as a request body could carry it: raw, or JSON-escaped once or twice."""
+    forms = {secret}
+    for _ in range(2):
+        forms |= {json.dumps(f, ensure_ascii=a)[1:-1] for f in forms for a in (True, False)}
+    return forms
+
+
+def plant(message, leaked_error: str):
+    """The sample message, with keys in a tool result and in a tool call's arguments.
+
+    The arguments hold one key as a mapping key and one that JSON escapes
+    (``chat_message()`` sends arguments as a JSON string).
+    """
+    if message.role is Role.TOOL:
+        return replace(message, content=leaked_error)
+    if message.tool_calls:
+        (call,) = message.tool_calls
+        arguments = {**call.arguments, FAKE_PLAIN_TOKEN: "failed", "note": FAKE_QUOTED_SECRET}
+        return replace(message, tool_calls=(replace(call, arguments=arguments),))
+    return message
+
+
 def test_planted_keys_never_reach_a_payload(session, planted_environment):
-    """Keys planted in content, errors, gate events, feedback, and SDK metadata are redacted."""
+    """Keys planted in content, keys, context, errors, gates, feedback, and SDK metadata."""
     simulation = sample_simulation()
     leaked_error = f"Error: upstream refused key {FAKE_OPENAI_KEY} (token {FAKE_PLAIN_TOKEN})"
-    messages = tuple(
-        replace(m, content=leaked_error) if m.role is Role.TOOL else m for m in simulation.messages
-    )
+    messages = tuple(plant(m, leaked_error) for m in simulation.messages)
     simulation = replace(simulation, messages=messages)
-    sent = replace(SENT, model_args={**SENT.model_args, "api_key": FAKE_OPENAI_KEY})
+    sent = replace(
+        SENT,
+        model_id=f"openai/{FAKE_PLAIN_TOKEN}",
+        model_args={**SENT.model_args, "api_key": FAKE_OPENAI_KEY},
+    )
     recording = sample_recording(simulation, sent)
 
     trace = record_live_run(recording, simulation, _PlantingSink(make_sink(session)))
@@ -176,7 +207,8 @@ def test_planted_keys_never_reach_a_payload(session, planted_environment):
     payload = "\n".join(session.bodies)
     assert session.posted and session.feedback
     for key in PLANTED:
-        assert key not in payload, key
+        for form in written_forms(key):
+            assert form not in payload, form
 
     runs = {run["name"]: run for run in session.posted}
     assert runs["conversation"]["extra"]["metadata"]["LANGSMITH_ENDPOINT"] == (
@@ -186,6 +218,9 @@ def test_planted_keys_never_reach_a_payload(session, planted_environment):
     assert REDACTED in tool["error"] and REDACTED in tool["outputs"]["content"]
     assert REDACTED in tool["extra"]["metadata"]["error_message"]
     assert REDACTED in tool["events"][0]["kwargs"]["decision_reason"]
+    assert tool["inputs"] == {"order_id": "#W0000001", REDACTED: "failed", "note": REDACTED}
+    for item in session.feedback:
+        assert item["feedback_source"]["metadata"]["model_id"] == f"openai/{REDACTED}"
     turn = next(
         r for r in session.posted if r["name"] == "model_call" and "model_args" in r["inputs"]
     )

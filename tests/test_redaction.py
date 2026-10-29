@@ -1,5 +1,7 @@
 """Secret redaction rules, checked on data alone; the sent payloads are in test_trace_leaks."""
 
+import json
+
 import pytest
 
 from agent_autonomy_lab.adapters.langsmith import Redactor
@@ -9,7 +11,9 @@ from agent_autonomy_lab.adapters.langsmith.redaction import REDACTED, is_secret_
 FAKE_OPENAI_KEY = "sk-proj-PLANTEDFAKEKEY0000000000000000000000"
 FAKE_LANGSMITH_KEY = "lsv2_pt_PLANTEDFAKEKEY000000000000000000000000_0000000000"
 # A credential in no known format, found only because the environment holds it.
-FAKE_PLAIN_TOKEN = "planted-plain-credential-0001"
+FAKE_PLAIN_TOKEN = "planted-opaque-value-0001"
+# One that JSON escapes: a quote, a backslash, and a non-ASCII character.
+FAKE_QUOTED_SECRET = 'planted"quoted\\credential-é01'
 
 
 @pytest.mark.parametrize(
@@ -60,6 +64,18 @@ def test_environment_secrets_are_replaced_in_any_format():
     redact = Redactor.from_environment(environ)
     assert redact([f"x{FAKE_PLAIN_TOKEN}y"]) == [f"x{REDACTED}y"]
     assert redact("agent-autonomy-lab-synthetic") == "agent-autonomy-lab-synthetic"
+
+
+def test_environment_secrets_are_replaced_in_mapping_keys():
+    redact = Redactor([FAKE_PLAIN_TOKEN])
+    assert redact({FAKE_PLAIN_TOKEN: "failed"}) == {REDACTED: "failed"}
+
+
+def test_environment_secrets_are_replaced_inside_json_text():
+    redact = Redactor([FAKE_QUOTED_SECRET])
+    for ensure_ascii in (True, False):
+        arguments = json.dumps({"note": FAKE_QUOTED_SECRET}, ensure_ascii=ensure_ascii)
+        assert redact(arguments) == json.dumps({"note": REDACTED})
 
 
 def test_short_values_are_not_treated_as_secrets():
