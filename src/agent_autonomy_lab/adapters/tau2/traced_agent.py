@@ -80,7 +80,8 @@ class TurnRecorder:
     def start(self, history: Sequence[Tau2Message]) -> None:
         """Begin a simulation; ``history`` is what the agent starts with (the opener)."""
         self.started_at = self.now()
-        self.transcript = [self._message(m) for m in history]
+        self.transcript = []
+        self._append(history)
 
     def add_turn(
         self,
@@ -91,11 +92,8 @@ class TurnRecorder:
         reply: Tau2Message | None = None,
         error: BaseException | None = None,
     ) -> None:
-        inputs = [self._message(m) for m in _unpack(incoming)]
-        self.transcript += inputs
-        output = self._message(reply) if reply is not None else None
-        if output is not None:
-            self.transcript.append(output)
+        inputs = self._append(_unpack(incoming))
+        output = self._append([reply])[0] if reply is not None else None
         self.turns.append(
             AgentTurn(
                 turn_index=output.turn_index if output else len(self.transcript),
@@ -113,7 +111,7 @@ class TurnRecorder:
         """End the simulation; ``last`` is a final message the agent never answered."""
         if self.ended_at is not None:
             return
-        self.transcript += [self._message(m) for m in _unpack(last)]
+        self._append(_unpack(last))
         self.ended_at = self.now()
 
     def recording(self) -> LiveRecording:
@@ -127,6 +125,14 @@ class TurnRecorder:
             turns=tuple(self.turns),
             overhead_ms=self.overhead_ms,
         )
+
+    def _append(self, messages: Sequence[Tau2Message]) -> list[Message]:
+        """Convert and append ``messages`` one at a time, so each gets its own position."""
+        added = []
+        for message in messages:
+            added.append(self._message(message))
+            self.transcript.append(added[-1])
+        return added
 
     def _message(self, message: Tau2Message) -> Message:
         raw = {
