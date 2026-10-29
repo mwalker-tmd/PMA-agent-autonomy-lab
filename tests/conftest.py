@@ -1,4 +1,6 @@
 from datetime import UTC, datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -13,6 +15,14 @@ from agent_autonomy_lab.domain.events import (
 )
 
 T0 = datetime(2026, 10, 27, 6, 25, 9, tzinfo=UTC)
+DENVER = ZoneInfo("America/Denver")
+
+# A synthetic results.json in τ-bench's format at the pinned commit: one
+# simulation with a failed tool call. Sentinel strings mark content that must
+# never be exported (raw_data, the task's hidden user instructions).
+SAMPLE_RUN = Path(__file__).parent / "fixtures" / "sample-run" / "results.json"
+SAMPLE_SIMULATION_ID = "00000000-0000-4000-8000-000000000001"
+NOT_EXPORTED = ("RAWDATA-SENTINEL", "HIDDEN-INSTRUCTIONS-SENTINEL", "raw_data")
 
 
 def make_context(simulation_id: str = "sim-00023", **overrides) -> RunContext:
