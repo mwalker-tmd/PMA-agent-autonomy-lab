@@ -1,0 +1,90 @@
+# Milestone 3 trace run manifest.
+# Each section is filled in by the ticket that produces it; values are
+# recorded from real commands, never estimated. See docs/ARCHITECTURE.md.
+
+live_run_task_0:  # M3-05 (#75): hook A, docs/ARCHITECTURE.md "Tracing a live run"
+  recorded_on: 2026-10-29
+  started_at_utc: 2026-10-29T18:39:27Z      # simulation start_time 12:39:27.28 America/Denver
+  traffic_type: synthetic
+  experiment_class: custom_lab_experiment   # lab agent wrapper; not the baseline
+  autonomy_level: "n/a"                     # no authorization gate
+  langsmith_project: agent-autonomy-lab-synthetic   # resolved from LANGSMITH_PROJECT
+  tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7  # pinned git dependency, unmodified
+  agent_version: lab_traced_llm_agent       # registered name; wraps upstream LLMAgent
+  command: >-
+    uv run --env-file .env --env-file ../tau2-bench/.env
+    python -m agent_autonomy_lab.entrypoints.trace_live_run
+    --task-id 0 --save-to m3-05-live-task-0
+  settings:  # entrypoint defaults, equal to reports/m2-baseline/manifest.yaml run settings
+    domain: retail
+    task_id: "0"
+    model_id: openai/responses/gpt-6-luna
+    user_model_id: openai/responses/gpt-6-luna
+    llm_args_agent: {reasoning_effort: medium}
+    llm_args_user: {reasoning_effort: medium}
+    run_seed: 42
+    trial_seed: 670487        # same as every baseline simulation
+    max_steps: 200
+    max_errors: 10
+  same_task_as_baseline:
+    task_sha256: dd7e6be1fa0f86ec08cd919ccb7562a032df8ddd586b725ef23b94df4d449425  # equals baseline language_tasks["0"].task_sha256
+    persona_id: mamadou_diallo                                                    # equals baseline
+    policy_version: policy-2c9652afbce5    # environment policy; equals the baseline's info.environment_info.policy
+  agent_fingerprint:  # what the agent sends its model besides the conversation
+    reference: upstream llm_agent built by build_text_orchestrator for the same task and trial seed
+    model_id: openai/responses/gpt-6-luna
+    prompt_version: prompt-a0211039d555
+    tool_schema_version: tools-7d24cf1501c1
+    model_args_version: args-474d78942283
+    model_args: {reasoning_effort: medium, seed: 670487}
+    traced_turns: 9
+    turns_matching_reference: 9
+  simulation:
+    simulation_id: a428164f-fdfc-4245-b30b-f871b8d62e7f
+    termination: user_stop
+    reward: 1.0
+    reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}   # baseline task 0: same
+    messages: 20                     # recorded transcript equals the SimulationRun's (role and content)
+    tool_calls: [find_user_id_by_name_zip, get_order_details, get_product_details, get_product_details, exchange_delivered_order_items]
+    tool_errors: 0
+    tokens:
+      agent: {calls: 9, prompt: 46564, completion: 1122}
+      user: {calls: 5, prompt: 5762, completion: 340}
+    cost_usd:  # LiteLLM per-message cost from the SimulationRun; judge calls not recorded
+      agent: 0.0016653
+      user: 0.0005124
+      total: 0.0021777
+    saved_to: ../tau2-bench/data/simulations/m3-05-live-task-0/simulation.json  # not committed
+    simulation_json_sha256: b604f31e723b112b64441b8f3eda1de62bb0acbdd02e8be4c788dcd00e342496
+  langsmith:  # read back through the API after the run
+    thread_id: 712f70ea-5fb7-50c5-8c05-44de5a41fd81    # thread_id_for(simulation_id)
+    root_run_id: 01a188f5-b82c-7701-9cdd-57f8687c14c7  # trace ID
+    runs: {total: 20, chain: 1, llm: 14, tool: 5}       # llm = 9 agent turns + 5 simulated-user calls
+    all_children_parented_to_root: true
+    roots_in_thread: 1
+    root_messages: {inputs: 2, outputs: 18}
+    feedback: {reward: 1.0, reward_db: 1.0, reward_nl_assertion: 1.0}
+    llm_runs_total_cost_usd: 0.002178   # usage_metadata.total_cost summed; equals cost_usd.total
+    secret_values_in_payloads: none     # LANGSMITH_API_KEY and OPENAI_API_KEY values searched for in inputs, outputs, metadata, errors
+    sdk_added_metadata: [LANGSMITH_ENDPOINT, LANGSMITH_PROJECT, LANGSMITH_TRACING]  # non-secret settings the SDK copies from the environment; noted for M3-06 (#76)
+  overhead:
+    method: >-
+      Measured directly by the wrapper and the entrypoint, not by comparing
+      traced and untraced runs: reasoning models do not repeat a conversation
+      from a seed, so wall-clock differences between two live runs would be
+      noise. In-loop time is the wrapper's own work per turn (fingerprinting
+      what the agent sends and converting messages), outside the delegated
+      agent call it times. Post-run time is building the trace events and
+      sending them; it happens after the conversation ends.
+    simulation_wall_ms: 38058.9
+    agent_calls_ms: 23781.0           # wrapper-timed delegated calls; τ-bench generation_time_seconds sum 23740
+    in_loop_recording_ms: 30.8        # 9 turns, about 3.4 ms each
+    in_loop_share_of_wall: 0.0008     # 0.08 %
+    post_run_build_ms: 0.46
+    post_run_send_ms: 4204.4          # synchronous sends (auto_batch_tracing=False): 20 runs, then 3 feedback items
+  notes: >-
+    The first attempt stopped before any model call: OPENAI_API_KEY is set
+    only in ../tau2-bench/.env, so the command loads both env files. Nothing
+    was saved or sent by that attempt. Importing tau2 runs load_dotenv(),
+    which copies the working directory's .env into the process; tests hide
+    LangSmith settings with an autouse fixture.
