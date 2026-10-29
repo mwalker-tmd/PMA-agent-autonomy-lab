@@ -7,7 +7,12 @@ from agent_autonomy_lab.domain.events.hashing import (
     policy_version,
     tool_schema_version,
 )
-from agent_autonomy_lab.domain.events.identifiers import new_id, stable_id, thread_id_for
+from agent_autonomy_lab.domain.events.identifiers import (
+    new_id,
+    stable_id,
+    stable_time_id,
+    thread_id_for,
+)
 from agent_autonomy_lab.domain.events.schema import (
     AUTONOMY_LEVELS,
     NO_GATE,
@@ -16,6 +21,7 @@ from agent_autonomy_lab.domain.events.schema import (
     AutonomyLevel,
     EventType,
     ExperimentClass,
+    Feedback,
     GateDecision,
     GateEventClass,
     Outcome,
@@ -25,7 +31,11 @@ from agent_autonomy_lab.domain.events.schema import (
     TrafficType,
 )
 from agent_autonomy_lab.domain.events.time import to_utc
-from agent_autonomy_lab.domain.events.trace_shape import link_errors, parent_first
+from agent_autonomy_lab.domain.events.trace_shape import (
+    feedback_errors,
+    link_errors,
+    parent_first,
+)
 
 __all__ = [
     "AUTONOMY_LEVELS",
@@ -35,6 +45,7 @@ __all__ = [
     "AutonomyLevel",
     "EventType",
     "ExperimentClass",
+    "Feedback",
     "GateDecision",
     "GateEventClass",
     "Outcome",
@@ -44,12 +55,14 @@ __all__ = [
     "TrafficType",
     "argument_hash",
     "canonical_json",
+    "feedback_errors",
     "json_data",
     "link_errors",
     "new_id",
     "parent_first",
     "policy_version",
     "stable_id",
+    "stable_time_id",
     "thread_id_for",
     "to_utc",
     "tool_schema_version",

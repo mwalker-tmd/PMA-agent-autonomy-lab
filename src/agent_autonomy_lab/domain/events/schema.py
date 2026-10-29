@@ -347,3 +347,36 @@ class TraceEvent:
             "inputs": json_data(self.inputs),
             "outputs": json_data(self.outputs),
         }
+
+
+@dataclass(frozen=True)
+class Feedback:
+    """A score attached to a recorded span, kept outside the span's content.
+
+    Benchmark rewards and evaluator results are feedback, not messages, so
+    nothing the agent could see carries them. ``run_id`` is the span scored,
+    usually the conversation root, and ``context`` must equal that span's
+    ``RunContext``. ``value`` holds supporting detail as strict JSON, copied
+    into read-only structures like ``TraceEvent`` content.
+    """
+
+    feedback_id: UUID
+    run_id: UUID
+    context: RunContext
+    key: str
+    score: float | None = None
+    comment: str | None = None
+    value: Mapping[str, Any] | None = field(default=None, repr=False)
+    schema_version: str = SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        for name in ("feedback_id", "run_id"):
+            _require_type(name, getattr(self, name), UUID)
+        _require_type("context", self.context, RunContext)
+        _require_str(self, ("key",), required=True)
+        _require_str(self, ("comment",), required=False)
+        if self.score is not None:
+            _require_number("score", self.score, integer=False)
+        object.__setattr__(self, "value", _snapshot("value", self.value))
+        if self.schema_version != SCHEMA_VERSION:
+            raise ValueError(f"unsupported schema_version {self.schema_version!r}")

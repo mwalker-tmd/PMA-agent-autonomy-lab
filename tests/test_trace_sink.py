@@ -4,6 +4,7 @@ import pytest
 
 from agent_autonomy_lab.domain.events import (
     EventType,
+    Feedback,
     GateEventClass,
     Outcome,
     argument_hash,
@@ -223,3 +224,42 @@ def test_simulation_needs_exactly_one_conversation_root(context):
     sink.record(make_event(EventType.CONVERSATION, context))
     sink.record(make_event(EventType.CONVERSATION, context))
     assert sink.link_errors() == ["simulation sim-00023: 2 conversation roots, expected 1"]
+
+
+def _feedback(run_id, context, **overrides):
+    fields = {"feedback_id": new_id(), "run_id": run_id, "context": context, "key": "reward"}
+    return Feedback(**(fields | {"score": 1.0} | overrides))
+
+
+def test_feedback_is_kept_per_span():
+    sink = InMemoryTraceSink()
+    context = make_context()
+    conversation, *_ = record_conversation(sink, context)
+    item = _feedback(conversation.run_id, context)
+    sink.record_feedback(item)
+    assert sink.feedback_for(conversation.run_id) == [item]
+    assert sink.link_errors() == []
+
+
+def test_feedback_on_an_unrecorded_span_is_a_link_error():
+    sink = InMemoryTraceSink()
+    context = make_context()
+    record_conversation(sink, context)
+    item = _feedback(new_id(), context)
+    sink.record_feedback(item)
+    assert sink.link_errors() == [
+        f"feedback {item.feedback_id}: run {item.run_id} is not a recorded span"
+    ]
+
+
+def test_feedback_with_another_context_or_a_reused_id_is_a_link_error():
+    sink = InMemoryTraceSink()
+    context = make_context()
+    conversation, *_ = record_conversation(sink, context)
+    first = _feedback(conversation.run_id, replace(context, model_id="gpt-6-luna"))
+    sink.record_feedback(first)
+    sink.record_feedback(replace(first, context=context))
+    assert sink.link_errors() == [
+        f"{first.feedback_id}: duplicate feedback_id",
+        f"feedback {first.feedback_id}: span has a different run context",
+    ]

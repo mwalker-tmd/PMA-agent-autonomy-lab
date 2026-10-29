@@ -3,7 +3,13 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from agent_autonomy_lab.domain.events import new_id, stable_id, thread_id_for, to_utc
+from agent_autonomy_lab.domain.events import (
+    new_id,
+    stable_id,
+    stable_time_id,
+    thread_id_for,
+    to_utc,
+)
 
 DENVER = ZoneInfo("America/Denver")
 
@@ -88,3 +94,13 @@ def test_thread_id_is_stable_per_simulation():
     sim = "2b7c6a3e-1f4d-4a8e-9b1c-0d2e3f4a5b6c"
     assert thread_id_for(sim) == thread_id_for(sim)
     assert thread_id_for(sim) != thread_id_for("another-simulation")
+
+
+def test_stable_time_id_is_a_repeatable_uuid7():
+    now_ms = 1_793_082_309_000
+    first = stable_time_id(now_ms, "run", "sim-1", "conversation")
+    assert first == stable_time_id(now_ms, "run", "sim-1", "conversation")
+    assert first.version == 7
+    assert first.int >> 80 == now_ms
+    assert first != stable_time_id(now_ms, "run", "sim-2", "conversation")
+    assert first != stable_time_id(now_ms + 1, "run", "sim-1", "conversation")
