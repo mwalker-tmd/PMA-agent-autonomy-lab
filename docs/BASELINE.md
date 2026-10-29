@@ -353,7 +353,7 @@ Field names as they appear at `0c69df4`. Top level: `timestamp`, `info`, `tasks`
 
 ### Mapping input for the telemetry contract
 
-How the fields proposed in [`ARCHITECTURE.md`](ARCHITECTURE.md#proposed-event-and-identifier-contract) line up with what τ-bench persists. This is input to the mapping, not the final schema.
+How the fields proposed in `ARCHITECTURE.md` line up with what τ-bench persists, as observed in Milestone 2. The versioned schema and its full mapping are in [`ARCHITECTURE.md`](ARCHITECTURE.md#event-and-identifier-contract).
 
 | Proposed field | τ-bench source | Note |
 | --- | --- | --- |
