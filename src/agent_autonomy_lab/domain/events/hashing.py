@@ -67,6 +67,25 @@ def policy_version(policy_text: str) -> str:
     return "policy-" + _sha256(normalized)[:12]
 
 
+def prompt_version(system_prompt: str) -> str:
+    """Return ``prompt-<12 hex>`` derived from the system prompt text.
+
+    Normalized like ``policy_version``. The system prompt embeds the policy,
+    so a policy change also changes the prompt version.
+    """
+    normalized = system_prompt.replace("\r\n", "\n").replace("\r", "\n")
+    return "prompt-" + _sha256(normalized)[:12]
+
+
+def model_args_version(model_args: Mapping[str, Any]) -> str:
+    """Return ``args-<12 hex>`` derived from model arguments in canonical JSON.
+
+    Covers everything passed to the model besides messages and tools, such as
+    ``reasoning_effort`` and ``seed``.
+    """
+    return "args-" + _sha256(canonical_json(dict(model_args)))[:12]
+
+
 def tool_schema_version(tool_schemas: Sequence[Mapping[str, Any]]) -> str:
     """Return ``tools-<12 hex>`` derived from the tool schemas in canonical JSON.
 

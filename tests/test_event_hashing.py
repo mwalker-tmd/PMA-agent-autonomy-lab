@@ -6,7 +6,9 @@ from agent_autonomy_lab.domain.events import (
     EventType,
     argument_hash,
     canonical_json,
+    model_args_version,
     policy_version,
+    prompt_version,
     tool_schema_version,
 )
 from tests.conftest import make_event
@@ -92,3 +94,22 @@ def test_stored_event_content_can_be_hashed():
     content = {"order_id": "#W2378156", "items": [{"id": "1"}]}
     event = make_event(EventType.TOOL_CALL, inputs=content)
     assert argument_hash(event.inputs) == argument_hash(content)
+
+
+def test_prompt_version_is_prefix_of_sha256_and_ignores_line_endings():
+    digest = hashlib.sha256(b"line one\nline two").hexdigest()
+    assert prompt_version("line one\nline two") == "prompt-" + digest[:12]
+    assert prompt_version("line one\r\nline two") == prompt_version("line one\nline two")
+    assert prompt_version("line one") != prompt_version("line two")
+
+
+def test_model_args_version_ignores_key_order_and_sees_every_value():
+    args = {"reasoning_effort": "medium", "seed": 670487}
+    assert model_args_version(args).startswith("args-")
+    assert model_args_version(args) == model_args_version(dict(reversed(args.items())))
+    assert model_args_version(args) != model_args_version({**args, "seed": 1})
+
+
+def test_model_args_version_rejects_non_json_values():
+    with pytest.raises(TypeError):
+        model_args_version({"callback": object()})

@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -50,6 +51,19 @@ def make_event(event_type: EventType, context: RunContext | None = None, **overr
     if event_type in (EventType.TOOL_CALL, EventType.GATE):
         fields["tool_name"] = "get_order_details"
     return TraceEvent(**(fields | overrides))
+
+
+@pytest.fixture(autouse=True)
+def no_langsmith_settings(monkeypatch):
+    """Hide LangSmith settings from every test.
+
+    Importing τ-bench runs ``load_dotenv()``, which copies the developer's
+    ``.env`` (API key included) into the process environment, and the
+    LangSmith SDK reads that environment. No test may see real credentials.
+    """
+    for name in list(os.environ):
+        if name.startswith(("LANGSMITH_", "LANGCHAIN_")):
+            monkeypatch.delenv(name)
 
 
 @pytest.fixture
