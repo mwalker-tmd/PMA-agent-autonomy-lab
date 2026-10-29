@@ -16,7 +16,12 @@ is exported as recorded; redaction is added in M3-06 (#76).
 LangSmith rejects a run whose start time is more than 24 hours from now. A
 trace recorded earlier, such as a saved simulation exported later, is shifted
 whole so its root starts at export time and every span keeps its offset from
-the root; each run's metadata keeps the event's real ``timestamp``.
+the root; each run's metadata keeps the event's real ``timestamp`` (ADR-017).
+Before shifting, the sink asks LangSmith which of the trace's runs it already
+holds. If the root is there, its stored start time is the anchor and only the
+missing runs are sent, so a retry after a partial upload stays consistent with
+what was stored. A missing run that would still fall outside the window
+raises ``StaleTraceError`` before anything is sent.
 
 Run and feedback IDs come from the events, so sending the same events again
 does not duplicate anything: LangSmith answers a known run ID with a 409
@@ -26,9 +31,11 @@ logs a rejected run, so a caller that must know every run arrived passes a
 client with ``auto_batch_tracing=False``; then a rejected run raises.
 """
 
+import asyncio
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import UUID
 
 from langsmith import Client
 from langsmith.utils import LangSmithNotFoundError
@@ -57,7 +64,9 @@ MESSAGE_ROLES = frozenset({"system", "user", "assistant", "tool"})
 # metadata: a shifted run's start time is not when the event happened.
 _NOT_METADATA = frozenset({"inputs", "outputs", "run_id", "parent_run_id"})
 
-# LangSmith accepts start times within 24 hours of now; leave an hour of margin.
+# LangSmith accepts start times within 24 hours of now. A trace is shifted when its
+# root is more than 23 hours away, leaving an hour for the upload and clock skew.
+LANGSMITH_WINDOW = timedelta(hours=24)
 MAX_CLOCK_DISTANCE = timedelta(hours=23)
 _GATE_FIELDS = ("event_id", "gate_event", "decision", "decision_reason", "argument_hash")
 
@@ -70,12 +79,33 @@ class TraceShapeError(ValueError):
         super().__init__("; ".join(self.errors))
 
 
+class StaleTraceError(RuntimeError):
+    """Runs missing from LangSmith cannot be sent within its start-time window.
+
+    Raised when a trace was partly stored more than a day ago: its stored
+    root fixes the missing runs' start times, and those are now too old.
+    """
+
+    def __init__(self, run_ids: Sequence[UUID]) -> None:
+        self.run_ids = list(run_ids)
+        super().__init__(
+            f"{len(self.run_ids)} missing run(s) would start more than 24 hours from now, "
+            f"anchored to a stored root: {', '.join(map(str, self.run_ids))}"
+        )
+
+
+# Given a trace ID, the IDs and start times of the runs LangSmith holds for it.
+StoredRuns = Callable[[UUID], Mapping[UUID, datetime]]
+
+
 class LangSmithTraceSink:
     """Buffers trace events and feedback and exports them to a LangSmith project on ``flush``.
 
     ``client`` is a ``langsmith.Client``; tests pass one with a fake HTTP
-    session, so no test needs network access. If ``flush`` raises
-    ``TraceShapeError``, nothing is sent and the buffer is kept.
+    session, so no test needs network access. ``stored_runs`` looks up a
+    trace's stored runs; it defaults to a LangSmith query, and tests pass a
+    fake. If ``flush`` raises ``TraceShapeError`` or ``StaleTraceError``,
+    nothing is sent and the buffer is kept.
     """
 
     def __init__(
@@ -83,10 +113,12 @@ class LangSmithTraceSink:
         client: Client,
         project_name: str,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        stored_runs: StoredRuns | None = None,
     ) -> None:
         self._client = client
         self._project_name = project_name
         self._clock = clock
+        self._stored_runs = stored_runs or self._query_stored_runs
         self._events: list[TraceEvent] = []
         self._feedback: list[Feedback] = []
 
@@ -98,7 +130,13 @@ class LangSmithTraceSink:
 
     def flush(self) -> None:
         _check_shape(self._events, self._feedback)
-        runs = to_runs(self._events, self._project_name, now=self._clock())
+        now = self._clock()
+        anchors, stored = self._stored_state(now)
+        runs = to_runs(self._events, self._project_name, now=now, anchors=anchors)
+        runs = [run for run in runs if run["id"] not in stored]
+        late = [run["id"] for run in runs if abs(run["start_time"] - now) > LANGSMITH_WINDOW]
+        if late:
+            raise StaleTraceError(late)
         for run in runs:
             self._client.create_run(**run)
         self._client.flush()
@@ -110,6 +148,40 @@ class LangSmithTraceSink:
         self._events.clear()
         self._feedback.clear()
 
+    def _stored_state(self, now: datetime) -> tuple[dict[UUID, datetime], set[UUID]]:
+        """For each trace that needs a shift, its stored root's start time and stored runs.
+
+        A trace within the window needs no lookup: its times are sent as
+        recorded, and LangSmith ignores runs it already holds.
+        """
+        anchors: dict[UUID, datetime] = {}
+        stored: set[UUID] = set()
+        for root in self._events:
+            if root.event_type is not EventType.CONVERSATION:
+                continue
+            if not _shift(root.timestamp, now):
+                continue
+            found = self._stored_runs(root.run_id)
+            stored.update(found)
+            if root.run_id in found:
+                anchors[root.run_id] = found[root.run_id]
+        return anchors, stored
+
+    def _query_stored_runs(self, trace_id: UUID) -> dict[UUID, datetime]:
+        """Query LangSmith for a trace's runs (the SDK's runs API is async-only)."""
+        project_id = str(self._project_id())
+
+        async def query() -> dict[UUID, datetime]:
+            runs = self._client.runs.query_v2(
+                project_ids=[project_id],
+                trace_id=str(trace_id),
+                selects=["id", "start_time"],
+                page_size=100,
+            )
+            return {UUID(str(run.id)): run.start_time async for run in runs}
+
+        return asyncio.run(query())
+
     def _project_id(self) -> Any:
         """The project's ID, which LangSmith needs to find a run for feedback."""
         try:
@@ -119,14 +191,18 @@ class LangSmithTraceSink:
 
 
 def to_runs(
-    events: Sequence[TraceEvent], project_name: str, now: datetime | None = None
+    events: Sequence[TraceEvent],
+    project_name: str,
+    now: datetime | None = None,
+    anchors: Mapping[UUID, datetime] | None = None,
 ) -> list[dict[str, Any]]:
     """Return ``Client.create_run`` keyword arguments for ``events``, roots first.
 
     With ``now``, a trace whose root starts more than ``MAX_CLOCK_DISTANCE``
-    from it is shifted to start at ``now``. Raises ``TraceShapeError`` if the
-    events fail ``link_errors()`` or a conversation lacks well-formed
-    top-level ``messages``.
+    from it is shifted to start at ``now``, or at its root's entry in
+    ``anchors`` (the start time LangSmith already holds for it). Raises
+    ``TraceShapeError`` if the events fail ``link_errors()`` or a
+    conversation lacks well-formed top-level ``messages``.
     """
     _check_shape(events, ())
 
@@ -139,7 +215,10 @@ def to_runs(
     runs = []
     for span in parent_first(events):
         root = roots[span.parent_run_id] if span.parent_run_id else span
-        shift = _shift(root.timestamp, now)
+        if anchors and root.run_id in anchors:
+            shift = anchors[root.run_id] - root.timestamp
+        else:
+            shift = _shift(root.timestamp, now)
         runs.append(_run(span, root, gates.get(span.run_id, []), project_name, shift))
     return runs
 
@@ -177,12 +256,23 @@ def to_feedback(events: Sequence[TraceEvent], feedback: Sequence[Feedback]) -> l
     ]
 
 
-def _check_shape(events: Sequence[TraceEvent], feedback: Sequence[Feedback]) -> None:
+def shape_errors(events: Sequence[TraceEvent], feedback: Sequence[Feedback]) -> list[str]:
+    """Every reason ``flush`` would refuse these events and feedback, checked offline.
+
+    ``link_errors()`` and ``feedback_errors()``, plus the lab's rule that a
+    conversation's top-level ``messages`` follow the OpenAI chat format that
+    LangSmith thread evaluators read. LangSmith itself accepts any JSON
+    content; the format rule is ours.
+    """
     errors = link_errors(events) + feedback_errors(events, feedback)
     for event in events:
         if event.event_type is EventType.CONVERSATION:
             errors += [f"{event.event_id}: {e}" for e in _conversation_errors(event)]
-    if errors:
+    return errors
+
+
+def _check_shape(events: Sequence[TraceEvent], feedback: Sequence[Feedback]) -> None:
+    if errors := shape_errors(events, feedback):
         raise TraceShapeError(errors)
 
 

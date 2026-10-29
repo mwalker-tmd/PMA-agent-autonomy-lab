@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from agent_autonomy_lab.entrypoints.export_simulation import main
@@ -33,3 +35,25 @@ def test_invalid_options_are_rejected(bad):
     args = dict(zip(ARGS[::2], ARGS[1::2], strict=True)) | dict([bad])
     with pytest.raises(SystemExit):
         main([str(SAMPLE_RUN), *[part for item in args.items() for part in item], "--dry-run"])
+
+
+def test_dry_run_applies_the_sink_message_checks(capsys, monkeypatch, tmp_path):
+    data = json.loads(SAMPLE_RUN.read_text())
+    data["simulations"][0]["messages"][1]["content"] = None  # a user message needs content
+    path = tmp_path / "results.json"
+    path.write_text(json.dumps(data))
+    assert main([str(path), *ARGS, "--dry-run"]) == 1
+    assert "a user message needs content" in capsys.readouterr().err
+
+
+def test_too_short_simulation_is_reported_as_skipped(capsys, tmp_path):
+    data = json.loads(SAMPLE_RUN.read_text())
+    short = dict(
+        data["simulations"][0], id="short-sim", messages=data["simulations"][0]["messages"][:1]
+    )
+    data["simulations"].append(short)
+    path = tmp_path / "results.json"
+    path.write_text(json.dumps(data))
+    assert main([str(path), *ARGS, "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "skipped: 1 message(s); a conversation needs 2" in out

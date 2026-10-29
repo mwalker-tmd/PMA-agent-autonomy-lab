@@ -20,7 +20,12 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from langsmith import Client
 
-from agent_autonomy_lab.adapters.langsmith import LangSmithTraceSink
+from agent_autonomy_lab.adapters.langsmith import (
+    LangSmithTraceSink,
+    StaleTraceError,
+    TraceShapeError,
+    shape_errors,
+)
 from agent_autonomy_lab.adapters.tau2 import read_results, results_path
 from agent_autonomy_lab.application.export_simulation import export_run
 from agent_autonomy_lab.domain.events import ExperimentClass
@@ -75,8 +80,13 @@ def main(argv: list[str] | None = None) -> int:
     else:
         # Synchronous sends, so a run LangSmith rejects raises instead of only being logged.
         sink = LangSmithTraceSink(Client(auto_batch_tracing=False), project)
-    exported = export_run(run, sink, args.experiment_class)
-    if isinstance(sink, InMemoryTraceSink) and (errors := sink.link_errors()):
+    try:
+        exported = export_run(run, sink, args.experiment_class)
+    except (TraceShapeError, StaleTraceError) as error:
+        print(f"nothing sent: {error}", file=sys.stderr)
+        return 1
+    # The dry run applies the checks the LangSmith sink applies before sending.
+    if isinstance(sink, InMemoryTraceSink) and (errors := shape_errors(sink.events, sink.feedback)):
         print("\n".join(errors), file=sys.stderr)
         return 1
 
@@ -87,6 +97,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"{item.task_id:<5} {item.simulation_id:<37} {item.thread_id:<37} "
             f"{item.spans:>5}  {item.feedback:>8}"
+            + (f"  skipped: {item.skipped}" if item.skipped else "")
         )
     return 0
 
