@@ -368,3 +368,10 @@ def test_event_with_nested_content_can_be_replaced():
     assert copy.to_dict()["inputs"] == content
     assert copy.to_dict()["outputs"] == content
     assert copy.context.agent_version == "v2"
+
+
+@pytest.mark.parametrize("name", ["inputs", "outputs"])
+@pytest.mark.parametrize("value", [["not", "a mapping"], "text", 3])
+def test_content_must_be_a_mapping(name, value):
+    with pytest.raises(ValueError, match=f"{name} must be a mapping"):
+        make_event(EventType.MODEL_CALL, **{name: value})
