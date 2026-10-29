@@ -9,6 +9,7 @@ from agent_autonomy_lab.domain.events import (
     SCHEMA_VERSION,
     EventType,
     ExperimentClass,
+    Feedback,
     GateDecision,
     GateEventClass,
     Outcome,
@@ -396,3 +397,40 @@ def test_stored_history_can_be_extended_and_recorded_again():
 def test_content_rejects_non_string_keys(name, value):
     with pytest.raises(ValueError, match=f"{name} must be strict JSON data"):
         make_event(EventType.MODEL_CALL, **{name: value})
+
+
+def _feedback(**overrides):
+    fields = {
+        "feedback_id": new_id(),
+        "run_id": new_id(),
+        "context": make_context(),
+        "key": "reward",
+        "score": 1.0,
+    }
+    return Feedback(**(fields | overrides))
+
+
+def test_feedback_copies_its_value_read_only():
+    value = {"reward_breakdown": {"DB": 1.0}}
+    feedback = _feedback(value=value)
+    value["reward_breakdown"]["DB"] = 0.0
+    assert feedback.value["reward_breakdown"]["DB"] == 1.0
+    with pytest.raises(TypeError):
+        feedback.value["reward_breakdown"]["DB"] = 0.0
+
+
+@pytest.mark.parametrize(
+    "overrides, problem",
+    [
+        ({"key": ""}, "key must be a non-empty string"),
+        ({"score": True}, "score must be a number"),
+        ({"score": float("nan")}, "score must be finite"),
+        ({"comment": ""}, "comment must be a non-empty string"),
+        ({"run_id": "not-a-uuid"}, "run_id must be a UUID"),
+        ({"value": {1: "x"}}, "value must be strict JSON"),
+        ({"schema_version": "trace-event/0"}, "unsupported schema_version"),
+    ],
+)
+def test_malformed_feedback_is_rejected(overrides, problem):
+    with pytest.raises(ValueError, match=problem):
+        _feedback(**overrides)

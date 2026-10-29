@@ -7,7 +7,7 @@ so a test double and a real sink accept exactly the same traces.
 from collections import Counter
 from collections.abc import Iterable, Sequence
 
-from agent_autonomy_lab.domain.events.schema import EventType, TraceEvent
+from agent_autonomy_lab.domain.events.schema import EventType, Feedback, TraceEvent
 
 
 def link_errors(events: Sequence[TraceEvent]) -> list[str]:
@@ -52,6 +52,25 @@ def link_errors(events: Sequence[TraceEvent]) -> list[str]:
                 errors.append(f"{event.event_id}: tool_name differs from its tool-call span")
             elif span.context != event.context:
                 errors.append(f"{event.event_id}: tool-call span has a different run context")
+    return errors
+
+
+def feedback_errors(events: Sequence[TraceEvent], feedback: Sequence[Feedback]) -> list[str]:
+    """Describe feedback that does not attach to a recorded span.
+
+    Feedback IDs are unique, and each feedback's ``run_id`` is a recorded
+    span with the same ``RunContext``.
+    """
+    errors = []
+    ids = Counter(f.feedback_id for f in feedback)
+    errors += [f"{feedback_id}: duplicate feedback_id" for feedback_id, n in ids.items() if n > 1]
+    spans = {e.run_id: e for e in events if e.is_span}
+    for item in feedback:
+        span = spans.get(item.run_id)
+        if span is None:
+            errors.append(f"feedback {item.feedback_id}: run {item.run_id} is not a recorded span")
+        elif span.context != item.context:
+            errors.append(f"feedback {item.feedback_id}: span has a different run context")
     return errors
 
 

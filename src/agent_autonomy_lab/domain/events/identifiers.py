@@ -3,9 +3,12 @@
 ``new_id`` returns a time-ordered UUID version 7 (RFC 9562), the form LangSmith
 uses for run IDs, so events sort by creation time. ``stable_id`` returns the
 same UUID version 5 for the same inputs, so re-exporting a saved simulation
-reuses its thread instead of creating a duplicate.
+reuses its thread instead of creating a duplicate. ``stable_time_id`` combines
+the two: a UUID version 7 whose random bits come from its inputs, so an
+exported run keeps the same run ID every time it is exported.
 """
 
+import hashlib
 import json
 import os
 import time
@@ -48,6 +51,16 @@ def stable_id(*parts: str) -> uuid.UUID:
     if not parts or any(not part for part in parts):
         raise ValueError("stable_id needs at least one non-empty part")
     return uuid.uuid5(LAB_NAMESPACE, json.dumps(list(parts), ensure_ascii=False))
+
+
+def stable_time_id(now_ms: int, *parts: str) -> uuid.UUID:
+    """Return a UUID version 7 for ``now_ms`` whose random bits derive from ``parts``.
+
+    Time-ordered like ``new_id`` and repeatable like ``stable_id``: the same
+    time and parts always give the same ID.
+    """
+    digest = hashlib.sha256(stable_id(*parts).bytes).digest()
+    return new_id(now_ms, digest[:10])
 
 
 def thread_id_for(simulation_id: str) -> str:
