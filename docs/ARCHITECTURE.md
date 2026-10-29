@@ -151,7 +151,7 @@ A trace is a tree of **spans** with gate events attached:
 | `tool_call` | yes | the conversation | One tool call and its result, including a call the gate rejected |
 | `gate` | no | none | One gate state transition. Its `run_id` is the `tool_call` span it annotates, so one call's `ATTEMPTED` → `APPROVED` → `EXECUTED` stay separate events |
 
-Spans are recorded when they finish, so a child is usually recorded before its parent; sinks must not require parents first. Each span's `run_id` is unique. `InMemoryTraceSink.link_errors()` checks the links: every parent is a recorded `conversation` span in the same simulation (which also rules out cycles), and every gate event points at a `tool_call` span for the same tool.
+Spans are recorded when they finish, so a child is usually recorded before its parent; sinks must not require parents first. Each span's `run_id` is unique. `InMemoryTraceSink.link_errors()` checks the links: every parent is a recorded `conversation` span in the same simulation and thread (which also rules out cycles), and every gate event points at a `tool_call` span for the same tool, simulation, and thread.
 
 The gate event classes from [AUTONOMY.md](AUTONOMY.md#distinguish-events-and-metrics) are `ATTEMPTED`, `DENIED`, `PENDING_APPROVAL`, `APPROVED`, `EXECUTED`, and `EXECUTION_FAILED`, recorded as separate events so they cannot collapse into a single flag. The schema defines them now; the gate emits them from Milestone 6.
 

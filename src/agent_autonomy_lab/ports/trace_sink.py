@@ -59,8 +59,9 @@ class InMemoryTraceSink:
         """Describe every broken link; an empty list means the trace is well formed.
 
         Checks that each child span's parent is a recorded conversation span
-        in the same simulation, which also rules out cycles, and that each gate
-        event points at a recorded tool-call span for the same tool.
+        in the same simulation and thread, which also rules out cycles, and
+        that each gate event points at a recorded tool-call span for the same
+        tool, simulation, and thread.
         """
         errors = []
         for event in self.events:
@@ -70,14 +71,23 @@ class InMemoryTraceSink:
                     errors.append(f"{event.event_id}: parent {event.parent_run_id} not recorded")
                 elif parent.event_type is not EventType.CONVERSATION:
                     errors.append(f"{event.event_id}: parent is not a conversation span")
-                elif parent.context.simulation_id != event.context.simulation_id:
-                    errors.append(f"{event.event_id}: parent is in another simulation")
+                elif not _same_trace(parent, event):
+                    errors.append(f"{event.event_id}: parent is in another simulation or thread")
             elif event.event_type is EventType.GATE:
                 span = self._spans.get(event.run_id)
                 if span is None or span.event_type is not EventType.TOOL_CALL:
                     errors.append(f"{event.event_id}: run {event.run_id} is not a tool-call span")
                 elif span.tool_name != event.tool_name:
                     errors.append(f"{event.event_id}: tool_name differs from its tool-call span")
-                elif span.context.simulation_id != event.context.simulation_id:
-                    errors.append(f"{event.event_id}: tool-call span is in another simulation")
+                elif not _same_trace(span, event):
+                    errors.append(
+                        f"{event.event_id}: tool-call span is in another simulation or thread"
+                    )
         return errors
+
+
+def _same_trace(a: TraceEvent, b: TraceEvent) -> bool:
+    return (a.context.simulation_id, a.context.thread_id) == (
+        b.context.simulation_id,
+        b.context.thread_id,
+    )

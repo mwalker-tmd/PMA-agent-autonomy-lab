@@ -112,7 +112,7 @@ def test_parent_in_another_simulation_is_reported():
     child = make_event(EventType.MODEL_CALL, make_context("sim-b"), parent_run_id=root.run_id)
     sink.record(root)
     sink.record(child)
-    assert sink.link_errors() == [f"{child.event_id}: parent is in another simulation"]
+    assert sink.link_errors() == [f"{child.event_id}: parent is in another simulation or thread"]
 
 
 def test_gate_event_must_point_at_a_tool_call(context):
@@ -152,4 +152,34 @@ def test_parent_must_be_a_conversation(context):
     assert sink.link_errors() == [
         f"{first.event_id}: parent is not a conversation span",
         f"{second.event_id}: parent is not a conversation span",
+    ]
+
+
+def test_parent_in_another_thread_is_reported():
+    sink = InMemoryTraceSink()
+    root = make_event(EventType.CONVERSATION, make_context("sim-a"))
+    child = make_event(
+        EventType.MODEL_CALL,
+        make_context("sim-a", thread_id="other-thread"),
+        parent_run_id=root.run_id,
+    )
+    sink.record(root)
+    sink.record(child)
+    assert sink.link_errors() == [f"{child.event_id}: parent is in another simulation or thread"]
+
+
+def test_gate_event_in_another_thread_is_reported(context):
+    sink = InMemoryTraceSink()
+    root = make_event(EventType.CONVERSATION, context)
+    tool = make_event(EventType.TOOL_CALL, context, parent_run_id=root.run_id)
+    gate = make_event(
+        EventType.GATE,
+        make_context(thread_id="other-thread"),
+        run_id=tool.run_id,
+        gate_event=GateEventClass.ATTEMPTED,
+    )
+    for event in (root, tool, gate):
+        sink.record(event)
+    assert sink.link_errors() == [
+        f"{gate.event_id}: tool-call span is in another simulation or thread"
     ]
