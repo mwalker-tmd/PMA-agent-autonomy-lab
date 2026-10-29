@@ -221,7 +221,7 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 - [x] **3.3** Trace each customer session, agent turn, model call, tool call/result, exception, and available token/cost/latency data.
 - [x] **3.4** Correlate with stable identifiers: simulation ID, thread/conversation ID, scenario/task ID, turn index, model/prompt/agent version, autonomy level.
 - [ ] **3.5** Ensure top-level LangSmith thread runs contain supported `messages` input/output structures. Where relevant, test visibility of child tool spans separately.
-- [ ] **3.6** Attach `traffic_type=synthetic`; redact secrets; ensure no hidden answer keys appear in agent-visible traces.
+- [x] **3.6** Attach `traffic_type=synthetic`; redact secrets; ensure no hidden answer keys appear in agent-visible traces.
 - [ ] **3.7** Run one known customer task and one failing/exceptional case through the adapter. Compare traced behavior to the τ-bench saved result.
 - [ ] **3.8** Document trace navigation steps and expected trace shape in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - [x] **3.9** Create `pyproject.toml` with `import-linter` contracts that enforce the [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture) dependency rule; build the LangSmith tracing as a `TraceSink` adapter and run `lint-imports` before every pull request.
@@ -495,10 +495,10 @@ All milestones must uphold the following invariants:
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
 - [x] **Milestone 2:** clone τ-bench and execute baseline; record the inspection, task mapping, and extension points (see [docs/BASELINE.md](docs/BASELINE.md)).
-- [ ] **Milestone 3:** trace τ-bench conversations in LangSmith (in progress; saved runs export as LangSmith threads, and live runs are traced through a registered lab agent).
+- [ ] **Milestone 3:** trace τ-bench conversations in LangSmith (in progress; saved runs export as LangSmith threads, live runs are traced through a registered lab agent, and secrets are redacted before anything is sent).
 - [ ] Milestones 4–9: not yet started.
 
-**Next work session:** Continue Milestone 3 with its remaining tickets (#76–#83), which cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 3, including the two re-targeted from Milestone 2.
+**Next work session:** Continue Milestone 3 with its remaining tickets (#77–#83), which cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 3, including the two re-targeted from Milestone 2.
 
 ## 5. Reproducibility template (fill for each experiment)
 
