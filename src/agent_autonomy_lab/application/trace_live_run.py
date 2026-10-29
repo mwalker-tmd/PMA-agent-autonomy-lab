@@ -6,6 +6,11 @@ simulation ID, which τ-bench assigns inside its runner. Once the run returns,
 thread is ``thread_id_for(simulation_id)``, as in the saved-run export, and
 the benchmark reward becomes feedback on the root.
 
+When the run raised, τ-bench returns no simulation and exposes no ID, so
+the caller passes an ``UnfinishedSimulation`` with a lab-assigned
+``unfinished-`` ID instead. The partial conversation is still traced: its
+root is an error span carrying the exception, and there is no reward.
+
 The trace has the export's shape, with three differences: the root and each
 agent turn are timed by the wrapper; each agent ``model_call`` holds the
 messages the turn answered and the model arguments sent, and records an
@@ -27,7 +32,11 @@ from agent_autonomy_lab.application.conversation_trace import (
     split_transcript,
     tool_call_event,
 )
-from agent_autonomy_lab.domain.agent_turns import AgentTurn, LiveRecording
+from agent_autonomy_lab.domain.agent_turns import (
+    AgentTurn,
+    LiveRecording,
+    UnfinishedSimulation,
+)
 from agent_autonomy_lab.domain.events import (
     NO_GATE,
     EventType,
@@ -61,7 +70,7 @@ class LiveTrace:
 
 def live_trace(
     recording: LiveRecording,
-    simulation: SavedSimulation,
+    simulation: SavedSimulation | UnfinishedSimulation,
     user_model_id: str | None = None,
     policy_version: str | None = None,
     experiment_class: ExperimentClass = ExperimentClass.CUSTOM_LAB_EXPERIMENT,
@@ -93,6 +102,7 @@ def live_trace(
     sim_id = simulation.simulation_id
     root_id = stable_time_id(epoch_ms(recording.started_at), "run", sim_id, *LIVE, "conversation")
     inputs, outputs = split_transcript(recording.transcript)
+    unfinished = isinstance(simulation, UnfinishedSimulation)
     root = TraceEvent(
         event_id=stable_id("event", sim_id, *LIVE, "conversation"),
         event_type=EventType.CONVERSATION,
@@ -100,6 +110,9 @@ def live_trace(
         context=context,
         run_id=root_id,
         elapsed_ms=recording.elapsed_ms,
+        outcome=Outcome.ERROR if unfinished else None,
+        error_class=simulation.error_class if unfinished else None,
+        error_message=simulation.error_message if unfinished else None,
         inputs={"messages": [chat_message(m) for m in inputs]},
         outputs={"messages": [chat_message(m) for m in outputs]},
     )
@@ -125,7 +138,7 @@ def live_trace(
 
 def record_live_run(
     recording: LiveRecording,
-    simulation: SavedSimulation,
+    simulation: SavedSimulation | UnfinishedSimulation,
     sink: TraceSink,
     user_model_id: str | None = None,
     policy_version: str | None = None,

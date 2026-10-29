@@ -78,6 +78,31 @@ class LiveRun:
     language_context: Mapping[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class LiveRunFailure:
+    """What is known about a run that raised: τ-bench returned no simulation.
+
+    ``recording`` is ``None`` when the run failed before the agent started.
+    """
+
+    cause: BaseException
+    task_id: str
+    recording: LiveRecording | None
+    reference: AgentFingerprint
+    trial_seed: int
+    policy_version: str
+    agent_name: str
+
+
+class LiveRunFailed(Exception):
+    """``run_single_task`` raised; ``failure`` holds the partial recording."""
+
+    def __init__(self, failure: LiveRunFailure) -> None:
+        cause = failure.cause
+        super().__init__(f"task {failure.task_id}: {type(cause).__name__}: {cause}")
+        self.failure = failure
+
+
 def trial_seed(seed: int, trial: int = 0) -> int:
     """The seed ``tau2 run`` gives trial ``trial`` of a run seeded with ``seed``."""
     rng = random.Random(seed)
@@ -112,13 +137,32 @@ def reference(settings: LiveRunSettings, task: Any, seed: int) -> tuple[AgentFin
 
 
 def run_traced_task(settings: LiveRunSettings, factory: TracedAgentFactory) -> LiveRun:
-    """Run ``settings.task_id`` once through the agent ``factory`` was registered as."""
+    """Run ``settings.task_id`` once through the agent ``factory`` was registered as.
+
+    τ-bench's runner does not catch an exception from the agent, the
+    simulated user, or the model provider; it propagates with no
+    ``SimulationRun``. Raises ``LiveRunFailed`` carrying what the agent
+    recorded until then, so the partial conversation can still be traced.
+    """
     config = settings.config(factory.agent_version)
     (task,) = get_tasks(settings.domain, task_ids=[settings.task_id])
     seed = trial_seed(settings.seed)
     expected, policy = reference(settings, task, seed)
     built = len(factory.recorders)
-    result = run_single_task(config, task, seed=seed)
+    try:
+        result = run_single_task(config, task, seed=seed)
+    except Exception as error:
+        started = [r for r in factory.recorders[built:] if r.started_at is not None]
+        failure = LiveRunFailure(
+            cause=error,
+            task_id=settings.task_id,
+            recording=started[-1].recording() if started else None,
+            reference=expected,
+            trial_seed=seed,
+            policy_version=policy,
+            agent_name=factory.agent_version,
+        )
+        raise LiveRunFailed(failure) from error
     if len(factory.recorders) != built + 1:
         raise RuntimeError(f"expected one traced agent, got {len(factory.recorders) - built}")
     local_tz = datetime.now().astimezone().tzinfo

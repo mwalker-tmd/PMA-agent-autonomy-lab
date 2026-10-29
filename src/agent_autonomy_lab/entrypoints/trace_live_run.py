@@ -12,13 +12,17 @@ run costs money. τ-bench's ``SimulationRun`` and a JSON summary are written to
 ``--dry-run`` runs the task and builds the trace but sends nothing.
 
 The run fails (exit 1) when any agent turn sent a different system prompt,
-tool schemas, or model arguments than upstream's ``llm_agent`` would.
+tool schemas, or model arguments than upstream's ``llm_agent`` would. When
+τ-bench raises mid-run (for example a provider error), it returns no
+simulation and no ID; the partial conversation is traced under a
+lab-assigned ``unfinished-`` ID with an error root, and the run exits 1.
 """
 
 import argparse
 import json
 import os
 import sys
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -27,13 +31,22 @@ from langsmith import Client
 from agent_autonomy_lab.adapters.langsmith import LangSmithTraceSink, TraceShapeError, shape_errors
 from agent_autonomy_lab.adapters.tau2.live_run import (
     LiveRun,
+    LiveRunFailed,
+    LiveRunFailure,
     LiveRunSettings,
     register_traced_agent,
     run_traced_task,
 )
+from agent_autonomy_lab.application.conversation_trace import MIN_MESSAGES
 from agent_autonomy_lab.application.trace_live_run import LiveTrace, record_live_run
-from agent_autonomy_lab.domain.agent_turns import AgentFingerprint
-from agent_autonomy_lab.domain.events import NO_GATE, ExperimentClass, TrafficType
+from agent_autonomy_lab.domain.agent_turns import (
+    UNFINISHED_PREFIX,
+    AgentFingerprint,
+    LiveRecording,
+    UnfinishedSimulation,
+)
+from agent_autonomy_lab.domain.events import NO_GATE, ExperimentClass, TrafficType, new_id
+from agent_autonomy_lab.domain.simulations import SavedSimulation
 from agent_autonomy_lab.entrypoints.settings import langsmith_project
 from agent_autonomy_lab.ports.trace_sink import InMemoryTraceSink, TraceSink
 
@@ -70,17 +83,22 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _summary(live: LiveRun, trace: LiveTrace, project: str, dry_run: bool) -> dict:
-    recording = live.recording
+def _summary(
+    recording: LiveRecording,
+    reference: AgentFingerprint,
+    agent_name: str,
+    trace: LiveTrace,
+    project: str,
+    dry_run: bool,
+) -> dict:
+    """Summary fields shared by finished and unfinished runs."""
     turns = recording.turns
     mismatched = {
         str(turn.turn_index): diff
         for turn in turns
-        if (diff := turn.fingerprint.differences(live.reference))
+        if (diff := turn.fingerprint.differences(reference))
     }
-    simulation = live.simulation
     agent_call_ms = sum(turn.elapsed_ms for turn in turns)
-    language = live.language_context
     return {
         "recorded_at_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "langsmith_project": project,
@@ -89,28 +107,14 @@ def _summary(live: LiveRun, trace: LiveTrace, project: str, dry_run: bool) -> di
             "experiment_class": ExperimentClass.CUSTOM_LAB_EXPERIMENT.value,
             "traffic_type": TrafficType.SYNTHETIC.value,
             "autonomy_level": NO_GATE,
-            "agent_version": live.agent_name,
+            "agent_version": agent_name,
         },
-        "simulation_id": simulation.simulation_id,
+        "simulation_id": trace.simulation_id,
         "thread_id": trace.thread_id,
         "root_run_id": str(trace.root_run_id),
-        "task_id": simulation.task_id,
-        "task_sha256": language.get("task_sha256"),
-        "persona_id": (language.get("persona") or {}).get("persona_id"),
-        "trial_seed": live.trial_seed,
-        "policy_version": live.policy_version,
-        "termination_reason": simulation.termination_reason,
-        "reward": simulation.reward.reward if simulation.reward else None,
-        "reward_breakdown": dict(simulation.reward.breakdown) if simulation.reward else None,
-        "messages": {
-            "simulation": len(simulation.messages),
-            "recorded": len(recording.transcript),
-            "match": [(m.role, m.content) for m in simulation.messages]
-            == [(m.role, m.content) for m in recording.transcript],
-        },
         "trace": {"spans": trace.spans, "feedback": trace.feedback, "agent_turns": len(turns)},
         "fingerprint": {
-            "reference_llm_agent": _fingerprint(live.reference),
+            "reference_llm_agent": _fingerprint(reference),
             "traced_agent_turns": len(turns),
             "mismatched_turns": mismatched,
             "match": bool(turns) and not mismatched,
@@ -119,11 +123,38 @@ def _summary(live: LiveRun, trace: LiveTrace, project: str, dry_run: bool) -> di
             "simulation_wall_ms": round(recording.elapsed_ms, 1),
             "agent_calls_ms": round(agent_call_ms, 1),
             "in_loop_recording_ms": round(recording.overhead_ms, 3),
-            "in_loop_share_of_wall": round(recording.overhead_ms / recording.elapsed_ms, 6),
+            "in_loop_share_of_wall": round(recording.overhead_ms / recording.elapsed_ms, 6)
+            if recording.elapsed_ms
+            else None,
             "post_run_build_ms": round(trace.build_ms, 3),
             "post_run_flush_ms": round(trace.flush_ms, 1),
         },
     }
+
+
+def _finished_summary(live: LiveRun, trace: LiveTrace, project: str, dry_run: bool) -> dict:
+    simulation, recording = live.simulation, live.recording
+    language = live.language_context
+    summary = _summary(recording, live.reference, live.agent_name, trace, project, dry_run)
+    summary.update(
+        {
+            "task_id": simulation.task_id,
+            "task_sha256": language.get("task_sha256"),
+            "persona_id": (language.get("persona") or {}).get("persona_id"),
+            "trial_seed": live.trial_seed,
+            "policy_version": live.policy_version,
+            "termination_reason": simulation.termination_reason,
+            "reward": simulation.reward.reward if simulation.reward else None,
+            "reward_breakdown": dict(simulation.reward.breakdown) if simulation.reward else None,
+            "messages": {
+                "simulation": len(simulation.messages),
+                "recorded": len(recording.transcript),
+                "match": [(m.role, m.content) for m in simulation.messages]
+                == [(m.role, m.content) for m in recording.transcript],
+            },
+        }
+    )
+    return summary
 
 
 def _fingerprint(sent: AgentFingerprint) -> dict:
@@ -134,6 +165,82 @@ def _fingerprint(sent: AgentFingerprint) -> dict:
         "model_args_version": sent.model_args_version,
         "model_args": dict(sent.model_args),
     }
+
+
+def _sink(dry_run: bool, project: str) -> TraceSink:
+    if dry_run:
+        return InMemoryTraceSink()
+    # Synchronous sends, so a run LangSmith rejects raises instead of only being logged.
+    return LangSmithTraceSink(Client(auto_batch_tracing=False), project)
+
+
+def _record(
+    recording: LiveRecording,
+    simulation: SavedSimulation | UnfinishedSimulation,
+    sink: TraceSink,
+    user_model_id: str,
+    policy_version: str,
+) -> LiveTrace | None:
+    """Record and send the trace; print why and return ``None`` if it is refused."""
+    try:
+        trace = record_live_run(recording, simulation, sink, user_model_id, policy_version)
+    except TraceShapeError as error:
+        print(f"nothing sent: {error}", file=sys.stderr)
+        return None
+    if isinstance(sink, InMemoryTraceSink) and (errors := shape_errors(sink.events, sink.feedback)):
+        print("\n".join(errors), file=sys.stderr)
+        return None
+    return trace
+
+
+def _write_summary(out_dir: Path, summary: dict) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    print(json.dumps(summary, indent=2))
+    print(f"saved:    {out_dir}")
+
+
+def _trace_failure(
+    failure: LiveRunFailure, args: argparse.Namespace, project: str, out_dir: Path
+) -> int:
+    """Trace what the agent recorded before the run raised, then report the exception."""
+    cause = failure.cause
+    traceback.print_exception(cause, file=sys.stderr)
+    recording = failure.recording
+    if recording is None or len(recording.transcript) < MIN_MESSAGES:
+        print("the run failed before a conversation formed; nothing to trace", file=sys.stderr)
+        return 1
+    unfinished = UnfinishedSimulation(
+        simulation_id=f"{UNFINISHED_PREFIX}{new_id()}",
+        task_id=failure.task_id,
+        error_class=type(cause).__name__,
+        error_message=str(cause) or None,
+    )
+    trace = _record(
+        recording, unfinished, _sink(args.dry_run, project), args.user_llm, failure.policy_version
+    )
+    if trace is None:
+        return 1
+    summary = _summary(
+        recording, failure.reference, failure.agent_name, trace, project, args.dry_run
+    )
+    summary.update(
+        {
+            "task_id": failure.task_id,
+            "trial_seed": failure.trial_seed,
+            "policy_version": failure.policy_version,
+            "unfinished": {
+                "error_class": unfinished.error_class,
+                "error_message": unfinished.error_message,
+            },
+            "messages": {"recorded": len(recording.transcript)},
+        }
+    )
+    _write_summary(out_dir, summary)
+    print(
+        f"the run raised {unfinished.error_class}; its partial thread was traced", file=sys.stderr
+    )
+    return 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -159,31 +266,24 @@ def main(argv: list[str] | None = None) -> int:
         seed=args.seed,
     )
     project = langsmith_project()
-    live = run_traced_task(settings, register_traced_agent())
+    try:
+        live = run_traced_task(settings, register_traced_agent())
+    except LiveRunFailed as failed:
+        return _trace_failure(failed.failure, args, project, out_dir)
     out_dir.mkdir(parents=True)
     (out_dir / "simulation.json").write_text(live.simulation_json, encoding="utf-8")
 
-    sink: TraceSink
-    if args.dry_run:
-        sink = InMemoryTraceSink()
-    else:
-        # Synchronous sends, so a run LangSmith rejects raises instead of only being logged.
-        sink = LangSmithTraceSink(Client(auto_batch_tracing=False), project)
-    try:
-        trace = record_live_run(
-            live.recording, live.simulation, sink, args.user_llm, live.policy_version
-        )
-    except TraceShapeError as error:
-        print(f"nothing sent: {error}", file=sys.stderr)
+    trace = _record(
+        live.recording,
+        live.simulation,
+        _sink(args.dry_run, project),
+        args.user_llm,
+        live.policy_version,
+    )
+    if trace is None:
         return 1
-    if isinstance(sink, InMemoryTraceSink) and (errors := shape_errors(sink.events, sink.feedback)):
-        print("\n".join(errors), file=sys.stderr)
-        return 1
-
-    summary = _summary(live, trace, project, args.dry_run)
-    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    print(json.dumps(summary, indent=2))
-    print(f"saved:    {out_dir}")
+    summary = _finished_summary(live, trace, project, args.dry_run)
+    _write_summary(out_dir, summary)
     if not summary["fingerprint"]["match"]:
         print("the traced agent did not send what llm_agent sends", file=sys.stderr)
         return 1
