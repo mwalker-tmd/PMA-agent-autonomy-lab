@@ -30,15 +30,33 @@
    "user_scenario": {
     "instructions": {
      "reason_for_call": "HIDDEN-INSTRUCTIONS-SENTINEL",
-     "known_info": "",
-     "unknown_info": "",
-     "task_instructions": ""
+     "known_info": "HIDDEN-KNOWN-INFO-SENTINEL",
+     "unknown_info": "HIDDEN-UNKNOWN-INFO-SENTINEL",
+     "task_instructions": "HIDDEN-TASK-INSTRUCTIONS-SENTINEL"
     }
    },
    "evaluation_criteria": {
-    "actions": [],
+    "actions": [
+     {
+      "action_id": "0_0",
+      "requestor": "assistant",
+      "name": "get_order_details",
+      "arguments": {
+       "order_id": "#W0000001"
+      }
+     },
+     {
+      "action_id": "0_1",
+      "requestor": "assistant",
+      "name": "cancel_pending_order",
+      "arguments": {
+       "order_id": "#W0000001",
+       "reason": "REFERENCE-ACTION-SENTINEL"
+      }
+     }
+    ],
     "nl_assertions": [
-     "Agent should say the order was not found"
+     "NL-ASSERTION-SENTINEL: Agent should say the order was not found"
     ],
     "reward_basis": [
      "DB",
@@ -210,11 +228,25 @@
       "action_match": true,
       "action_reward": 1.0,
       "tool_type": "read"
+     },
+     {
+      "action": {
+       "action_id": "0_1",
+       "requestor": "assistant",
+       "name": "cancel_pending_order",
+       "arguments": {
+        "order_id": "#W0000001",
+        "reason": "REFERENCE-ACTION-SENTINEL"
+       }
+      },
+      "action_match": false,
+      "action_reward": 0.0,
+      "tool_type": "write"
      }
     ],
     "nl_assertions": [
      {
-      "nl_assertion": "Agent should say the order was not found",
+      "nl_assertion": "NL-ASSERTION-SENTINEL: Agent should say the order was not found",
       "met": false,
       "justification": "Synthetic fixture."
      }
