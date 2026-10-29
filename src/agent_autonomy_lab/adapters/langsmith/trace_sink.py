@@ -10,8 +10,9 @@ event's identifier fields, and LangSmith groups runs into a thread by the
 
 Events and feedback are buffered and exported at ``flush``, after the same
 trace-shape checks ``InMemoryTraceSink.link_errors()`` runs, so a malformed
-trace is rejected whole instead of reaching LangSmith in pieces. Span content
-is exported as recorded; redaction is added in M3-06 (#76).
+trace is rejected whole instead of reaching LangSmith in pieces. Secrets are
+removed from every run and feedback item as it is sent (``redaction``): span
+content, metadata, errors, gate events, and feedback values and comments.
 
 LangSmith rejects a run whose start time is more than 24 hours from now. A
 trace recorded earlier, such as a saved simulation exported later, is shifted
@@ -40,6 +41,7 @@ from uuid import UUID
 from langsmith import Client
 from langsmith.utils import LangSmithNotFoundError
 
+from agent_autonomy_lab.adapters.langsmith.redaction import Redactor
 from agent_autonomy_lab.domain.events import (
     EventType,
     Feedback,
@@ -104,8 +106,10 @@ class LangSmithTraceSink:
     ``client`` is a ``langsmith.Client``; tests pass one with a fake HTTP
     session, so no test needs network access. ``stored_runs`` looks up a
     trace's stored runs; it defaults to a LangSmith query, and tests pass a
-    fake. If ``flush`` raises ``TraceShapeError`` or ``StaleTraceError``,
-    nothing is sent and the buffer is kept.
+    fake. ``redactor`` removes secrets before anything is sent; it defaults
+    to ``Redactor.from_environment()``. If ``flush`` raises
+    ``TraceShapeError`` or ``StaleTraceError``, nothing is sent and the
+    buffer is kept.
     """
 
     def __init__(
@@ -114,11 +118,13 @@ class LangSmithTraceSink:
         project_name: str,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         stored_runs: StoredRuns | None = None,
+        redactor: Redactor | None = None,
     ) -> None:
         self._client = client
         self._project_name = project_name
         self._clock = clock
         self._stored_runs = stored_runs or self._query_stored_runs
+        self._redact = redactor or Redactor.from_environment()
         self._events: list[TraceEvent] = []
         self._feedback: list[Feedback] = []
 
@@ -138,12 +144,14 @@ class LangSmithTraceSink:
         if late:
             raise StaleTraceError(late)
         for run in runs:
-            self._client.create_run(**run)
+            self._client.create_run(**redact_run(run, self._redact))
         self._client.flush()
         if self._feedback:
             project_id = self._project_id()
             for item in to_feedback(self._events, self._feedback):
-                self._client.create_feedback(**item, session_id=project_id)
+                self._client.create_feedback(
+                    **redact_feedback(item, self._redact), session_id=project_id
+                )
             self._client.flush()
         self._events.clear()
         self._feedback.clear()
@@ -221,6 +229,21 @@ def to_runs(
             shift = _shift(root.timestamp, now)
         runs.append(_run(span, root, gates.get(span.run_id, []), project_name, shift))
     return runs
+
+
+# ``create_run`` and ``create_feedback`` arguments that can carry recorded text.
+_RUN_CONTENT = ("inputs", "outputs", "extra", "error", "events")
+_FEEDBACK_CONTENT = ("value", "comment")
+
+
+def redact_run(run: Mapping[str, Any], redactor: Redactor) -> dict[str, Any]:
+    """A copy of ``create_run`` arguments with secrets removed from their content."""
+    return {k: redactor(v) if k in _RUN_CONTENT else v for k, v in run.items()}
+
+
+def redact_feedback(item: Mapping[str, Any], redactor: Redactor) -> dict[str, Any]:
+    """A copy of ``create_feedback`` arguments with secrets removed from their content."""
+    return {k: redactor(v) if k in _FEEDBACK_CONTENT else v for k, v in item.items()}
 
 
 def _shift(root_start: datetime, now: datetime | None) -> timedelta:

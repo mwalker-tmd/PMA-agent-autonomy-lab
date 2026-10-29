@@ -6,8 +6,9 @@ Run with: uv run --env-file .env python -m agent_autonomy_lab.entrypoints.smoke_
 import os
 import sys
 
-from langsmith import Client, get_current_run_tree, traceable, tracing_context
+from langsmith import get_current_run_tree, traceable, tracing_context
 
+from agent_autonomy_lab.adapters.langsmith import langsmith_client
 from agent_autonomy_lab.entrypoints.settings import langsmith_project
 
 
@@ -22,7 +23,7 @@ def main() -> int:
         print("LANGSMITH_API_KEY is not set; copy .env.example to .env.", file=sys.stderr)
         return 1
     project = langsmith_project()
-    client = Client()
+    client = langsmith_client()
     with tracing_context(
         enabled=True,
         project_name=project,

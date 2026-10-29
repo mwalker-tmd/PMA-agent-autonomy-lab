@@ -26,9 +26,12 @@ import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
-from langsmith import Client
-
-from agent_autonomy_lab.adapters.langsmith import LangSmithTraceSink, TraceShapeError, shape_errors
+from agent_autonomy_lab.adapters.langsmith import (
+    LangSmithTraceSink,
+    TraceShapeError,
+    langsmith_client,
+    shape_errors,
+)
 from agent_autonomy_lab.adapters.tau2.live_run import (
     LiveRun,
     LiveRunFailed,
@@ -171,7 +174,7 @@ def _sink(dry_run: bool, project: str) -> TraceSink:
     if dry_run:
         return InMemoryTraceSink()
     # Synchronous sends, so a run LangSmith rejects raises instead of only being logged.
-    return LangSmithTraceSink(Client(auto_batch_tracing=False), project)
+    return LangSmithTraceSink(langsmith_client(auto_batch_tracing=False), project)
 
 
 def _record(
