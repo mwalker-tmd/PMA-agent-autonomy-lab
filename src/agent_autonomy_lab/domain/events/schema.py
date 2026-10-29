@@ -9,13 +9,13 @@ annotate the tool-call span named by their ``run_id``, so one call's
 Fields shared by every event of a simulation live in ``RunContext``.
 """
 
-import copy
 import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Any, Literal
 from uuid import UUID
 
@@ -84,14 +84,36 @@ class ExperimentClass(StrEnum):
     CUSTOM_LAB_EXPERIMENT = "custom_lab_experiment"
 
 
-def _snapshot(name: str, content: Mapping[str, Any] | None) -> dict[str, Any] | None:
-    """Return a detached, JSON-only copy of span content, or raise ``ValueError``."""
+def _freeze(value: Any) -> Any:
+    """Make JSON data read-only: objects become mapping proxies, arrays tuples."""
+    if isinstance(value, dict):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def _thaw(value: Any) -> Any:
+    """Return a new, mutable copy of data made by ``_freeze``."""
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    return value
+
+
+def _snapshot(name: str, content: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    """Return a detached, read-only, JSON-only copy of span content.
+
+    Raises ``ValueError`` for content that is not strict JSON.
+    """
     if content is None:
         return None
     try:
-        return json.loads(json.dumps(dict(content), allow_nan=False))
+        detached = json.loads(json.dumps(dict(content), allow_nan=False))
     except (TypeError, ValueError) as error:
         raise ValueError(f"{name} must be JSON-serializable without NaN or infinity") from error
+    return _freeze(detached)
 
 
 def _require_str(obj: object, names: tuple[str, ...], *, required: bool) -> None:
@@ -196,8 +218,10 @@ class TraceEvent:
     """One versioned trace event.
 
     ``inputs`` and ``outputs`` carry span content (messages, tool arguments and
-    results) for the trace backend. They are copied at construction, so later
-    changes to the caller's objects do not alter a recorded event. They are not
+    results) for the trace backend. They are copied at construction into
+    read-only mappings and tuples, so neither the caller's objects nor code
+    holding the event can change a recorded span; ``to_dict()`` returns plain,
+    mutable copies. They are not
     part of the identifier contract, and adapters redact them before export.
     """
 
@@ -326,6 +350,6 @@ class TraceEvent:
             "prompt_tokens": self.tokens.prompt_tokens if self.tokens else None,
             "completion_tokens": self.tokens.completion_tokens if self.tokens else None,
             "cost": self.cost,
-            "inputs": copy.deepcopy(self.inputs),
-            "outputs": copy.deepcopy(self.outputs),
+            "inputs": _thaw(self.inputs),
+            "outputs": _thaw(self.outputs),
         }

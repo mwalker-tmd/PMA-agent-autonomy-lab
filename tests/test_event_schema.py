@@ -255,14 +255,25 @@ def test_content_is_snapshotted_at_construction():
     event = make_event(EventType.MODEL_CALL, inputs={"messages": history})
     history.append({"role": "assistant", "content": "Hello"})
     history[0]["content"] = "changed"
-    assert event.inputs == {"messages": [{"role": "user", "content": "Hi"}]}
+    assert event.to_dict()["inputs"] == {"messages": [{"role": "user", "content": "Hi"}]}
+
+
+def test_stored_content_is_read_only():
+    event = make_event(EventType.MODEL_CALL, inputs={"messages": [{"role": "user"}]})
+    with pytest.raises(TypeError):
+        event.inputs["extra"] = float("nan")  # type: ignore[index]
+    with pytest.raises(TypeError):
+        event.inputs["messages"][0]["role"] = "assistant"  # type: ignore[index]
+    with pytest.raises(AttributeError):
+        event.inputs["messages"].append({})  # type: ignore[union-attr]
+    json.dumps(event.to_dict(), allow_nan=False)
 
 
 def test_exported_content_is_detached():
     event = make_event(EventType.MODEL_CALL, outputs={"messages": [{"content": "secret"}]})
     record = event.to_dict()
     record["outputs"]["messages"][0]["content"] = "[redacted]"
-    assert event.outputs == {"messages": [{"content": "secret"}]}
+    assert event.to_dict()["outputs"] == {"messages": [{"content": "secret"}]}
 
 
 @pytest.mark.parametrize("content", [{"when": object()}, {"score": float("nan")}])
