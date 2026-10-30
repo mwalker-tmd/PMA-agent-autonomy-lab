@@ -110,6 +110,28 @@ class LiveRecording:
         return prints.pop() if len(prints) == 1 else None
 
 
+INJECTED_FAULT = "injected_fault"
+
+
+@dataclass(frozen=True)
+class InjectedFault:
+    """A tool call the lab failed on purpose (``adapters/tau2/fault_injection.py``).
+
+    τ-bench records only ``error: true`` on a tool result, so this record is
+    what classifies the failure: the trace gives the tool span answering
+    ``call_id`` this ``error_class``.
+    """
+
+    call_id: str
+    tool_name: str
+    arguments: Mapping[str, Any]
+    error_class: str
+    error_message: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "arguments", json_data(self.arguments))
+
+
 UNFINISHED_PREFIX = "unfinished-"
 
 

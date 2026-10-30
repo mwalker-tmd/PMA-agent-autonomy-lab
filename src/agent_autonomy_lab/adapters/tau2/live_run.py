@@ -11,6 +11,10 @@ config is built from explicit settings because τ-bench's defaults
 ``trial_seed`` repeats that for trial 0 and the live run gets the baseline's
 per-simulation seed.
 
+A run with a ``OneShotToolFault`` goes through ``build_text_orchestrator`` and
+``run_simulation``, the two public layers ``run_single_task`` is built on,
+because only there can the run's own environment be reached before it starts.
+
 A run reads its final database hash from the live environment the agent's
 tools acted on, after the conversation and before anything else touches it;
 the evaluator's own replays use fresh environments.
@@ -24,15 +28,16 @@ from typing import Any
 
 from tau2.data_model.simulation import TextRunConfig
 from tau2.registry import registry
-from tau2.runner import build_text_orchestrator, get_tasks, run_single_task
+from tau2.runner import build_text_orchestrator, get_tasks, run_simulation, run_single_task
 
+from agent_autonomy_lab.adapters.tau2.fault_injection import OneShotToolFault
 from agent_autonomy_lab.adapters.tau2.results_reader import simulation_from_dict
 from agent_autonomy_lab.adapters.tau2.traced_agent import (
     TracedAgentFactory,
     UntracedAgentFactory,
     fingerprint,
 )
-from agent_autonomy_lab.domain.agent_turns import AgentFingerprint, LiveRecording
+from agent_autonomy_lab.domain.agent_turns import AgentFingerprint, InjectedFault, LiveRecording
 from agent_autonomy_lab.domain.events import policy_version
 from agent_autonomy_lab.domain.simulations import SavedSimulation
 
@@ -86,6 +91,7 @@ class LiveRun:
     simulation_json: str
     language_context: Mapping[str, Any] = field(default_factory=dict)
     final_db_hash: str | None = None
+    fault: InjectedFault | None = None
 
 
 @dataclass(frozen=True)
@@ -113,6 +119,7 @@ class LiveRunFailure:
     trial_seed: int
     policy_version: str
     agent_name: str
+    fault: InjectedFault | None = None
 
 
 class LiveRunFailed(Exception):
@@ -196,8 +203,21 @@ def reference(settings: LiveRunSettings, task: Any, seed: int) -> tuple[AgentFin
     return sent, policy_version(orchestrator.environment.get_policy())
 
 
-def run_traced_task(settings: LiveRunSettings, factory: TracedAgentFactory) -> LiveRun:
+def _execute(config: TextRunConfig, task: Any, seed: int, fault: OneShotToolFault | None) -> Any:
+    """Run the simulation, through ``fault``'s wrapper when there is one."""
+    if fault is None:
+        return run_single_task(config, task, seed=seed)
+    orchestrator = build_text_orchestrator(config, task, seed=seed)
+    fault.install(orchestrator.environment)
+    return run_simulation(orchestrator)
+
+
+def run_traced_task(
+    settings: LiveRunSettings, factory: TracedAgentFactory, fault: OneShotToolFault | None = None
+) -> LiveRun:
     """Run ``settings.task_id`` once through the agent ``factory`` was registered as.
+
+    ``fault``, if given, fails one read tool's first call in this run only.
 
     τ-bench's runner does not catch an exception from the agent, the
     simulated user, or the model provider; it propagates with no
@@ -210,7 +230,7 @@ def run_traced_task(settings: LiveRunSettings, factory: TracedAgentFactory) -> L
     expected, policy = reference(settings, task, seed)
     built = len(factory.recorders)
     try:
-        result = run_single_task(config, task, seed=seed)
+        result = _execute(config, task, seed, fault)
     except Exception as error:
         started = [r for r in factory.recorders[built:] if r.started_at is not None]
         failure = LiveRunFailure(
@@ -221,6 +241,7 @@ def run_traced_task(settings: LiveRunSettings, factory: TracedAgentFactory) -> L
             trial_seed=seed,
             policy_version=policy,
             agent_name=factory.agent_version,
+            fault=fault.injected if fault else None,
         )
         raise LiveRunFailed(failure) from error
     if len(factory.recorders) != built + 1:
@@ -238,4 +259,5 @@ def run_traced_task(settings: LiveRunSettings, factory: TracedAgentFactory) -> L
         simulation_json=result.model_dump_json(indent=2),
         language_context=data.get("language_context") or {},
         final_db_hash=toolkit.get_db_hash() if toolkit is not None else None,
+        fault=fault.injected if fault else None,
     )

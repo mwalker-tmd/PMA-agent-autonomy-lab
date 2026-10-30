@@ -25,6 +25,12 @@ request that differs from the recording fails the run, and nothing is
 traced; so does a cassette left with unserved responses. A finished run
 whose live database can be read (any retail run) also writes
 ``outcome.json`` for ``compare_outcomes``.
+
+``--inject-fault TOOL`` fails the first call to one read tool in this live
+run and passes every later call through (docs/ARCHITECTURE.md, "Injecting a
+tool failure"). The run is labeled ``fault_injected``. If the agent never
+calls the tool, nothing was injected: nothing is traced and the run exits 1.
+It cannot be combined with ``--replay``.
 """
 
 import argparse
@@ -48,6 +54,7 @@ from agent_autonomy_lab.adapters.litellm import (
     file_sha256,
     replaying,
 )
+from agent_autonomy_lab.adapters.tau2.fault_injection import OneShotToolFault
 from agent_autonomy_lab.adapters.tau2.live_run import (
     LiveRun,
     LiveRunFailed,
@@ -60,6 +67,7 @@ from agent_autonomy_lab.application.trace_live_run import LiveTrace, record_live
 from agent_autonomy_lab.domain.agent_turns import (
     UNFINISHED_PREFIX,
     AgentFingerprint,
+    InjectedFault,
     LiveRecording,
     UnfinishedSimulation,
 )
@@ -95,6 +103,12 @@ def _parser() -> argparse.ArgumentParser:
         metavar="CASSETTE",
         help="serve model responses from this cassette instead of calling the models",
     )
+    parser.add_argument(
+        "--inject-fault",
+        default=None,
+        metavar="TOOL",
+        help="fail the first call to this read tool, once, and label the run fault_injected",
+    )
     return parser
 
 
@@ -105,6 +119,7 @@ def _summary(
     trace: LiveTrace,
     project: str,
     dry_run: bool,
+    fault: InjectedFault | None = None,
 ) -> dict:
     """Summary fields shared by finished and unfinished runs."""
     turns = recording.turns
@@ -123,7 +138,9 @@ def _summary(
             "traffic_type": TrafficType.SYNTHETIC.value,
             "autonomy_level": NO_GATE,
             "agent_version": agent_name,
+            "fault_injected": fault is not None,
         },
+        "fault": _fault(fault, trace) if fault else None,
         "simulation_id": trace.simulation_id,
         "thread_id": trace.thread_id,
         "root_run_id": str(trace.root_run_id),
@@ -150,7 +167,9 @@ def _summary(
 def _finished_summary(live: LiveRun, trace: LiveTrace, project: str, dry_run: bool) -> dict:
     simulation, recording = live.simulation, live.recording
     language = live.language_context
-    summary = _summary(recording, live.reference, live.agent_name, trace, project, dry_run)
+    summary = _summary(
+        recording, live.reference, live.agent_name, trace, project, dry_run, live.fault
+    )
     summary.update(
         {
             "task_id": simulation.task_id,
@@ -170,6 +189,17 @@ def _finished_summary(live: LiveRun, trace: LiveTrace, project: str, dry_run: bo
         }
     )
     return summary
+
+
+def _fault(fault: InjectedFault, trace: LiveTrace) -> dict:
+    return {
+        "tool_name": fault.tool_name,
+        "arguments": dict(fault.arguments),
+        "error_class": fault.error_class,
+        "error_message": fault.error_message,
+        "call_id": fault.call_id,
+        "tool_run_id": str(trace.fault_run_id) if trace.fault_run_id else None,
+    }
 
 
 def _fingerprint(sent: AgentFingerprint) -> dict:
@@ -195,10 +225,13 @@ def _record(
     sink: TraceSink,
     user_model_id: str,
     policy_version: str,
+    fault: InjectedFault | None = None,
 ) -> LiveTrace | None:
     """Record and send the trace; print why and return ``None`` if it is refused."""
     try:
-        trace = record_live_run(recording, simulation, sink, user_model_id, policy_version)
+        trace = record_live_run(
+            recording, simulation, sink, user_model_id, policy_version, fault=fault
+        )
     except TraceShapeError as error:
         print(f"nothing sent: {error}", file=sys.stderr)
         return None
@@ -232,12 +265,23 @@ def _trace_failure(
         error_message=str(cause) or None,
     )
     trace = _record(
-        recording, unfinished, _sink(args.dry_run, project), args.user_llm, failure.policy_version
+        recording,
+        unfinished,
+        _sink(args.dry_run, project),
+        args.user_llm,
+        failure.policy_version,
+        failure.fault,
     )
     if trace is None:
         return 1
     summary = _summary(
-        recording, failure.reference, failure.agent_name, trace, project, args.dry_run
+        recording,
+        failure.reference,
+        failure.agent_name,
+        trace,
+        project,
+        args.dry_run,
+        failure.fault,
     )
     summary.update(
         {
@@ -266,8 +310,9 @@ def _run(args: argparse.Namespace, project: str, out_dir: Path) -> tuple[LiveRun
     """
     settings = run_settings(args)
     if args.replay is None:
+        fault = OneShotToolFault(args.inject_fault) if args.inject_fault else None
         try:
-            live = run_traced_task(settings, register_traced_agent())
+            live = run_traced_task(settings, register_traced_agent(), fault)
         except LiveRunFailed as failed:
             return None, _trace_failure(failed.failure, args, project, out_dir), {}
         return live, 0, {"mode": "live", "tracing": "on"}
@@ -317,12 +362,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.replay is not None and not args.replay.is_file():
         print(f"{args.replay} is not a cassette file", file=sys.stderr)
         return 1
+    if args.replay is not None and args.inject_fault:
+        print("--inject-fault needs a live run; a replay must match its cassette", file=sys.stderr)
+        return 1
     project = langsmith_project()
     live, code, source = _run(args, project, out_dir)
     if live is None:
         return code
     out_dir.mkdir(parents=True)
     (out_dir / "simulation.json").write_text(live.simulation_json, encoding="utf-8")
+    if args.inject_fault and live.fault is None:
+        print(f"the agent never called {args.inject_fault}; nothing traced", file=sys.stderr)
+        return 1
 
     trace = _record(
         live.recording,
@@ -330,6 +381,7 @@ def main(argv: list[str] | None = None) -> int:
         _sink(args.dry_run, project),
         args.user_llm,
         live.policy_version,
+        live.fault,
     )
     if trace is None:
         return 1
