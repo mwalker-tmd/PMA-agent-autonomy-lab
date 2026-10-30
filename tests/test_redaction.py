@@ -22,6 +22,7 @@ FAKE_QUOTED_SECRET = 'planted"quoted\\credential-é01'
         "api_key", "OPENAI_API_KEY", "LANGSMITH_API_KEY", "apiKey", "x-api-key", "Authorization",
         "Proxy-Authorization", "cookie", "Set-Cookie", "access_token", "GITHUB_TOKEN", "secret",
         "client_secret", "AWS_SECRET_ACCESS_KEY", "password", "credentials",
+        "accessToken", "refreshToken", "clientSecret", "xApiKey", "sessionCookie", "userPassword",
     ],
 )  # fmt: skip
 def test_secret_names(name):
@@ -33,6 +34,7 @@ def test_secret_names(name):
     [
         "prompt_tokens", "completion_tokens", "max_tokens", "total_tokens", "tokenizer",
         "order_id", "payment_method_id", "reasoning_effort", "LANGSMITH_ENDPOINT", "keyboard",
+        "maxTokens", "promptTokens", "tokenizerName", "secretary",
     ],
 )  # fmt: skip
 def test_names_that_are_not_secret(name):
@@ -41,6 +43,12 @@ def test_names_that_are_not_secret(name):
     # ``token_count`` or ``authorization_status`` would lose its value. No retail field
     # matches, and the Milestone 2 baseline redacts to itself.
     assert not is_secret_name(name)
+
+
+def test_values_under_camel_case_secret_names_are_replaced_whole():
+    assert Redactor()({"accessToken": "opaque-credential", "maxTokens": 512}) == {
+        "accessToken": REDACTED, "maxTokens": 512,
+    }  # fmt: skip
 
 
 def test_values_under_secret_names_are_replaced_whole():
