@@ -42,6 +42,18 @@ from agent_autonomy_lab.domain.events import canonical_json
 
 CASSETTE_FORMAT = "lab-cassette/1"
 
+# Providers whose LiteLLM route goes through the transports installed by
+# ``litellm_transport``; tests/test_cassette.py checks each route.
+COVERED_PROVIDERS = ("openai", "anthropic")
+
+
+def provider_of(model: str) -> str | None:
+    """The LiteLLM provider ``model`` resolves to, or ``None`` if LiteLLM cannot tell."""
+    try:
+        return litellm.get_llm_provider(model)[1]
+    except Exception:
+        return None
+
 
 @dataclass(frozen=True)
 class RecordedRequest:

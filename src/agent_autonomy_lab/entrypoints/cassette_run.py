@@ -48,6 +48,7 @@ from agent_autonomy_lab.entrypoints.run_options import (
     run_settings,
     settings_data,
     settings_mismatch,
+    uncovered_models,
     write_outcome,
 )
 
@@ -143,6 +144,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{out_dir} already exists; choose another --save-to", file=sys.stderr)
         return 1
     settings = run_settings(args)
+    if reason := uncovered_models(settings):
+        print(reason, file=sys.stderr)
+        return 1
     if args.command == "record":
         return _record(args, settings, out_dir)
     return _replay(args, settings, out_dir)
