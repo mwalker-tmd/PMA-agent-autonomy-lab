@@ -196,3 +196,87 @@ deterministic_replay_task_0:  # M3-07 (#77): behavioral equivalence, docs/ARCHIT
     the record run; durations do not (0.1 s against 39.3 s), and are not
     compared. Only the tracing-on replay was sent to LangSmith; the record
     run and the tracing-off replay were not traced.
+
+tool_failure_task_0:  # M3-08 (#78): tool-failure observability, docs/ARCHITECTURE.md "Injecting a tool failure"
+  recorded_on: 2026-10-30
+  started_at_utc: 2026-10-30T23:28:48Z      # simulation start_time 17:28:48.23 America/Denver
+  traffic_type: synthetic
+  experiment_class: custom_lab_experiment
+  fault_injected: true
+  autonomy_level: "n/a"
+  langsmith_project: agent-autonomy-lab-synthetic
+  tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7  # pinned git dependency, unmodified
+  agent_version: lab_traced_llm_agent
+  command: >-
+    uv run --env-file .env --env-file ../tau2-bench/.env
+    python -m agent_autonomy_lab.entrypoints.trace_live_run
+    --task-id 0 --inject-fault get_order_details --save-to m3-08-fault-task-0
+  settings: same as live_run_task_0.settings
+  fault:
+    injection_id: 01a18f25-2a06-7554-8c02-6b9dccb23d7b   # the failed call's tool span
+    tool_name: get_order_details                         # READ, does not mutate state
+    arguments: {order_id: "#W2378156"}
+    error_class: injected_fault                          # in the trace only; the agent never sees it
+    agent_saw: "Error: Service temporarily unavailable"
+    call_id: call_M7uTCxwaJuQmybgbS6wOnRYc
+    calls_failed: 1                                      # 2 calls to the tool in the run; the second passed through
+  agent_fingerprint: {traced_turns: 9, turns_matching_reference: 9}   # same hashes as live_run_task_0.agent_fingerprint
+  simulation:
+    simulation_id: 8b6d0988-d32e-4cab-9241-118dbe0a59cb
+    termination: user_stop
+    reward: 1.0
+    reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+    reference_actions_matched: 5 of 5
+    final_db_hash: a109be174767fde0ebb50fe3be37cdb2f1ce017fefd7bd29ea3e4d38bd3ac25a   # equals deterministic_replay_task_0.comparison.values.final_db_hash
+    messages: 20                     # recorded transcript equals the SimulationRun's (role and content)
+    tool_calls: [find_user_id_by_name_zip, get_order_details, get_order_details, get_product_details, get_product_details, exchange_delivered_order_items]
+    tool_errors: 1
+    tokens:
+      agent: {calls: 9, prompt: 44090, completion: 751}
+      user: {calls: 4, prompt: 4082, completion: 422}
+    cost_usd:  # LiteLLM per-message cost from the SimulationRun; judge calls not recorded
+      agent: 0.001436
+      user: 0.0005186
+      total: 0.0019545
+    duration_seconds: 29.3
+    saved_to: ../tau2-bench/data/simulations/m3-08-fault-task-0/simulation.json  # not committed
+    simulation_json_sha256: 07804a84ba492429cf1775180dee1417016f8324ad7d3df26e93efbcbe5c5fbe
+  langsmith:  # read back through the API after the run
+    thread_id: ea241be4-5f8e-5a73-9066-22d876889706    # thread_id_for(simulation_id)
+    root_run_id: 01a18f24-fc61-76ea-bbd5-fc4f9709c4c7  # trace ID
+    runs: {total: 20, chain: 1, llm: 13, tool: 6}       # llm = 9 agent turns + 4 simulated-user calls
+    all_children_parented_to_root: true
+    roots_in_thread: 1
+    fault_injected_on_every_run: true
+    error_runs: 1
+    failure_event:
+      run_id: 01a18f25-2a06-7554-8c02-6b9dccb23d7b
+      name: get_order_details
+      run_type: tool
+      error: "injected_fault: Error: Service temporarily unavailable"
+      inputs: {order_id: "#W2378156"}
+      argument_hash: sha256:1e6e798f63c37bf0f3b045818e0416f0f83260af6e8aeccbd131fde4a7f2f57b
+      metadata: {error_class: injected_fault, outcome: error, turn_index: 7, fault_injected: true, traffic_type: synthetic, experiment_class: custom_lab_experiment}
+      parent_run_id: 01a18f24-fc61-76ea-bbd5-fc4f9709c4c7   # the conversation root
+      thread_id: ea241be4-5f8e-5a73-9066-22d876889706
+      simulation_id: 8b6d0988-d32e-4cab-9241-118dbe0a59cb
+    next_agent_turn:
+      run_id: 01a18f25-2a07-7cac-807e-883944b582da
+      turn_index: 8
+      input_holds_the_failure: true
+      tool_call: {name: get_order_details, arguments: {order_id: "#W2378156"}}
+    feedback: {reward: 1.0, reward_db: 1.0, reward_nl_assertion: 1.0}
+    llm_runs_total_cost_usd: 0.0019545
+    secret_values_in_payloads: none     # LANGSMITH_API_KEY and OPENAI_API_KEY values searched for
+  unchanged_files:  # sha256 before and after the run; identical
+    reports/m2-baseline/conversation-task-0.md: 4f400bfe6b77f54d79ebc7829195bc6af6619ce3554c7034615b30778562f68d
+    reports/m2-baseline/manifest.yaml: a82a19d8b2feb53010f0c8ea5bc6a14d41513b9c9c6d14a5296b1ab01ed6cc97
+    ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3/results.json: fb2c574071b75a0004f281c8d5c0a3f82d853adb3815fd3767da99aced0c1252
+    cassettes/m3-07-task-0.cassette.json: ed5187636a8d8ba878ade84e90dbad7b172479b32357220d2f74b7a54734095b
+  notes: >-
+    The first attempt stalled on the run's first model call, the simulated
+    user's opening message, before any tool was called. It was stopped after
+    more than six minutes, while the OpenAI and LangSmith endpoints answered
+    separately. It saved nothing and sent nothing to LangSmith; whether the
+    stalled call was billed is not known. The recorded run is the second
+    attempt, unchanged. The cause of the stall was not determined.
