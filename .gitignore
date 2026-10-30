@@ -23,6 +23,11 @@ reports/raw/
 traces/
 *.trace.json
 
+# Replay cassettes: every model response of a recorded run. Each cassette's
+# SHA-256 goes in a run manifest instead (reports/m3-traces/manifest.yaml).
+cassettes/
+*.cassette.json
+
 # --- τ-bench output ---
 # τ-bench writes under its own data directory (../tau2-bench/data by
 # default), outside this repository. These patterns catch its output if
