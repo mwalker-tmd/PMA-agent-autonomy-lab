@@ -256,18 +256,24 @@ def _trace_failure(
     return 1
 
 
-def _run(args: argparse.Namespace, project: str, out_dir: Path) -> tuple[LiveRun | None, int]:
-    """Run the task live, or from ``--replay``; return the run, or ``None`` and the exit code."""
+def _run(args: argparse.Namespace, project: str, out_dir: Path) -> tuple[LiveRun | None, int, dict]:
+    """Run the task live, or from ``--replay``.
+
+    Returns the run (``None`` if it failed), the exit code for a failed
+    run, and where the model responses came from.
+    """
     settings = run_settings(args)
     if args.replay is None:
         try:
-            return run_traced_task(settings, register_traced_agent()), 0
+            live = run_traced_task(settings, register_traced_agent())
         except LiveRunFailed as failed:
-            return None, _trace_failure(failed.failure, args, project, out_dir)
+            return None, _trace_failure(failed.failure, args, project, out_dir), {}
+        return live, 0, {"mode": "live", "tracing": "on"}
+    sha256 = file_sha256(args.replay)
     cassette = Cassette.load(args.replay)
     if reason := settings_mismatch(settings, cassette):
         print(reason, file=sys.stderr)
-        return None, 1
+        return None, 1, {}
     with replaying(cassette) as transport:
         try:
             live = run_traced_task(settings, register_traced_agent())
@@ -275,10 +281,11 @@ def _run(args: argparse.Namespace, project: str, out_dir: Path) -> tuple[LiveRun
             # A replay that fails is a broken check, not a conversation to trace.
             traceback.print_exception(failed.failure.cause, file=sys.stderr)
             _report_replay(transport)
-            return None, 1
+            return None, 1, {}
     if not _report_replay(transport):
-        return None, 1
-    return live, 0
+        return None, 1, {}
+    source = {"path": str(args.replay), "sha256": sha256, "served": transport.served}
+    return live, 0, {"mode": "replay", "tracing": "on", "cassette": source}
 
 
 def _report_replay(transport: ReplayTransport) -> bool:
@@ -309,7 +316,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{args.replay} is not a cassette file", file=sys.stderr)
         return 1
     project = langsmith_project()
-    live, code = _run(args, project, out_dir)
+    live, code, source = _run(args, project, out_dir)
     if live is None:
         return code
     out_dir.mkdir(parents=True)
@@ -325,16 +332,7 @@ def main(argv: list[str] | None = None) -> int:
     if trace is None:
         return 1
     summary = _finished_summary(live, trace, project, args.dry_run)
-    replay = (
-        {
-            "mode": "replay",
-            "tracing": "on",
-            "cassette": {"path": str(args.replay), "sha256": file_sha256(args.replay)},
-        }
-        if args.replay is not None
-        else {"mode": "live", "tracing": "on"}
-    )
-    summary.update(replay)
+    summary.update(source)
     _write_summary(out_dir, summary)
     if live.final_db_hash is not None:
         outcome = RunOutcome.of(live.simulation, live.final_db_hash)
@@ -343,7 +341,7 @@ def main(argv: list[str] | None = None) -> int:
             outcome,
             {
                 "agent_version": live.agent_name,
-                **replay,
+                **source,
                 "thread_id": trace.thread_id,
                 "root_run_id": str(trace.root_run_id),
             },

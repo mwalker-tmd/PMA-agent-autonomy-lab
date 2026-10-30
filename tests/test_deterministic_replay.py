@@ -75,7 +75,7 @@ def test_tracing_changes_nothing_on_a_replay(lab, capsys):
             "arguments": {"first_name": "Yusuf", "last_name": "Rossi", "zip": "19122"},
         }
     ]
-    assert outcome(lab, "off")["cassette"]["served"] == 4
+    assert outcome(lab, "off")["cassette"]["served"] == on["cassette"]["served"] == 4
     assert outcome(lab, "rec")["cassette"]["sha256"] == outcome(lab, "off")["cassette"]["sha256"]
 
     summary = json.loads((lab / "simulations" / "on" / "summary.json").read_text())
