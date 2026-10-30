@@ -21,6 +21,7 @@ name = "agent-autonomy-lab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "langsmith" },
     { name = "litellm" },
     { name = "tau2" },
@@ -35,6 +36,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "langsmith" },
     { name = "litellm", specifier = "==1.81.11" },
     { name = "tau2", git = "https://github.com/sierra-research/tau2-bench.git?rev=0c69df456a96aa76a1162591574dad9c427a34d7" },
