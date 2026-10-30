@@ -3,10 +3,13 @@
 Reasoning models do not repeat a conversation from a seed, so behavioral
 equivalence is shown on a **deterministic replay**: one live run is recorded
 as a cassette, and later runs are served from it. The seam is LiteLLM's
-``sync_transport``: every synchronous HTTP client LiteLLM builds uses it, so
-it sees each provider request exactly as sent (the agent, the simulated
-user, and the benchmark's judges alike) without any change to τ-bench or to
-the request. A LiteLLM custom provider was tried first and rejected: LiteLLM
+HTTP layer: ``sync_transport`` is used by every synchronous HTTP client
+LiteLLM builds itself (the OpenAI Responses bridge, Anthropic), and
+``client_session`` by the OpenAI SDK client behind chat completions. Between
+them they see each provider request exactly as sent (the agent, the
+simulated user, and the benchmark's judges alike) without any change to
+τ-bench or to the request. Async calls are not covered; τ-bench calls
+LiteLLM synchronously. A LiteLLM custom provider was tried first and rejected: LiteLLM
 drops parameters a custom provider does not declare, such as
 ``reasoning_effort``, so it would not see the request the baseline sends.
 
@@ -219,17 +222,20 @@ def _flush_clients() -> None:
 def litellm_transport(transport: httpx.BaseTransport) -> Iterator[httpx.BaseTransport]:
     """Route every synchronous LiteLLM HTTP request through ``transport``.
 
-    LiteLLM caches its HTTP clients, so the cache is flushed on entry and on
-    exit: a client built before entry would bypass the transport, and one
-    built inside would keep it afterwards.
+    Sets both ``litellm.sync_transport`` and ``litellm.client_session`` (which
+    τ-bench sets at import) and restores them afterwards. LiteLLM caches its
+    HTTP clients, so the cache is flushed on entry and on exit: a client
+    built before entry would bypass the transport, and one built inside
+    would keep it afterwards.
     """
-    previous = getattr(litellm, "sync_transport", None)
+    previous = getattr(litellm, "sync_transport", None), litellm.client_session
     _flush_clients()
     litellm.sync_transport = transport
+    litellm.client_session = httpx.Client(transport=transport)
     try:
         yield transport
     finally:
-        litellm.sync_transport = previous
+        litellm.sync_transport, litellm.client_session = previous
         _flush_clients()
 
 
