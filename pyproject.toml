@@ -7,6 +7,8 @@ readme = "README.md"
 # Python 3.13) from tau2.registry, so it runs only on 3.12.
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    # LiteLLM's HTTP client; the replay cassette (adapters/litellm) plugs into it.
+    "httpx>=0.28.1",
     "langsmith",
     # tau2 allows litellm>=1.80.15,<1.82.7; pin the Milestone 2 baseline's version.
     "litellm==1.81.11",
@@ -36,6 +38,8 @@ testpaths = ["tests"]
 filterwarnings = [
     # Upstream tau2 imports audioop (removed in Python 3.13) when the agent module loads.
     "ignore:'audioop' is deprecated:DeprecationWarning:tau2.voice.utils.audio_preprocessing",
+    # LiteLLM response objects, as τ-bench filters them at import (offline replay tests).
+    "ignore:Pydantic serializer warnings:UserWarning",
 ]
 
 [tool.ruff]
