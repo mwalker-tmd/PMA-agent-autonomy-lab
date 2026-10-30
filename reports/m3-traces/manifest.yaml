@@ -151,6 +151,14 @@ deterministic_replay_task_0:  # M3-07 (#77): behavioral equivalence, docs/ARCHIT
       simulation_id: 2aeb4ee0-01db-4c46-a5ca-afe17bd80dee
       duration_seconds: 0.1
       agent_fingerprint: {traced_turns: 10, turns_matching_reference: 10}   # same hashes as live_run_task_0.agent_fingerprint
+    replay_tracing_off_recheck:  # after b94cfef made request matching type-sensitive (Copilot round 1)
+      command: >-
+        uv run --env-file .env python -m agent_autonomy_lab.entrypoints.cassette_run replay
+        --cassette cassettes/m3-07-task-0.cassette.json --save-to m3-07-replay-off-recheck
+      model_calls: cassette, 15 of 15 served, no mismatch
+      simulation_id: e3ecd6f6-5aad-4866-b998-e4ff8444f453
+      compare_outcomes_with_replay_tracing_off: {differing: [], equivalent: true}
+      cassette_sha256_unchanged: true
   comparison:  # compare_outcomes m3-07-replay-off m3-07-replay-on m3-07-record; exit 0
     reference: replay_tracing_off
     equal_fields: [agent_messages, tool_calls, transcript, final_db_hash, termination_reason, reward, reward_breakdown, reward_details]
