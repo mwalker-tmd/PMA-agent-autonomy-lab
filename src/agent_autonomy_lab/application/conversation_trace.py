@@ -105,8 +105,13 @@ def tool_call_event(
     context: RunContext,
     root_id: UUID,
     id_parts: tuple[str, ...] = (),
+    error_class: str | None = None,
 ) -> TraceEvent:
-    """One tool result and the call it answers. τ-bench records no tool timing."""
+    """One tool result and the call it answers. τ-bench records no tool timing.
+
+    τ-bench does not classify a failed call; ``error_class`` is for a caller
+    that knows why it failed.
+    """
     if message.execution_status is ExecutionStatus.REJECTED:
         outcome = Outcome.REJECTED
     else:
@@ -125,6 +130,7 @@ def tool_call_event(
         tool_name=call.name,
         argument_hash=argument_hash(call.arguments),
         outcome=outcome,
+        error_class=error_class,
         error_message=(message.content or None) if outcome is Outcome.ERROR else None,
         inputs=call.arguments,
         outputs={"content": message.content},

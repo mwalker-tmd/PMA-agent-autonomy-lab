@@ -13,6 +13,10 @@ the caller passes an ``UnfinishedSimulation`` with a lab-assigned
 ``unfinished-`` ID instead. The partial conversation is still traced: its
 root is an error span carrying the exception, and there is no reward.
 
+A run the lab injected a tool failure into passes the ``InjectedFault``: every
+span is labeled ``fault_injected``, and the tool span of the failed call
+carries the fault's ``error_class``.
+
 The trace has the export's shape, with three differences: the root and each
 agent turn are timed by the wrapper; each agent ``model_call`` holds the
 messages the turn answered and the model arguments sent, and records an
@@ -36,6 +40,7 @@ from agent_autonomy_lab.application.conversation_trace import (
 )
 from agent_autonomy_lab.domain.agent_turns import (
     AgentTurn,
+    InjectedFault,
     LiveRecording,
     UnfinishedSimulation,
 )
@@ -68,6 +73,7 @@ class LiveTrace:
     feedback: int
     build_ms: float
     flush_ms: float
+    fault_run_id: UUID | None = None
 
 
 def live_trace(
@@ -76,6 +82,7 @@ def live_trace(
     user_model_id: str | None = None,
     policy_version: str | None = None,
     experiment_class: ExperimentClass = ExperimentClass.CUSTOM_LAB_EXPERIMENT,
+    fault: InjectedFault | None = None,
 ) -> tuple[list[TraceEvent], list[Feedback]]:
     """Return the trace events, root first, and the reward feedback.
 
@@ -93,6 +100,7 @@ def live_trace(
         task_id=simulation.task_id,
         autonomy_level=NO_GATE,
         experiment_class=experiment_class,
+        fault_injected=fault is not None,
         agent_version=recording.agent_version,
         prompt_version=_shared(recording, "prompt_version"),
         model_id=_shared(recording, "model_id"),
@@ -130,7 +138,9 @@ def live_trace(
                 raise ValueError(
                     f"simulation {sim_id}: tool result {message.tool_call_id} answers no tool call"
                 )
-            events.append(tool_call_event(message, call, context, root_id, LIVE))
+            failed = fault is not None and fault.call_id == call.call_id
+            error_class = fault.error_class if failed else None
+            events.append(tool_call_event(message, call, context, root_id, LIVE, error_class))
     feedback = reward_feedback(
         simulation.reward, simulation.termination_reason, context, root_id, LIVE
     )
@@ -144,10 +154,11 @@ def record_live_run(
     user_model_id: str | None = None,
     policy_version: str | None = None,
     timer: Callable[[], float] = time.perf_counter,
+    fault: InjectedFault | None = None,
 ) -> LiveTrace:
     """Record the live trace in ``sink`` and flush it, timing both steps."""
     start = timer()
-    events, feedback = live_trace(recording, simulation, user_model_id, policy_version)
+    events, feedback = live_trace(recording, simulation, user_model_id, policy_version, fault=fault)
     for event in events:
         sink.record(event)
     for item in feedback:
@@ -163,7 +174,14 @@ def record_live_run(
         feedback=len(feedback),
         build_ms=(built - start) * 1000,
         flush_ms=(flushed - built) * 1000,
+        fault_run_id=_classified_tool_span(events),
     )
+
+
+def _classified_tool_span(events: list[TraceEvent]) -> UUID | None:
+    """The tool span carrying an injected fault's class; a live run has at most one."""
+    spans = (e.run_id for e in events if e.event_type is EventType.TOOL_CALL and e.error_class)
+    return next(spans, None)
 
 
 def _shared(recording: LiveRecording, name: str) -> str | None:
