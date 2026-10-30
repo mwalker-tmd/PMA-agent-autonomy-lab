@@ -16,6 +16,14 @@ tool schemas, or model arguments than upstream's ``llm_agent`` would. When
 τ-bench raises mid-run (for example a provider error), it returns no
 simulation and no ID; the partial conversation is traced under a
 lab-assigned ``unfinished-`` ID with an error root, and the run exits 1.
+
+``--replay CASSETTE`` serves every model response from a cassette recorded by
+``cassette_run record`` instead of calling the models: this is the
+tracing-on run of the behavioral-equivalence check (docs/ARCHITECTURE.md,
+"Deterministic replay"). The run's settings must equal the cassette's. A
+request that differs from the recording fails the run, and nothing is
+traced; so does a cassette left with unserved responses. Every finished run
+also writes ``outcome.json`` for ``compare_outcomes``.
 """
 
 import argparse
@@ -32,11 +40,17 @@ from agent_autonomy_lab.adapters.langsmith import (
     langsmith_client,
     shape_errors,
 )
+from agent_autonomy_lab.adapters.litellm import (
+    Cassette,
+    CassetteMismatch,
+    ReplayTransport,
+    file_sha256,
+    replaying,
+)
 from agent_autonomy_lab.adapters.tau2.live_run import (
     LiveRun,
     LiveRunFailed,
     LiveRunFailure,
-    LiveRunSettings,
     register_traced_agent,
     run_traced_task,
 )
@@ -48,33 +62,22 @@ from agent_autonomy_lab.domain.agent_turns import (
     LiveRecording,
     UnfinishedSimulation,
 )
+from agent_autonomy_lab.domain.equivalence import RunOutcome
 from agent_autonomy_lab.domain.events import NO_GATE, ExperimentClass, TrafficType, new_id
 from agent_autonomy_lab.domain.simulations import SavedSimulation
+from agent_autonomy_lab.entrypoints.run_options import (
+    add_run_settings,
+    run_settings,
+    settings_mismatch,
+    write_outcome,
+)
 from agent_autonomy_lab.entrypoints.settings import langsmith_project
 from agent_autonomy_lab.ports.trace_sink import InMemoryTraceSink, TraceSink
-
-BASELINE_MODEL = "openai/responses/gpt-6-luna"
-BASELINE_ARGS = '{"reasoning_effort": "medium"}'
-
-
-def _json_object(text: str) -> dict:
-    try:
-        value = json.loads(text)
-    except json.JSONDecodeError as error:
-        raise argparse.ArgumentTypeError(f"not JSON: {error}") from error
-    if not isinstance(value, dict):
-        raise argparse.ArgumentTypeError("must be a JSON object")
-    return value
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--task-id", default="0", help="retail task ID (default 0)")
-    parser.add_argument("--agent-llm", default=BASELINE_MODEL)
-    parser.add_argument("--user-llm", default=BASELINE_MODEL)
-    parser.add_argument("--agent-llm-args", type=_json_object, default=BASELINE_ARGS)
-    parser.add_argument("--user-llm-args", type=_json_object, default=BASELINE_ARGS)
-    parser.add_argument("--seed", type=int, default=42, help="run seed, as for tau2 run")
+    add_run_settings(parser)
     parser.add_argument(
         "--save-to",
         default=None,
@@ -82,6 +85,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="run and build the trace; send nothing"
+    )
+    parser.add_argument(
+        "--replay",
+        type=Path,
+        default=None,
+        metavar="CASSETTE",
+        help="serve model responses from this cassette instead of calling the models",
     )
     return parser
 
@@ -246,6 +256,41 @@ def _trace_failure(
     return 1
 
 
+def _run(args: argparse.Namespace, project: str, out_dir: Path) -> tuple[LiveRun | None, int]:
+    """Run the task live, or from ``--replay``; return the run, or ``None`` and the exit code."""
+    settings = run_settings(args)
+    if args.replay is None:
+        try:
+            return run_traced_task(settings, register_traced_agent()), 0
+        except LiveRunFailed as failed:
+            return None, _trace_failure(failed.failure, args, project, out_dir)
+    cassette = Cassette.load(args.replay)
+    if reason := settings_mismatch(settings, cassette):
+        print(reason, file=sys.stderr)
+        return None, 1
+    with replaying(cassette) as transport:
+        try:
+            live = run_traced_task(settings, register_traced_agent())
+        except LiveRunFailed as failed:
+            # A replay that fails is a broken check, not a conversation to trace.
+            traceback.print_exception(failed.failure.cause, file=sys.stderr)
+            _report_replay(transport)
+            return None, 1
+    if not _report_replay(transport):
+        return None, 1
+    return live, 0
+
+
+def _report_replay(transport: ReplayTransport) -> bool:
+    """Print why the replay did not match its cassette; ``True`` if it did."""
+    try:
+        transport.check_complete()
+    except CassetteMismatch as mismatch:
+        print(f"cassette: {mismatch}; nothing traced", file=sys.stderr)
+        return False
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if not args.dry_run and not os.environ.get("LANGSMITH_API_KEY"):
@@ -260,19 +305,13 @@ def main(argv: list[str] | None = None) -> int:
     if out_dir.exists():
         print(f"{out_dir} already exists; choose another --save-to", file=sys.stderr)
         return 1
-    settings = LiveRunSettings(
-        task_id=args.task_id,
-        agent_llm=args.agent_llm,
-        user_llm=args.user_llm,
-        agent_llm_args=args.agent_llm_args,
-        user_llm_args=args.user_llm_args,
-        seed=args.seed,
-    )
+    if args.replay is not None and not args.replay.is_file():
+        print(f"{args.replay} is not a cassette file", file=sys.stderr)
+        return 1
     project = langsmith_project()
-    try:
-        live = run_traced_task(settings, register_traced_agent())
-    except LiveRunFailed as failed:
-        return _trace_failure(failed.failure, args, project, out_dir)
+    live, code = _run(args, project, out_dir)
+    if live is None:
+        return code
     out_dir.mkdir(parents=True)
     (out_dir / "simulation.json").write_text(live.simulation_json, encoding="utf-8")
 
@@ -286,7 +325,29 @@ def main(argv: list[str] | None = None) -> int:
     if trace is None:
         return 1
     summary = _finished_summary(live, trace, project, args.dry_run)
+    replay = (
+        {
+            "mode": "replay",
+            "tracing": "on",
+            "cassette": {"path": str(args.replay), "sha256": file_sha256(args.replay)},
+        }
+        if args.replay is not None
+        else {"mode": "live", "tracing": "on"}
+    )
+    summary.update(replay)
     _write_summary(out_dir, summary)
+    if live.final_db_hash is not None:
+        outcome = RunOutcome.of(live.simulation, live.final_db_hash)
+        write_outcome(
+            out_dir,
+            outcome,
+            {
+                "agent_version": live.agent_name,
+                **replay,
+                "thread_id": trace.thread_id,
+                "root_run_id": str(trace.root_run_id),
+            },
+        )
     if not summary["fingerprint"]["match"]:
         print("the traced agent did not send what llm_agent sends", file=sys.stderr)
         return 1

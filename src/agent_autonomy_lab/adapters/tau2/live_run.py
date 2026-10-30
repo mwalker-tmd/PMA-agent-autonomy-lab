@@ -10,6 +10,10 @@ config is built from explicit settings because τ-bench's defaults
 (``random.seed(seed)`` then one ``randint(0, 1000000)`` per trial), so
 ``trial_seed`` repeats that for trial 0 and the live run gets the baseline's
 per-simulation seed.
+
+A run reads its final database hash from the live environment the agent's
+tools acted on, after the conversation and before anything else touches it;
+the evaluator's own replays use fresh environments.
 """
 
 import random
@@ -23,12 +27,17 @@ from tau2.registry import registry
 from tau2.runner import build_text_orchestrator, get_tasks, run_single_task
 
 from agent_autonomy_lab.adapters.tau2.results_reader import simulation_from_dict
-from agent_autonomy_lab.adapters.tau2.traced_agent import TracedAgentFactory, fingerprint
+from agent_autonomy_lab.adapters.tau2.traced_agent import (
+    TracedAgentFactory,
+    UntracedAgentFactory,
+    fingerprint,
+)
 from agent_autonomy_lab.domain.agent_turns import AgentFingerprint, LiveRecording
 from agent_autonomy_lab.domain.events import policy_version
 from agent_autonomy_lab.domain.simulations import SavedSimulation
 
 AGENT_NAME = "lab_traced_llm_agent"
+UNTRACED_AGENT_NAME = "lab_untraced_llm_agent"
 BASELINE_AGENT = "llm_agent"
 
 
@@ -76,6 +85,18 @@ class LiveRun:
     agent_name: str
     simulation_json: str
     language_context: Mapping[str, Any] = field(default_factory=dict)
+    final_db_hash: str | None = None
+
+
+@dataclass(frozen=True)
+class TaskRun:
+    """A finished run of upstream's agent with nothing recording it (tracing off)."""
+
+    simulation: SavedSimulation
+    final_db_hash: str
+    trial_seed: int
+    agent_name: str
+    simulation_json: str
 
 
 @dataclass(frozen=True)
@@ -118,6 +139,45 @@ def register_traced_agent(agent_name: str = AGENT_NAME) -> TracedAgentFactory:
     factory = TracedAgentFactory(agent_name)
     registry.register_agent_factory(factory, agent_name)
     return factory
+
+
+def register_untraced_agent(agent_name: str = UNTRACED_AGENT_NAME) -> UntracedAgentFactory:
+    """Register an ``UntracedAgentFactory`` under ``agent_name`` and return it; once per process."""
+    factory = UntracedAgentFactory(agent_name)
+    registry.register_agent_factory(factory, agent_name)
+    return factory
+
+
+def _final_db_hash(factory: TracedAgentFactory | UntracedAgentFactory, built: int) -> str:
+    """The live database hash of the one agent ``factory`` built since ``built`` agents."""
+    if len(factory.toolkits) != built + 1:
+        raise RuntimeError(f"expected one agent, got {len(factory.toolkits) - built}")
+    toolkit = factory.toolkits[-1]
+    if toolkit is None:
+        raise RuntimeError("the agent had no tools, so its database cannot be read")
+    return toolkit.get_db_hash()
+
+
+def run_untraced_task(settings: LiveRunSettings, factory: UntracedAgentFactory) -> TaskRun:
+    """Run ``settings.task_id`` once through upstream's agent, with nothing recording it.
+
+    The run goes through the same ``get_tasks`` and ``run_single_task`` calls
+    as ``run_traced_task``; only the registered agent differs. Exceptions
+    propagate: there is no recording to trace.
+    """
+    config = settings.config(factory.agent_version)
+    (task,) = get_tasks(settings.domain, task_ids=[settings.task_id])
+    seed = trial_seed(settings.seed)
+    built = len(factory.toolkits)
+    result = run_single_task(config, task, seed=seed)
+    local_tz = datetime.now().astimezone().tzinfo
+    return TaskRun(
+        simulation=simulation_from_dict(result.model_dump(mode="json"), local_tz),
+        final_db_hash=_final_db_hash(factory, built),
+        trial_seed=seed,
+        agent_name=factory.agent_version,
+        simulation_json=result.model_dump_json(indent=2),
+    )
 
 
 def reference(settings: LiveRunSettings, task: Any, seed: int) -> tuple[AgentFingerprint, str]:
@@ -165,6 +225,7 @@ def run_traced_task(settings: LiveRunSettings, factory: TracedAgentFactory) -> L
         raise LiveRunFailed(failure) from error
     if len(factory.recorders) != built + 1:
         raise RuntimeError(f"expected one traced agent, got {len(factory.recorders) - built}")
+    toolkit = factory.toolkits[-1] if len(factory.toolkits) == built + 1 else None
     local_tz = datetime.now().astimezone().tzinfo
     data = result.model_dump(mode="json")
     return LiveRun(
@@ -176,4 +237,5 @@ def run_traced_task(settings: LiveRunSettings, factory: TracedAgentFactory) -> L
         agent_name=factory.agent_version,
         simulation_json=result.model_dump_json(indent=2),
         language_context=data.get("language_context") or {},
+        final_db_hash=toolkit.get_db_hash() if toolkit is not None else None,
     )
