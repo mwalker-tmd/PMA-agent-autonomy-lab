@@ -38,6 +38,8 @@ from typing import Any
 import httpx
 import litellm
 
+from agent_autonomy_lab.domain.events import canonical_json
+
 CASSETTE_FORMAT = "lab-cassette/1"
 
 
@@ -175,7 +177,7 @@ class ReplayTransport(httpx.BaseTransport):
             )
             raise self.failure
         expected = self._interactions[self.served]
-        if actual != expected.request:
+        if _differing_fields(expected.request, actual):
             self.failure = CassetteMismatch(
                 f"request {self.served + 1} differs from the recording in "
                 f"{', '.join(_differing_fields(expected.request, actual))}"
@@ -203,12 +205,24 @@ class ReplayTransport(httpx.BaseTransport):
             )
 
 
+def _same(a: Any, b: Any) -> bool:
+    """JSON equality that keeps types; Python's ``==`` treats ``true``, ``1``, ``1.0`` as equal."""
+    return canonical_json(a) == canonical_json(b)
+
+
 def _differing_fields(expected: RecordedRequest, actual: RecordedRequest) -> list[str]:
+    """Names of the request fields that differ; empty when the requests match."""
     names = [name for name in ("method", "url") if getattr(expected, name) != getattr(actual, name)]
-    if expected.body != actual.body:
+    if not _same(expected.body, actual.body):
         if isinstance(expected.body, dict) and isinstance(actual.body, dict):
             keys = sorted(set(expected.body) | set(actual.body))
-            names += [f"body.{k}" for k in keys if expected.body.get(k) != actual.body.get(k)]
+            names += [
+                f"body.{k}"
+                for k in keys
+                if k not in expected.body
+                or k not in actual.body
+                or not _same(expected.body[k], actual.body[k])
+            ]
         else:
             names.append("body")
     return names
