@@ -11,12 +11,22 @@ import pytest
 from tau2.agent.llm_agent import create_llm_agent
 from tau2.registry import registry
 
-from agent_autonomy_lab.adapters.litellm import Cassette, RecordingTransport, replaying
+from agent_autonomy_lab.adapters.litellm import (
+    Cassette,
+    RecordingTransport,
+    provider_of,
+    replaying,
+)
 from agent_autonomy_lab.adapters.tau2 import live_run
 from agent_autonomy_lab.adapters.tau2.live_run import LiveRunSettings, run_untraced_task
 from agent_autonomy_lab.adapters.tau2.traced_agent import UntracedAgentFactory, live_toolkit
 from agent_autonomy_lab.domain.equivalence import COMPARED_FIELDS
-from agent_autonomy_lab.entrypoints import cassette_run, compare_outcomes, trace_live_run
+from agent_autonomy_lab.entrypoints import (
+    cassette_run,
+    compare_outcomes,
+    run_options,
+    trace_live_run,
+)
 from tests.fake_provider import ScriptedProvider, task_0_outputs
 
 CASSETTE = "cassettes/task-0.cassette.json"
@@ -188,10 +198,53 @@ def test_settings_of_another_json_type_are_refused(lab, capsys):
 
 
 @pytest.mark.parametrize("option", ["--agent-llm-args", "--user-llm-args"])
-def test_credentials_are_refused_as_model_arguments(lab, capsys, option):
-    args = ["record", "--cassette", CASSETTE, "--save-to", "rec", option, '{"api_key": "sk-x"}']
+@pytest.mark.parametrize(
+    "refused",
+    [
+        {"api_key": "sk-x"},
+        {"extra_headers": {"Authorization": "Bearer sk-x"}},
+        {"headers": {"x-api-key": "sk-x"}},
+        {"api_base": "https://proxy.example.test/?key=sk-x"},
+    ],
+)
+def test_only_accepted_model_arguments_reach_a_cassette(lab, capsys, option, refused):
+    args = ["record", "--cassette", CASSETTE, "--save-to", "rec", option, json.dumps(refused)]
     with pytest.raises(SystemExit) as stop:
         cassette_run.main(args)
     assert stop.value.code == 2
-    assert "api_key must come from the environment" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert f"not an accepted model argument: {next(iter(refused))}" in err
+    assert "credentials come from the environment" in err
     assert not (lab / CASSETTE).exists()
+
+
+def test_every_accepted_model_argument_parses():
+    accepted = {name: 1 for name in run_options.MODEL_ARGS}
+    args = run_options._model_args(json.dumps(accepted))
+    assert args == accepted
+
+
+@pytest.mark.parametrize("option", ["--agent-llm", "--user-llm"])
+@pytest.mark.parametrize("model", ["gemini/gemini-2.0-flash", "azure/gpt-4.1"])
+def test_a_cassette_run_refuses_providers_its_transports_do_not_cover(lab, capsys, option, model):
+    assert (
+        cassette_run.main(["record", "--cassette", CASSETTE, "--save-to", "rec", option, model])
+        == 1
+    )
+    assert "a cassette run needs models from openai, anthropic" in capsys.readouterr().err
+    assert not (lab / CASSETTE).exists()
+    assert not (lab / "simulations" / "rec").exists()
+
+
+def test_a_traced_replay_refuses_uncovered_providers(lab, capsys):
+    cassette_run.main(["record", "--cassette", CASSETTE, "--save-to", "rec"])
+    capsys.readouterr()
+    args = ["--replay", CASSETTE, "--save-to", "on", "--dry-run", "--user-llm", "gemini/x"]
+    assert trace_live_run.main(args) == 1
+    assert "refused: user_llm 'gemini/x' (gemini)" in capsys.readouterr().err
+
+
+def test_covered_providers_are_the_tested_routes():
+    assert provider_of("openai/responses/gpt-6-luna") == "openai"
+    assert provider_of("claude-opus-4-5") == "anthropic"
+    assert provider_of("gemini/gemini-2.0-flash") == "gemini"

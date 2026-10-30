@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from agent_autonomy_lab.adapters.litellm import Cassette
+from agent_autonomy_lab.adapters.litellm import COVERED_PROVIDERS, Cassette, provider_of
 from agent_autonomy_lab.adapters.tau2.live_run import LiveRunSettings
 from agent_autonomy_lab.domain.equivalence import RunOutcome
 from agent_autonomy_lab.domain.events import canonical_json
@@ -15,31 +15,40 @@ from agent_autonomy_lab.domain.events import canonical_json
 BASELINE_MODEL = "openai/responses/gpt-6-luna"
 BASELINE_ARGS = '{"reasoning_effort": "medium"}'
 
-# LiteLLM arguments that carry a credential. Model arguments are stored in a
-# cassette's settings and a trace's model_args, so credentials must come from
-# the environment instead.
-CREDENTIAL_ARGS = frozenset(
+# The model arguments a run accepts: tuning parameters that carry no
+# credential. Model arguments are stored in a cassette's settings and a
+# trace's model_args, and LiteLLM accepts credentials through many of its
+# arguments (api_key, extra_headers, headers, api_base, ...), so this is an
+# allowlist, not a list of known credential names. Keys come from the
+# environment. Add a parameter here in a reviewed change when an experiment
+# needs it.
+MODEL_ARGS = frozenset(
     {
-        "api_key",
-        "azure_ad_token",
-        "aws_access_key_id",
-        "aws_secret_access_key",
-        "aws_session_token",
-        "vertex_credentials",
+        "reasoning_effort",
+        "temperature",
+        "top_p",
+        "max_tokens",
+        "max_completion_tokens",
+        "seed",
+        "parallel_tool_calls",
+        "stop",
+        "drop_params",
+        "num_retries",
     }
 )
 
 
-def _json_object(text: str) -> dict:
+def _model_args(text: str) -> dict:
     try:
         value = json.loads(text)
     except json.JSONDecodeError as error:
         raise argparse.ArgumentTypeError(f"not JSON: {error}") from error
     if not isinstance(value, dict):
         raise argparse.ArgumentTypeError("must be a JSON object")
-    if credentials := sorted(CREDENTIAL_ARGS & value.keys()):
+    if refused := sorted(value.keys() - MODEL_ARGS):
         raise argparse.ArgumentTypeError(
-            f"{', '.join(credentials)} must come from the environment, not the command line"
+            f"not an accepted model argument: {', '.join(refused)} "
+            f"(accepted: {', '.join(sorted(MODEL_ARGS))}; credentials come from the environment)"
         )
     return value
 
@@ -49,8 +58,8 @@ def add_run_settings(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--task-id", default="0", help="retail task ID (default 0)")
     parser.add_argument("--agent-llm", default=BASELINE_MODEL)
     parser.add_argument("--user-llm", default=BASELINE_MODEL)
-    parser.add_argument("--agent-llm-args", type=_json_object, default=BASELINE_ARGS)
-    parser.add_argument("--user-llm-args", type=_json_object, default=BASELINE_ARGS)
+    parser.add_argument("--agent-llm-args", type=_model_args, default=BASELINE_ARGS)
+    parser.add_argument("--user-llm-args", type=_model_args, default=BASELINE_ARGS)
     parser.add_argument("--seed", type=int, default=42, help="run seed, as for tau2 run")
 
 
@@ -68,6 +77,24 @@ def run_settings(args: argparse.Namespace) -> LiveRunSettings:
 def settings_data(settings: LiveRunSettings) -> dict[str, Any]:
     """``settings`` as the JSON a cassette stores."""
     return json.loads(json.dumps(asdict(settings)))
+
+
+def uncovered_models(settings: LiveRunSettings) -> str | None:
+    """Why ``settings`` cannot be recorded or replayed, or ``None`` if they can.
+
+    A cassette run accepts only models whose provider route the cassette
+    transports are tested on (``COVERED_PROVIDERS``); any other provider's
+    client might bypass them, so a recording would miss its calls and a
+    replay could reach the provider.
+    """
+    models = {"agent_llm": settings.agent_llm, "user_llm": settings.user_llm}
+    refused = {name: m for name, m in models.items() if provider_of(m) not in COVERED_PROVIDERS}
+    if not refused:
+        return None
+    listed = ", ".join(
+        f"{name} {model!r} ({provider_of(model)})" for name, model in refused.items()
+    )
+    return f"a cassette run needs models from {', '.join(COVERED_PROVIDERS)}; refused: {listed}"
 
 
 def settings_mismatch(settings: LiveRunSettings, cassette: Cassette) -> str | None:

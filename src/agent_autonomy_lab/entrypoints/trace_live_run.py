@@ -70,6 +70,7 @@ from agent_autonomy_lab.entrypoints.run_options import (
     add_run_settings,
     run_settings,
     settings_mismatch,
+    uncovered_models,
     write_outcome,
 )
 from agent_autonomy_lab.entrypoints.settings import langsmith_project
@@ -272,7 +273,7 @@ def _run(args: argparse.Namespace, project: str, out_dir: Path) -> tuple[LiveRun
         return live, 0, {"mode": "live", "tracing": "on"}
     sha256 = file_sha256(args.replay)
     cassette = Cassette.load(args.replay)
-    if reason := settings_mismatch(settings, cassette):
+    if reason := uncovered_models(settings) or settings_mismatch(settings, cassette):
         print(reason, file=sys.stderr)
         return None, 1, {}
     with replaying(cassette) as transport:
