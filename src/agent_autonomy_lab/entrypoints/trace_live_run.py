@@ -28,9 +28,10 @@ whose live database can be read (any retail run) also writes
 
 ``--inject-fault TOOL`` fails the first call to one read tool in this live
 run and passes every later call through (docs/ARCHITECTURE.md, "Injecting a
-tool failure"). The run is labeled ``fault_injected``. If the agent never
-calls the tool, nothing was injected: nothing is traced and the run exits 1.
-It cannot be combined with ``--replay``.
+tool failure"). The run is labeled ``fault_injected``. If a finished run's
+agent never called the tool, nothing was injected: nothing is traced and the
+run exits 1. A run that raises is traced as above, and labeled only if the
+fault had fired. It cannot be combined with ``--replay``.
 """
 
 import argparse

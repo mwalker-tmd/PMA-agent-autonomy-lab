@@ -202,6 +202,30 @@ def test_a_fault_that_never_fired_is_not_traced(lab, capsys):
     assert not (lab_dir / "simulations" / "fault" / "summary.json").exists()
 
 
+def test_a_run_that_raises_after_the_fault_is_still_labeled_and_classified(lab, capsys):
+    lab_dir, sinks = lab
+    assert run(LOOKUP, recovering_outputs()[:3]) == 1  # the provider has nothing left to say
+    capsys.readouterr()
+
+    (sink,) = sinks
+    assert all(e.context.fault_injected for e in sink.events)
+    assert [e.error_class for e in sink.events if e.event_type is EventType.TOOL_CALL][0] == (
+        INJECTED_FAULT
+    )
+    summary = saved(lab_dir, "fault", "summary.json")
+    assert summary["fault"]["tool_name"] == LOOKUP
+    assert summary["unfinished"]["error_class"]
+
+
+def test_a_run_that_raises_before_the_fault_is_not_labeled(lab, capsys):
+    _, sinks = lab
+    assert run(LOOKUP, recovering_outputs()[:1]) == 1
+    capsys.readouterr()
+
+    (sink,) = sinks  # a conversation formed before the provider ran out
+    assert not any(e.context.fault_injected for e in sink.events)
+
+
 def test_a_write_tool_is_refused_before_any_model_call(lab, capsys):
     provider = ScriptedProvider(recovering_outputs())
     args = ["--inject-fault", "cancel_pending_order", "--save-to", "fault", "--dry-run"]
