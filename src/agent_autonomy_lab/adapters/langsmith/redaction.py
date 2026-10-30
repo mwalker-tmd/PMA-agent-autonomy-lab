@@ -15,9 +15,9 @@ JSON data, by three rules:
   prefixes (``sk-``, ``lsv2_``, ...), ``Authorization``/``Bearer`` headers,
   ``NAME=value`` assignments with a secret name, and credentials in URLs.
 - **Secret names.** The value under a mapping key such as ``api_key``,
-  ``authorization``, ``x-api-key``, ``cookie``, ``access_token``, or
-  ``password`` is replaced whole. ``prompt_tokens`` and ``max_tokens`` are
-  not secret names.
+  ``authorization``, ``x-api-key``, ``cookie``, ``access_token``,
+  ``accessToken``, or ``password`` is replaced whole. ``prompt_tokens`` and
+  ``maxTokens`` are not secret names.
 
 The trace sink redacts every argument of every run and feedback item it
 sends. The SDK adds metadata of its own (some ``LANGSMITH_*`` variables and a
@@ -40,12 +40,13 @@ from langsmith.anonymizer import DEFAULT_SECRET_RULES, SECRET_PLACEHOLDER
 REDACTED = SECRET_PLACEHOLDER
 
 # A secret's name has one of these words as a component, separated by ``_``
-# or ``-`` or at either end.
+# or ``-``, by a camelCase boundary, or at either end.
 _SECRET_WORDS = (
     r"api[_-]?key|apikey|access[_-]?key|private[_-]?key|authorization|cookie"
     r"|token|secret|password|passwd|credentials?"
 )
 SECRET_NAME = re.compile(rf"(?:^|[_-])(?:{_SECRET_WORDS})(?:[_-]|$)", re.IGNORECASE)
+_CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
 # Shorter values (``true``, ``1``) are settings, not credentials.
 MIN_SECRET_LENGTH = 8
@@ -53,7 +54,7 @@ MIN_SECRET_LENGTH = 8
 
 def is_secret_name(name: str) -> bool:
     """Whether a variable or field called ``name`` holds a credential."""
-    return bool(SECRET_NAME.search(name))
+    return bool(SECRET_NAME.search(_CAMEL_BOUNDARY.sub("_", name)))
 
 
 class Redactor:
