@@ -9,9 +9,11 @@ LiteLLM builds itself (the OpenAI Responses bridge, Anthropic), and
 them they see each provider request exactly as sent (the agent, the
 simulated user, and the benchmark's judges alike) without any change to
 τ-bench or to the request. Async calls are not covered; τ-bench calls
-LiteLLM synchronously. A LiteLLM custom provider was tried first and rejected: LiteLLM
-drops parameters a custom provider does not declare, such as
-``reasoning_effort``, so it would not see the request the baseline sends.
+LiteLLM synchronously.
+
+A LiteLLM custom provider was tried first and rejected: LiteLLM drops
+parameters a custom provider does not declare, such as ``reasoning_effort``,
+so it would not see the request the baseline sends.
 
 The cassette keeps each request's method, URL, and body, and each
 response's status, content type, and body. Request headers (which carry the
@@ -240,6 +242,7 @@ def litellm_transport(transport: httpx.BaseTransport) -> Iterator[httpx.BaseTran
 
 
 REPLAY_API_KEY = "sk-replay-offline-no-provider"
+_PROVIDER_KEYS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY")
 
 
 @contextmanager
@@ -263,6 +266,3 @@ def replaying(cassette: Cassette) -> Iterator[ReplayTransport]:
                 os.environ.pop(name, None)
             else:
                 os.environ[name] = value
-
-
-_PROVIDER_KEYS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY")

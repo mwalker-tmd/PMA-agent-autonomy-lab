@@ -22,8 +22,9 @@ lab-assigned ``unfinished-`` ID with an error root, and the run exits 1.
 tracing-on run of the behavioral-equivalence check (docs/ARCHITECTURE.md,
 "Deterministic replay"). The run's settings must equal the cassette's. A
 request that differs from the recording fails the run, and nothing is
-traced; so does a cassette left with unserved responses. Every finished run
-also writes ``outcome.json`` for ``compare_outcomes``.
+traced; so does a cassette left with unserved responses. A finished run
+whose live database can be read (any retail run) also writes
+``outcome.json`` for ``compare_outcomes``.
 """
 
 import argparse

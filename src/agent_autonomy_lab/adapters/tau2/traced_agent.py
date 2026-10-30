@@ -231,14 +231,14 @@ def live_toolkit(tools: Sequence[Any]) -> ToolKitBase | None:
     "Authorization gate boundary"), so the toolkit is the functions' common
     ``__self__``. Reading it relies on ``Tool._func``, an internal attribute;
     docs/ARCHITECTURE.md lists it among the things to recheck on upgrade.
-    Returns ``None`` when there are no tools.
+    Returns ``None`` when the tools are not the bound methods of one toolkit
+    (or there are none): reading the database must never stop an agent
+    from being built, so the caller decides whether a run needs it.
     """
-    if not tools:
-        return None
     owners = [getattr(getattr(tool, "_func", None), "__self__", None) for tool in tools]
-    kit = owners[0]
+    kit = owners[0] if owners else None
     if not isinstance(kit, ToolKitBase) or any(owner is not kit for owner in owners):
-        raise ValueError("the agent's tools are not the bound methods of one toolkit")
+        return None
     return kit
 
 
