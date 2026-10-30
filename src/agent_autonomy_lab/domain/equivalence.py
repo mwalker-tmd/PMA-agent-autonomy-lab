@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from typing import Any
 
-from agent_autonomy_lab.domain.events import json_data
+from agent_autonomy_lab.domain.events import canonical_json, json_data
 from agent_autonomy_lab.domain.simulations import Role, SavedSimulation
 
 
@@ -80,11 +80,15 @@ class RunOutcome:
         return cls(**{item.name: data[item.name] for item in fields(cls)})
 
     def differences(self, other: "RunOutcome") -> list[str]:
-        """Names of the fields whose values differ from ``other``'s."""
+        """Names of the fields whose values differ from ``other``'s.
+
+        Values are compared as canonical JSON, because Python's ``==`` treats
+        ``true``, ``1``, and ``1.0`` as equal and JSON does not.
+        """
         return [
             item.name
             for item in fields(self)
-            if getattr(self, item.name) != getattr(other, item.name)
+            if canonical_json(getattr(self, item.name)) != canonical_json(getattr(other, item.name))
         ]
 
 

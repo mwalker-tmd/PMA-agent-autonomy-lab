@@ -10,9 +10,24 @@ from typing import Any
 from agent_autonomy_lab.adapters.litellm import Cassette
 from agent_autonomy_lab.adapters.tau2.live_run import LiveRunSettings
 from agent_autonomy_lab.domain.equivalence import RunOutcome
+from agent_autonomy_lab.domain.events import canonical_json
 
 BASELINE_MODEL = "openai/responses/gpt-6-luna"
 BASELINE_ARGS = '{"reasoning_effort": "medium"}'
+
+# LiteLLM arguments that carry a credential. Model arguments are stored in a
+# cassette's settings and a trace's model_args, so credentials must come from
+# the environment instead.
+CREDENTIAL_ARGS = frozenset(
+    {
+        "api_key",
+        "azure_ad_token",
+        "aws_access_key_id",
+        "aws_secret_access_key",
+        "aws_session_token",
+        "vertex_credentials",
+    }
+)
 
 
 def _json_object(text: str) -> dict:
@@ -22,6 +37,10 @@ def _json_object(text: str) -> dict:
         raise argparse.ArgumentTypeError(f"not JSON: {error}") from error
     if not isinstance(value, dict):
         raise argparse.ArgumentTypeError("must be a JSON object")
+    if credentials := sorted(CREDENTIAL_ARGS & value.keys()):
+        raise argparse.ArgumentTypeError(
+            f"{', '.join(credentials)} must come from the environment, not the command line"
+        )
     return value
 
 
@@ -55,9 +74,15 @@ def settings_mismatch(settings: LiveRunSettings, cassette: Cassette) -> str | No
     """Why ``settings`` cannot replay ``cassette``, or ``None`` if they can."""
     wanted = settings_data(settings)
     recorded = dict(cassette.settings)
-    if wanted == recorded:
+    names = sorted(
+        k
+        for k in wanted.keys() | recorded.keys()
+        if k not in wanted
+        or k not in recorded
+        or canonical_json(wanted[k]) != canonical_json(recorded[k])
+    )
+    if not names:
         return None
-    names = sorted(k for k in wanted.keys() | recorded.keys() if wanted.get(k) != recorded.get(k))
     return f"the run's settings differ from the cassette's in: {', '.join(names)}"
 
 

@@ -160,3 +160,38 @@ def test_tools_that_do_not_reveal_one_toolkit_give_no_database():
 def test_a_replay_needs_a_cassette(lab, capsys):
     assert cassette_run.main(["replay", "--cassette", "missing.json", "--save-to", "off"]) == 1
     assert "not a cassette file" in capsys.readouterr().err
+
+
+def test_a_value_of_another_json_type_is_a_difference(lab, capsys):
+    cassette_run.main(["record", "--cassette", CASSETTE, "--save-to", "rec"])
+    path = lab / "simulations" / "rec" / "outcome.json"
+    data = json.loads(path.read_text())
+    data["outcome"]["transcript"][0]["error"] = 0  # recorded as false
+    changed = lab / "changed.json"
+    changed.write_text(json.dumps(data))
+    capsys.readouterr()
+    assert compare_outcomes.main([str(path), str(changed)]) == 1
+    assert json.loads(capsys.readouterr().out)["comparisons"][0]["differing"] == ["transcript"]
+
+
+def test_settings_of_another_json_type_are_refused(lab, capsys):
+    cassette_run.main(["record", "--cassette", CASSETTE, "--save-to", "rec"])
+    capsys.readouterr()
+    args = ["--agent-llm-args", '{"reasoning_effort": "medium", "parallel_tool_calls": true}']
+    path = lab / CASSETTE
+    data = json.loads(path.read_text())
+    data["settings"]["agent_llm_args"]["parallel_tool_calls"] = 1
+    path.unlink()
+    path.write_text(json.dumps(data))
+    assert cassette_run.main(["replay", "--cassette", CASSETTE, "--save-to", "off", *args]) == 1
+    assert "differ from the cassette's in: agent_llm_args" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("option", ["--agent-llm-args", "--user-llm-args"])
+def test_credentials_are_refused_as_model_arguments(lab, capsys, option):
+    args = ["record", "--cassette", CASSETTE, "--save-to", "rec", option, '{"api_key": "sk-x"}']
+    with pytest.raises(SystemExit) as stop:
+        cassette_run.main(args)
+    assert stop.value.code == 2
+    assert "api_key must come from the environment" in capsys.readouterr().err
+    assert not (lab / CASSETTE).exists()

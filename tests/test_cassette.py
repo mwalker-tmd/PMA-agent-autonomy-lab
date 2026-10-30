@@ -151,3 +151,10 @@ def test_a_replay_hides_provider_keys_and_restores_them(monkeypatch):
         assert os.environ["ANTHROPIC_API_KEY"] == REPLAY_API_KEY
     assert os.environ["OPENAI_API_KEY"] == SECRET
     assert "ANTHROPIC_API_KEY" not in os.environ
+
+
+@pytest.mark.parametrize("changed", [True, 1.0])
+def test_a_value_of_another_json_type_is_a_mismatch(changed):
+    replay = ReplayTransport(recorded(1))  # recorded body: {"n": 1}
+    with pytest.raises(CassetteMismatch, match=r"body\.n"):
+        send(replay, changed)
