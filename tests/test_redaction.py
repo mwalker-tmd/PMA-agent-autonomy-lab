@@ -36,6 +36,10 @@ def test_secret_names(name):
     ],
 )  # fmt: skip
 def test_names_that_are_not_secret(name):
+    # Only these near misses are spared. The rule is deliberately broad: any name with
+    # token, secret, cookie, or authorization as a component is redacted, so
+    # ``token_count`` or ``authorization_status`` would lose its value. No retail field
+    # matches, and the Milestone 2 baseline redacts to itself.
     assert not is_secret_name(name)
 
 

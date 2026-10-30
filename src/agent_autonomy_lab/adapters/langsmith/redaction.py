@@ -23,7 +23,9 @@ The trace sink redacts every argument of every run and feedback item it
 sends. The SDK adds metadata of its own (some ``LANGSMITH_*`` variables and a
 git revision) after the sink hands over a run, so ``langsmith_client()``
 also installs the redactor as the client's ``anonymizer``, which the SDK
-applies to that metadata.
+applies to that metadata. The SDK's ``extra.runtime`` is not passed through
+it: it is a fixed set of SDK, Python, and platform versions and CI commit
+SHAs, with no credentials.
 """
 
 import json
