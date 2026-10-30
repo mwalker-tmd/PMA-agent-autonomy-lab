@@ -24,6 +24,7 @@ from tau2.agent.base_agent import HalfDuplexAgent
 from tau2.agent.llm_agent import LLMAgent, create_llm_agent
 from tau2.data_model.message import Message as Tau2Message
 from tau2.data_model.message import MultiToolMessage, SystemMessage
+from tau2.environment.toolkit import ToolKitBase
 
 from agent_autonomy_lab.adapters.tau2.results_reader import message_from_dict
 from agent_autonomy_lab.domain.agent_turns import AgentFingerprint, AgentTurn, LiveRecording
@@ -222,21 +223,61 @@ class TracedAgent(HalfDuplexAgent):
         self.recorder.overhead_ms += own * 1000
 
 
+def live_toolkit(tools: Sequence[Any]) -> ToolKitBase | None:
+    """The toolkit, and so the live database, that an agent's tools act on.
+
+    τ-bench gives the agent ``Tool`` objects whose functions are bound
+    methods of the run's live environment toolkit (docs/BASELINE.md,
+    "Authorization gate boundary"), so the toolkit is the functions' common
+    ``__self__``. Reading it relies on ``Tool._func``, an internal attribute;
+    docs/ARCHITECTURE.md lists it among the things to recheck on upgrade.
+    Returns ``None`` when there are no tools.
+    """
+    if not tools:
+        return None
+    owners = [getattr(getattr(tool, "_func", None), "__self__", None) for tool in tools]
+    kit = owners[0]
+    if not isinstance(kit, ToolKitBase) or any(owner is not kit for owner in owners):
+        raise ValueError("the agent's tools are not the bound methods of one toolkit")
+    return kit
+
+
 class TracedAgentFactory:
     """An agent factory for ``registry.register_agent_factory``.
 
     Each call builds upstream's ``LLMAgent`` exactly as the registered
     ``llm_agent`` factory does and wraps it with a fresh recorder, kept in
-    ``recorders`` in build order.
+    ``recorders`` in build order. ``toolkits`` keeps, in the same order, the
+    live toolkit each agent's tools act on, so a run's final database can be
+    read after it ends.
     """
 
     def __init__(self, agent_version: str, clock: Clock = _utc_now) -> None:
         self.agent_version = agent_version
         self._clock = clock
         self.recorders: list[TurnRecorder] = []
+        self.toolkits: list[ToolKitBase | None] = []
 
     def __call__(self, tools: list[Any], domain_policy: str, **kwargs: Any) -> TracedAgent:
         inner = create_llm_agent(tools, domain_policy, **kwargs)
         recorder = TurnRecorder(self.agent_version, self._clock)
         self.recorders.append(recorder)
+        self.toolkits.append(live_toolkit(tools))
         return TracedAgent(inner, recorder)
+
+
+class UntracedAgentFactory:
+    """Builds upstream's ``LLMAgent`` and returns it unwrapped: tracing off.
+
+    The agent is exactly what the registered ``llm_agent`` factory builds;
+    nothing records its turns. Only ``toolkits`` is kept, as in
+    ``TracedAgentFactory``, so the run's final database can be read.
+    """
+
+    def __init__(self, agent_version: str) -> None:
+        self.agent_version = agent_version
+        self.toolkits: list[ToolKitBase | None] = []
+
+    def __call__(self, tools: list[Any], domain_policy: str, **kwargs: Any) -> LLMAgent:
+        self.toolkits.append(live_toolkit(tools))
+        return create_llm_agent(tools, domain_policy, **kwargs)
