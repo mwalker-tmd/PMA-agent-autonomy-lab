@@ -329,7 +329,30 @@ uv run python -m agent_autonomy_lab.entrypoints.compare_outcomes \
 | Relies on | Observed (LiteLLM 1.81.11, τ-bench `0c69df4`) | If it changes |
 | --- | --- | --- |
 | `litellm.sync_transport`, `litellm.client_session` | `HTTPHandler` reads `sync_transport` when it builds a client (Responses bridge, Anthropic); the OpenAI SDK client for chat completions uses `client_session` | Requests bypass the cassette: recording misses them, and a replay fails authentication with the placeholder key. `test_every_provider_route_reaches_the_transport` checks each route |
+| `Environment.get_response` | the orchestrator calls it through its environment instance, so an attribute set on that instance replaces it; the evaluator builds its own environments | If calls stop going through the instance, the fault never fires and `--inject-fault` exits 1. If the evaluator starts reusing the run's environment, the wrapper could reach evaluation |
 | `Tool._func.__self__` | the agent's tools are bound methods of the live environment's toolkit | The final database hash cannot be read: `live_toolkit()` returns `None`, the untraced run raises, and a traced run writes no `outcome.json` |
+
+### Injecting a tool failure
+
+The Milestone 2 baseline had no tool errors, so a failure has to be provoked to show it can be inspected. `--inject-fault` makes one live run fail the first call to one read tool:
+
+```bash
+uv run --env-file .env --env-file ../tau2-bench/.env \
+    python -m agent_autonomy_lab.entrypoints.trace_live_run \
+    --task-id 0 --inject-fault get_order_details --save-to m3-08-fault-task-0
+```
+
+[`OneShotToolFault`](../src/agent_autonomy_lab/adapters/tau2/fault_injection.py) wraps `get_response` on the one `Environment` object the run's orchestrator holds. τ-bench is not modified, and the wrapper is never registered, so `retail` still builds unwrapped environments for the evaluator and every other run. To reach that object before the run starts, a fault run calls `build_text_orchestrator` and `run_simulation`, the public layers `run_single_task` is built on, instead of `run_single_task` itself.
+
+| Rule | Why |
+| --- | --- |
+| Only read tools | Evaluation replays a trajectory in fresh environments and skips non-mutating calls, so the final database and reward replay never see the failed call. A write or an unknown tool is refused before any model call |
+| First call only | Later calls pass through, so the agent has a real chance to recover |
+| The agent sees `Error: Service temporarily unavailable` | Nothing in it says the failure was deliberate. `error_class` goes to the trace, never to the agent |
+| Fired, or nothing is traced | If the agent never calls the tool, nothing was injected: the command says so, sends nothing, and exits 1. A run that raises is traced as [any other](#tracing-a-live-run-hook-a), and is labeled `fault_injected` only if the fault had fired |
+| Live only | `--replay` with `--inject-fault` is refused: a replay must match its cassette |
+
+**In the trace.** The failed call is a `tool_call` span with `outcome: error`, `error_class: injected_fault`, and the arguments as inputs, under the conversation root like any tool span. Every span of the run has `fault_injected: true`, so these runs can be filtered out. The next agent turn's `model_call` holds the failure in its inputs. The failed call's tool span ID, `fault.tool_run_id` in `summary.json`, serves as the injection ID that [`SIMULATION.md`](SIMULATION.md#safe-failure-injection-optional-after-baseline) asks for. What one run showed is in [`reports/m3-traces/tool-failure-observation.md`](../reports/m3-traces/tool-failure-observation.md).
 
 ### Rechecking LangSmith behavior on upgrade
 
