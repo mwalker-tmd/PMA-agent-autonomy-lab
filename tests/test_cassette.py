@@ -111,11 +111,36 @@ def test_only_lab_cassettes_load():
 
 
 def test_the_transport_is_installed_for_litellm_and_then_restored():
-    before = getattr(litellm, "sync_transport", None)
+    before = getattr(litellm, "sync_transport", None), litellm.client_session
     transport = httpx.MockTransport(echo)
     with litellm_transport(transport):
         assert litellm.sync_transport is transport
-    assert getattr(litellm, "sync_transport", None) is before
+    assert (getattr(litellm, "sync_transport", None), litellm.client_session) == before
+
+
+# LiteLLM's service logger asks for an event loop on a failed chat completion.
+@pytest.mark.filterwarnings("ignore:There is no current event loop:DeprecationWarning")
+@pytest.mark.parametrize(
+    "model",
+    [
+        "openai/responses/gpt-6-luna",  # the baseline's agent and user (Responses bridge)
+        "openai/responses/gpt-5.4-mini-2026-03-17",  # τ-bench's NL-assertion judge
+        "gpt-4.1",  # OpenAI chat completions, through the OpenAI SDK
+        "claude-opus-4-5",  # τ-bench's review judges (Anthropic)
+    ],
+)
+def test_every_provider_route_reaches_the_transport(model):
+    seen = []
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        return httpx.Response(400, json={"error": {"message": "offline"}})
+
+    with litellm_transport(httpx.MockTransport(refuse)), pytest.raises(Exception):  # noqa: B017
+        litellm.completion(
+            model=model, messages=[{"role": "user", "content": "hi"}], api_key=SECRET
+        )
+    assert len(seen) == 1
 
 
 def test_a_replay_hides_provider_keys_and_restores_them(monkeypatch):
