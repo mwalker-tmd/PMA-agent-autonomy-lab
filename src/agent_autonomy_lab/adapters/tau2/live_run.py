@@ -154,7 +154,7 @@ def _final_db_hash(factory: TracedAgentFactory | UntracedAgentFactory, built: in
         raise RuntimeError(f"expected one agent, got {len(factory.toolkits) - built}")
     toolkit = factory.toolkits[-1]
     if toolkit is None:
-        raise RuntimeError("the agent had no tools, so its database cannot be read")
+        raise RuntimeError("the agent's tools do not reveal its live database")
     return toolkit.get_db_hash()
 
 

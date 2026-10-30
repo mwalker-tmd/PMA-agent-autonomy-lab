@@ -143,8 +143,8 @@ def test_differing_outcomes_are_reported_by_field(lab, capsys):
     assert report["comparisons"][0]["differing"] == ["tool_calls", "final_db_hash"]
 
 
-def test_tools_of_more_than_one_toolkit_are_refused():
-    class Kit:
+def test_tools_that_do_not_reveal_one_toolkit_give_no_database():
+    class NotAToolkit:
         def read(self):
             return None
 
@@ -153,5 +153,10 @@ def test_tools_of_more_than_one_toolkit_are_refused():
             self._func = func
 
     assert live_toolkit([]) is None
-    with pytest.raises(ValueError, match="one toolkit"):
-        live_toolkit([FakeTool(Kit().read)])
+    assert live_toolkit([FakeTool(NotAToolkit().read)]) is None
+    assert live_toolkit([FakeTool(len)]) is None
+
+
+def test_a_replay_needs_a_cassette(lab, capsys):
+    assert cassette_run.main(["replay", "--cassette", "missing.json", "--save-to", "off"]) == 1
+    assert "not a cassette file" in capsys.readouterr().err

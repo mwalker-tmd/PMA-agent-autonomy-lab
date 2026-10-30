@@ -329,7 +329,7 @@ uv run python -m agent_autonomy_lab.entrypoints.compare_outcomes \
 | Relies on | Observed (LiteLLM 1.81.11, τ-bench `0c69df4`) | If it changes |
 | --- | --- | --- |
 | `litellm.sync_transport`, `litellm.client_session` | `HTTPHandler` reads `sync_transport` when it builds a client (Responses bridge, Anthropic); the OpenAI SDK client for chat completions uses `client_session` | Requests bypass the cassette: recording misses them, and a replay fails authentication with the placeholder key. `test_every_provider_route_reaches_the_transport` checks each route |
-| `Tool._func.__self__` | the agent's tools are bound methods of the live environment's toolkit | The final database hash cannot be read; `live_toolkit()` raises |
+| `Tool._func.__self__` | the agent's tools are bound methods of the live environment's toolkit | The final database hash cannot be read: `live_toolkit()` returns `None`, the untraced run raises, and a traced run writes no `outcome.json` |
 
 ### Rechecking LangSmith behavior on upgrade
 

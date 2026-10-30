@@ -101,6 +101,9 @@ def _record(args: argparse.Namespace, settings: LiveRunSettings, out_dir: Path) 
 
 
 def _replay(args: argparse.Namespace, settings: LiveRunSettings, out_dir: Path) -> int:
+    if not args.cassette.is_file():
+        print(f"{args.cassette} is not a cassette file", file=sys.stderr)
+        return 1
     cassette = Cassette.load(args.cassette)
     if reason := settings_mismatch(settings, cassette):
         print(reason, file=sys.stderr)
