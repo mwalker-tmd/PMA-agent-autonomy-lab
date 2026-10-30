@@ -35,7 +35,7 @@ Read back through the LangSmith API after the run:
 
 All 10 traced turns sent the same prompt, tool schema, and model-argument hashes as upstream's `llm_agent` reference, the same values as the M3-05 live run.
 
-Screenshots (trace URLs expire with the project's 14-day retention): [thread](screenshots/m3-07-thread.png), [trace tree with feedback](screenshots/m3-07-trace-tree.png).
+Screenshot (trace URLs expire with the project's 14-day retention): [the thread](screenshots/m3-07-thread.png), showing the thread ID, one conversation turn, the 15 `model_call` and 6 tool spans in order, the three reward feedback items, tokens (57.55K, equal to the run's 50,612 + 1,046 + 5,404 + 483) and cost ($0.00234481), and the conversation with each tool call's arguments and result.
 
 ## Findings
 
