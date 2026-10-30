@@ -88,3 +88,103 @@ live_run_task_0:  # M3-05 (#75): hook A, docs/ARCHITECTURE.md "Tracing a live ru
     was saved or sent by that attempt. Importing tau2 runs load_dotenv(),
     which copies the working directory's .env into the process; tests hide
     LangSmith settings with an autouse fixture.
+
+deterministic_replay_task_0:  # M3-07 (#77): behavioral equivalence, docs/ARCHITECTURE.md "Deterministic replay"
+  recorded_on: 2026-10-29             # America/Denver; 2026-10-30 UTC
+  traffic_type: synthetic
+  experiment_class: custom_lab_experiment
+  autonomy_level: "n/a"
+  langsmith_project: agent-autonomy-lab-synthetic
+  tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7
+  litellm: 1.81.11
+  settings:  # stored in the cassette; equal to live_run_task_0.settings (Milestone 2 baseline defaults)
+    domain: retail
+    task_id: "0"
+    model_id: openai/responses/gpt-6-luna
+    user_model_id: openai/responses/gpt-6-luna
+    llm_args_agent: {reasoning_effort: medium}
+    llm_args_user: {reasoning_effort: medium}
+    run_seed: 42
+    trial_seed: 670487
+    max_steps: 200
+    max_errors: 10
+  cassette:
+    path: cassettes/m3-07-task-0.cassette.json   # ignored by Git (.gitignore: cassettes/, *.cassette.json)
+    sha256: ed5187636a8d8ba878ade84e90dbad7b172479b32357220d2f74b7a54734095b
+    format: lab-cassette/1
+    responses: 15        # every model response of the run: 10 agent, 5 simulated user, 0 judge
+    judge_calls: 0       # task 0 has no NL assertions ("No nl_assertions to evaluate") and no communicate checks, so no judge model is called
+    http_status: {200: 15}
+    stored: request method, URL, body; response status, content type, body; no headers
+    api_keys_in_file: none   # OPENAI_API_KEY value searched for
+    requests_sent:  # read from the recorded request bodies
+      reasoning: absent   # LiteLLM drops reasoning_effort for gpt-6-luna (not in its model map; drop_params); see the note
+      seed: absent        # the Responses bridge sends no seed
+      responses_report_effort: medium   # every response's reasoning.effort: the model's default
+  runs:
+    record:
+      command: >-
+        uv run --env-file .env --env-file ../tau2-bench/.env
+        python -m agent_autonomy_lab.entrypoints.cassette_run record
+        --cassette cassettes/m3-07-task-0.cassette.json --save-to m3-07-record
+      agent_version: lab_untraced_llm_agent   # upstream LLMAgent, unwrapped
+      model_calls: live
+      started_at_utc: 2026-10-30T02:32:51Z
+      simulation_id: c66860b3-9a38-4e33-8048-a5308519edde
+      duration_seconds: 39.3
+    replay_tracing_off:
+      command: >-
+        uv run --env-file .env python -m agent_autonomy_lab.entrypoints.cassette_run replay
+        --cassette cassettes/m3-07-task-0.cassette.json --save-to m3-07-replay-off
+      agent_version: lab_untraced_llm_agent
+      model_calls: cassette, 15 of 15 served, no mismatch
+      started_at_utc: 2026-10-30T02:33:49Z
+      simulation_id: a80c0b3e-2429-41bf-af65-5a251b159c38
+      duration_seconds: 0.1
+    replay_tracing_on:
+      command: >-
+        uv run --env-file .env python -m agent_autonomy_lab.entrypoints.trace_live_run
+        --replay cassettes/m3-07-task-0.cassette.json --save-to m3-07-replay-on
+      agent_version: lab_traced_llm_agent     # TracedAgent around upstream LLMAgent; sent to LangSmith
+      model_calls: cassette, 15 of 15 served, no mismatch   # summary.json predates the served field (7b68074); check_complete passed
+      started_at_utc: 2026-10-30T02:33:59Z
+      simulation_id: 2aeb4ee0-01db-4c46-a5ca-afe17bd80dee
+      duration_seconds: 0.1
+      agent_fingerprint: {traced_turns: 10, turns_matching_reference: 10}   # same hashes as live_run_task_0.agent_fingerprint
+  comparison:  # compare_outcomes m3-07-replay-off m3-07-replay-on m3-07-record; exit 0
+    reference: replay_tracing_off
+    equal_fields: [agent_messages, tool_calls, transcript, final_db_hash, termination_reason, reward, reward_breakdown, reward_details]
+    replay_tracing_on: {differing: []}
+    record: {differing: []}
+    equivalent: true
+    values:
+      messages: 22
+      agent_messages: 11            # 10 model replies + the fixed opener
+      tool_calls: [find_user_id_by_name_zip, get_order_details, get_user_details, get_product_details, get_product_details, exchange_delivered_order_items]
+      tool_errors: 0
+      final_db_hash: a109be174767fde0ebb50fe3be37cdb2f1ce017fefd7bd29ea3e4d38bd3ac25a   # live environment after the conversation
+      termination: user_stop
+      reward: 1.0
+      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+    also_equal_not_compared:  # read from each simulation.json; equal in all three runs
+      tokens:
+        agent: {calls: 10, prompt: 50612, completion: 1046}
+        user: {calls: 5, prompt: 5404, completion: 483}
+  langsmith:  # traced replay, read back through the API after the run
+    thread_id: 2030b1fd-a6a0-5ee0-bd02-f5a22e17212b    # thread_id_for(simulation_id)
+    root_run_id: 01a18aa8-2d1e-7ef9-8c88-250ca1b31a16  # trace ID
+    runs: {total: 22, chain: 1, llm: 15, tool: 6}       # llm = 10 agent turns + 5 simulated-user calls = the cassette's 15 responses; tool = the 6 tool calls
+    all_children_parented_to_root: true
+    roots_in_thread: 1
+    thread_and_simulation_ids_on_every_run: one each
+    root_messages: {inputs: 2, outputs: 20}
+    root_metadata: {traffic_type: synthetic, experiment_class: custom_lab_experiment, autonomy_level: "n/a", agent_version: lab_traced_llm_agent, task_id: "0", policy_version: policy-2c9652afbce5}
+    feedback: {reward: 1.0, reward_db: 1.0, reward_nl_assertion: 1.0}
+    errors: none
+    llm_runs_total_cost_usd: 0.0023448   # LiteLLM's per-message cost, computed from the replayed usage
+    secret_values_in_payloads: none      # LANGSMITH_API_KEY and the replay placeholder key searched for
+  notes: >-
+    A replay recomputes cost from the recorded usage, so cost and tokens match
+    the record run; durations do not (0.1 s against 39.3 s), and are not
+    compared. Only the tracing-on replay was sent to LangSmith; the record
+    run and the tracing-off replay were not traced.

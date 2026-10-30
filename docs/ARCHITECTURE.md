@@ -298,6 +298,39 @@ The agent's copy of the policy ends with τ-bench's language clause ("Respond in
 
 **Overhead.** The wrapper times its own work separately from the agent calls it delegates: fingerprinting and converting messages during the run (in the loop, so it adds to conversation latency), then building and sending the trace after the run returns (outside the conversation). A traced-versus-untraced wall-clock comparison would not isolate this, because reasoning models do not repeat a conversation from a seed. Measured values are in [`reports/m3-traces/manifest.yaml`](../reports/m3-traces/manifest.yaml).
 
+### Deterministic replay (behavioral equivalence)
+
+Observability must not change behavior. Reasoning models do not repeat a conversation from a seed, so two live runs cannot show it: they differ whether tracing is on or not. Instead, one live run is recorded as a **cassette** of every model response, and the compared runs replay it. A replay that sends any request the recording does not have fails, so a traced run that matches the cassette sent exactly what the untraced run sent.
+
+```bash
+# 1. Record (live; calls the models). The cassette is written once and never overwritten.
+uv run --env-file .env --env-file ../tau2-bench/.env \
+    python -m agent_autonomy_lab.entrypoints.cassette_run record \
+    --cassette cassettes/m3-07-task-0.cassette.json --save-to m3-07-record
+# 2. Replay with tracing off: upstream's LLMAgent, unwrapped; nothing recorded or sent.
+uv run --env-file .env python -m agent_autonomy_lab.entrypoints.cassette_run replay \
+    --cassette cassettes/m3-07-task-0.cassette.json --save-to m3-07-replay-off
+# 3. Replay with tracing on: the traced lab agent, sent to LangSmith.
+uv run --env-file .env python -m agent_autonomy_lab.entrypoints.trace_live_run \
+    --replay cassettes/m3-07-task-0.cassette.json --save-to m3-07-replay-on
+# 4. Compare (the first run is the reference); exits 1 on any difference.
+uv run python -m agent_autonomy_lab.entrypoints.compare_outcomes \
+    ../tau2-bench/data/simulations/m3-07-replay-{off,on} ../tau2-bench/data/simulations/m3-07-record
+```
+
+**Where the recording happens.** The [cassette transports](../src/agent_autonomy_lab/adapters/litellm/cassette.py) plug into LiteLLM's HTTP layer. `litellm.sync_transport` is used by every synchronous HTTP client LiteLLM builds itself, which covers the OpenAI Responses bridge (the baseline's agent and user, and τ-bench's NL-assertion judge) and Anthropic (its review judges). `litellm.client_session` is used by the OpenAI SDK client behind plain chat completions. With both set, the transports see each provider request as sent, from the agent, the simulated user, and the benchmark's judges alike, and τ-bench is not changed. Async calls are not covered; τ-bench calls LiteLLM synchronously. A cassette stores each request's method, URL, and body and each response's status, content type, and body; no headers, so no API key. The replay serves the responses in order and fails on the first request that differs or comes after the end. It then fails every later request, so LiteLLM's retries cannot skip a mismatch. Afterwards the entrypoint checks that every response was served, because τ-bench's evaluator catches some judge errors. During a replay, provider keys are replaced by a placeholder, so a request that bypassed the transport would be refused instead of billed. A LiteLLM custom provider was tried first and rejected: LiteLLM drops parameters a custom provider does not declare, such as `reasoning_effort`, so it would not have seen the baseline's request.
+
+**What is compared.** Each run writes `outcome.json` with a [`RunOutcome`](../src/agent_autonomy_lab/domain/equivalence.py): the transcript (every message's role, content, tool calls with arguments, and tool-result fields), the agent's messages and tool calls by name, the final database hash, the termination reason, and the reward with its breakdown and the checks behind it. The database hash is read from the run's **live** environment after the conversation: both agent factories keep the toolkit their agent's tools are bound to. The evaluator's own replays use fresh environments. Timing, cost, and IDs are not compared, because they differ between any two runs. `compare_outcomes` reports each field and whether it equals the reference.
+
+**Settings.** A cassette stores the run settings it was recorded with, and a replay refuses different ones. Every default matches the Milestone 2 baseline. The recorded requests show what those settings send. With the pinned LiteLLM, the `openai/responses/` bridge sends neither setting. `gpt-6-luna` is missing from LiteLLM's model map, so LiteLLM treats `reasoning_effort` as unsupported and τ-bench's `drop_params` removes it (without `drop_params` the call raises `UnsupportedParamsError`; a model in the map, such as `gpt-5.4-mini`, gets `reasoning.effort`). The bridge sends no `seed` for any model. The model's responses report `effort: medium`, its default. The baseline's declared `reasoning_effort: medium` therefore matches what ran, but only because it is the default. Results are in [`reports/m3-traces/`](../reports/m3-traces/).
+
+**Rechecking on upgrade.** The replay relies on two internals. Recheck them after upgrading `litellm` or `tau2`; the offline tests in `tests/test_cassette.py` and `tests/test_deterministic_replay.py` fail if either breaks:
+
+| Relies on | Observed (LiteLLM 1.81.11, τ-bench `0c69df4`) | If it changes |
+| --- | --- | --- |
+| `litellm.sync_transport`, `litellm.client_session` | `HTTPHandler` reads `sync_transport` when it builds a client (Responses bridge, Anthropic); the OpenAI SDK client for chat completions uses `client_session` | Requests bypass the cassette: recording misses them, and a replay fails authentication with the placeholder key. `test_every_provider_route_reaches_the_transport` checks each route |
+| `Tool._func.__self__` | the agent's tools are bound methods of the live environment's toolkit | The final database hash cannot be read; `live_toolkit()` raises |
+
 ### Rechecking LangSmith behavior on upgrade
 
 The adapter relies on behavior we observed against the live service and SDK, not only on our own code. The tests run the real `langsmith.Client` with a fake HTTP session, so they catch a change in what the SDK sends, but not in how the service answers. Recheck these after upgrading `langsmith` or when LangSmith announces API changes:
