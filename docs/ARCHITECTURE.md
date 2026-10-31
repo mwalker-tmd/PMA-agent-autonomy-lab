@@ -366,9 +366,9 @@ Two threads were judged by both evaluators:
 | View | Task `0` replay (22 messages, 6 tool calls, 6 tool results) | Markers received | Score on the replay |
 | --- | --- | --- | --- |
 | `all_messages` | All 22 messages, in order, with equal content, including the 6 tool calls and 6 tool results | Root only | 1.0 |
-| `trajectory` | 8 entries: 4 customer messages, 4 agent turns, 3 of the 6 tool calls, none of the tool results, and no final reply to the customer | `PROBE-CHILD-MODEL` only | 1.0 |
+| `trajectory` | 8 entries: 4 of 5 customer messages, 4 of 10 agent turns, 3 of the 6 tool calls, none of the tool results, and no final reply to the customer | `PROBE-CHILD-MODEL` only | 1.0 |
 
-Both evaluators ran without a schema error. Screenshots: [`all_messages`](../reports/m3-traces/screenshots/m3-09-all-messages.png), [`trajectory`](../reports/m3-traces/screenshots/m3-09-trajectory.png), and [the marker thread's `trajectory`](../reports/m3-traces/screenshots/m3-09-probe-trajectory.png).
+Both evaluators ran without a schema error. The counts come from each judge run's input, read through the API. Screenshots of the verdicts and the judges' reasoning: [`all_messages`](../reports/m3-traces/screenshots/m3-09-all-messages.png), [`trajectory`](../reports/m3-traces/screenshots/m3-09-trajectory.png), and [the marker thread's `trajectory`](../reports/m3-traces/screenshots/m3-09-probe-trajectory.png).
 
 - **Child tool spans do not appear in `all_messages`.** Its tool calls and results come from the root's messages, as the [multi-turn docs](https://docs.langchain.com/langsmith/online-evaluations-multi-turn) describe. A tool call that reached only a child span would be invisible to this view, so a thread judge sees what the root holds.
 - **`trajectory` is available here, but incomplete on the lab's traces.** The docs limit it to GCP US on LangSmith Cloud, and it saved and ran on this account; the docs name no plan limit. They also say it keeps tool calls and results, which is not what these traces produced. In the replay, it kept exactly the agent turns that answered a customer message, and it dropped every turn that answered a tool result. The lab's agent spans hold only the messages that turn answered, and its tool spans carry no `tool_call_id`, which may be the reason; this was not tested.
