@@ -150,6 +150,14 @@ def test_an_output_rejects_a_link_to_another_results_raw_output(owner):
         EvaluatorOutput(results=(make_result(raw_output_id=raw.output_id),), raw_outputs=(raw,))
 
 
+def test_an_output_rejects_two_raw_outputs_with_one_id():
+    output_id = uuid4()
+    first = RawEvaluatorOutput(output_id, KEY, "confirmation-v1", "sim-1", {"judge": "one"})
+    second = RawEvaluatorOutput(output_id, KEY, "confirmation-v1", "sim-1", {"judge": "two"})
+    with pytest.raises(ValueError, match="distinct output_id"):
+        EvaluatorOutput(results=(), raw_outputs=(first, second))
+
+
 def test_an_output_holds_only_result_records():
     with pytest.raises(ValueError, match="EvaluationResult"):
         EvaluatorOutput(results=(object(),))

@@ -164,8 +164,9 @@ class EvaluationResult:
 class EvaluatorOutput:
     """Normalized results and the raw outputs behind them, held apart.
 
-    A result's ``raw_output_id`` must name a raw output here from the same
-    evaluator and simulation, so an audit link cannot reach another run's reply.
+    Each raw output has its own ``output_id``, and a result's ``raw_output_id``
+    must name one here from the same evaluator and simulation, so an audit link
+    reaches exactly one record and never another run's reply.
     """
 
     results: tuple[EvaluationResult, ...]
@@ -181,6 +182,8 @@ class EvaluatorOutput:
         object.__setattr__(self, "results", results)
         object.__setattr__(self, "raw_outputs", raw_outputs)
         known = {raw.output_id: raw for raw in raw_outputs}
+        if len(known) != len(raw_outputs):
+            raise ValueError("raw_outputs must have distinct output_id values")
         for result in results:
             if result.raw_output_id is None:
                 continue

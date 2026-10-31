@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -148,6 +149,47 @@ def test_a_rejected_output_is_kept_for_audit():
     evaluated = evaluate_simulation(make_subject(), [canned(bad)])
     assert evaluated.raw_outputs[0] == raw
     assert evaluated.raw_outputs[1].payload["rejected_results"][0]["status"] == "PASS"
+
+
+def test_raw_outputs_are_kept_when_an_evaluator_returns_no_results():
+    raw = RawEvaluatorOutput(uuid4(), "metric", "v1", SIM, {"judge": "RAW"})
+    output = EvaluatorOutput(results=(), raw_outputs=(raw,))
+    evaluated = evaluate_simulation(make_subject(), [canned(output)])
+    assert evaluated.results[0].status is ResultStatus.EVALUATOR_ERROR
+    assert evaluated.raw_outputs[0] == raw
+    assert len(evaluated.raw_outputs) == 2
+
+
+def test_a_reused_raw_output_id_costs_only_the_evaluator_that_reused_it():
+    output_id = uuid4()
+    first = RawEvaluatorOutput(output_id, "first", "v1", SIM, {"judge": "one"})
+    second = RawEvaluatorOutput(output_id, "second", "v1", SIM, {"judge": "two"})
+    evaluators = [
+        canned(
+            EvaluatorOutput(
+                results=(replace(make_output(key="first").results[0], raw_output_id=output_id),),
+                raw_outputs=(first,),
+            ),
+            "first",
+        ),
+        canned(
+            EvaluatorOutput(
+                results=(replace(make_output(key="second").results[0], raw_output_id=output_id),),
+                raw_outputs=(second,),
+            ),
+            "second",
+        ),
+        canned(make_output(key="third"), "third"),
+    ]
+    evaluated = evaluate_simulation(make_subject(), evaluators)
+    by_key = {result.evaluation_key: result for result in evaluated.results}
+    assert by_key["first"].status is ResultStatus.PASS
+    assert by_key["first"].raw_output_id == output_id
+    assert by_key["second"].status is ResultStatus.EVALUATOR_ERROR
+    assert "reused raw output id" in by_key["second"].reason
+    assert by_key["third"].status is ResultStatus.PASS
+    assert first in evaluated.raw_outputs
+    assert second not in evaluated.raw_outputs
 
 
 def per_write(*results):
