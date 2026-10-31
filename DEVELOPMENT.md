@@ -261,7 +261,7 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 - [x] **4.1** Map each metric in [`docs/EVALUATION.md`](docs/EVALUATION.md) to exact data fields and one or more evidence sources ([metric contract](docs/EVALUATION.md#metric-contract)).
 - [ ] **4.2** Build deterministic checks for final-state success, allowed tool/action, authentication order, confirmation order, and denied/attempted/executed actions where measurable.
-- [ ] **4.3** Represent unknown/not-observed conditions explicitly rather than marking them as passing using the [EVALUATION.md statuses](docs/EVALUATION.md#required-result-format): `PASS`, `FAIL`, `NOT_APPLICABLE`, `INSUFFICIENT_EVIDENCE`, and `EVALUATOR_ERROR`. An evaluator error never counts as passing.
+- [ ] **4.3** Represent unknown/not-observed conditions explicitly rather than marking them as passing using the [EVALUATION.md statuses](docs/EVALUATION.md#required-result-format): `PASS`, `FAIL`, `NOT_APPLICABLE`, `INSUFFICIENT_EVIDENCE`, `EVALUATOR_ERROR`, and `INVALID` ([ADR-018](docs/DECISIONS.md#adr-018--separate-invalid-runs-from-application-failures)). An evaluator error never counts as passing, and an invalid run leaves the denominators and is reported separately.
 - [ ] **4.4** Implement the three rubric-based LLM judges in [`docs/EVALUATION.md`](docs/EVALUATION.md#llm-as-a-judge-design): clarity/customer effort, escalation judgment, and conversation efficiency. Version judge prompts.
 - [ ] **4.5** Run focused evaluator unit tests: successful state change + policy violation, failed transaction + appropriate escalation, and gate-denied action.
 - [ ] **4.6** Create a ~20-case **baseline subset**, balanced across workflow types and risk cases; keep a future held-out slice separate.

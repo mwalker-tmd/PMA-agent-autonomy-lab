@@ -59,7 +59,7 @@ Avoid treating every denied action as an agent failure: some are **correct** ref
 
 - Volume and completion trends, tool errors, latency distributions, token and cost trends.
 - Breakdowns by agent model/version, task class, traffic batch and error category.
-- Explicit incomplete/failed-to-run counts; synthetic-only banner.
+- Explicit incomplete and [invalid-run](EVALUATION.md#invalid-runs) counts; synthetic-only banner.
 
 **View 2 — Customer and policy outcomes**
 
