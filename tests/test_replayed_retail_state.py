@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 from tau2.data_model.message import ToolCall as Tau2ToolCall
-from tau2.domains.retail.environment import get_environment
+from tau2.domains.retail.environment import get_environment, get_tasks
 from tau2.domains.retail.utils import RETAIL_DB_PATH
 from tau2.evaluator.evaluator_env import EnvironmentEvaluator
 from tau2.registry import registry
@@ -309,6 +309,11 @@ def test_the_mutating_tools_are_the_seven_write_tools():
         "modify_user_address",
         "return_delivered_order_items",
     }
+
+
+def test_every_retail_task_starts_from_db_json():
+    """The replay has no task to read, so a task with its own start state would break it."""
+    assert all(task.initial_state is None for task in get_tasks(task_split_name=None))
 
 
 def test_replays_are_independent_and_snapshots_are_detached(source):
