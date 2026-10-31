@@ -21,7 +21,7 @@ Run one mode per process. LiteLLM drops a second ``CustomLogger`` of the same
 class without saying so, and this module keeps one for that reason. The first
 replay of each mode is a warm-up and is not timed. The command exits 1 if the
 replays' outcomes differ from each other or from ``--reference``, or if the
-callback missed a model call.
+callback missed a model call or the judge call.
 """
 
 import argparse
@@ -56,6 +56,7 @@ from agent_autonomy_lab.adapters.tau2.results_reader import simulation_from_dict
 from agent_autonomy_lab.adapters.tau2.traced_agent import UntracedAgentFactory
 from agent_autonomy_lab.domain.equivalence import RunOutcome
 from agent_autonomy_lab.domain.events import canonical_json
+from agent_autonomy_lab.entrypoints.run_options import uncovered_models
 
 MODES = ("plain", "c", "e")
 CALLBACK_WAIT_SECONDS = 5.0
@@ -240,6 +241,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     cassette = Cassette.load(args.cassette)
     settings = LiveRunSettings(**cassette.settings)
+    if reason := uncovered_models(settings):
+        print(reason, file=sys.stderr)
+        return 1
     if args.mode == "c":
         litellm.callbacks = [COUNTER]
 
@@ -278,7 +282,10 @@ def main(argv: list[str] | None = None) -> int:
         report["wrapper_own_ms_per_replay"] = round(timer.own_ms, 4)
     print(json.dumps(report, indent=2))
     consistent = len(digests) == 1 and report.get("equal_to_reference", True)
-    missed = args.mode == "c" and calls_per_replay != [r["served"] for r in replays]
+    missed = args.mode == "c" and (
+        calls_per_replay != [r["served"] for r in replays]
+        or len(report["judge"]["callback_saw"]) != 1
+    )
     return 0 if consistent and not missed else 1
 
 

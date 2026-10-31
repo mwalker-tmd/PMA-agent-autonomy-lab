@@ -1,6 +1,7 @@
 """The hook probe on a scripted cassette of real τ-bench retail task 0: offline."""
 
 import json
+from pathlib import Path
 from uuid import uuid4
 
 import litellm
@@ -90,6 +91,32 @@ def test_a_missed_model_call_fails(recorded, capsys, monkeypatch):
     monkeypatch.setattr(hook_probe.CallCounter, "log_success_event", lambda *args: None)
 
     assert hook_probe.main(["c", "--cassette", CASSETTE, "--repeats", "1"]) == 1
+
+
+def test_a_missed_judge_call_fails(recorded, capsys, monkeypatch):
+    monkeypatch.setattr(hook_probe, "CALLBACK_WAIT_SECONDS", 0.5)
+    counted = hook_probe.CallCounter.log_success_event
+
+    def skip_the_judge(self, kwargs, response_obj, start_time, end_time):
+        if kwargs.get("model") != hook_probe.DEFAULT_LLM_NL_ASSERTIONS:
+            counted(self, kwargs, response_obj, start_time, end_time)
+
+    monkeypatch.setattr(hook_probe.CallCounter, "log_success_event", skip_the_judge)
+
+    capsys.readouterr()
+    assert hook_probe.main(["c", "--cassette", CASSETTE, "--repeats", "1"]) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert report["callback"]["calls_per_replay"] == [4]
+    assert report["judge"]["callback_saw"] == []
+
+
+def test_a_provider_the_transports_do_not_cover_is_refused(recorded, capsys):
+    cassette = json.loads(Path(CASSETTE).read_text(encoding="utf-8"))
+    cassette["settings"]["agent_llm"] = "mistral/mistral-large"
+    Path(CASSETTE).write_text(json.dumps(cassette), encoding="utf-8")
+
+    assert hook_probe.main(["plain", "--cassette", CASSETTE]) == 1
+    assert "mistral" in capsys.readouterr().err
 
 
 def test_a_missing_cassette_is_refused(tmp_path, capsys):
