@@ -61,8 +61,8 @@ This section gives each scorecard metric its exact source and denominator, befor
 
 - **Pass rate.** Only `PASS` and `FAIL` enter a pass-rate denominator. `NOT_APPLICABLE`, `INSUFFICIENT_EVIDENCE`, and `EVALUATOR_ERROR` are counted and shown beside it.
 - **`EVALUATOR_ERROR`.** The evaluator raised, its input could not be parsed, or a judge's response was malformed or stored [with no score](ARCHITECTURE.md#thread-evaluator-validation). This holds for every metric, so the sections below do not repeat it.
-- **Failed to run.** A simulation with `reward_info: null` and no messages (all five in the first [Milestone 2 attempt](BASELINE.md#failed-and-incomplete-tasks)), or a partial live trace with an `unfinished-` ID, gives `INSUFFICIENT_EVIDENCE` on every metric and is reported as a failed-to-run count.
-- **Partial records.** A violation proved from part of a record is a `FAIL`. A `PASS` needs the whole record, so a conversation that ended early with no violation so far gives `INSUFFICIENT_EVIDENCE` on any rule its missing part could break.
+- **Failed to run.** A simulation with `reward_info: null` and no messages (all five in the first [Milestone 2 attempt](BASELINE.md#failed-and-incomplete-tasks)) gives `INSUFFICIENT_EVIDENCE` on every metric and is reported as a failed-to-run count. A partial live trace with an `unfinished-` ID is also counted as failed to run, but it still holds evidence, so the next rule scores it.
+- **Partial records.** A violation proved from part of a record is a `FAIL`. A `PASS` needs the whole record, so a conversation that ended early or an `unfinished-` trace with no violation so far gives `INSUFFICIENT_EVIDENCE` on any rule its missing part could break.
 - **Roll-up.** Where a metric rolls several results into one per simulation, `FAIL` beats `EVALUATOR_ERROR`, which beats `INSUFFICIENT_EVIDENCE`, which beats `PASS`. `NOT_APPLICABLE` results are ignored, and the roll-up is `NOT_APPLICABLE` only if all of them are.
 - **Same results, different views.** Authentication compliance, confirmation compliance, and the unauthorized counts read the same check results as policy compliance. They are not judged twice.
 - **Rubric pass mark.** On a 0–2 rubric only a score of 2 is `PASS`; 0 and 1 are `FAIL`, and the full distribution is always reported (maintainer's decision, [recorded here](DECISIONS.md#open-questions-to-resolve-deliberately)).
@@ -116,7 +116,7 @@ Proposed here, from the [draft rules](BASELINE.md#draft-rules-for-milestone-4); 
 | Unit | One simulation | One simulation |
 | Data fields | `tool_calls[].name`, `arguments`; tool result `error`; the PA checks' results | Part A's call fields; `evaluation_criteria.actions`; `reward_info.db_check.db_match` |
 | Evidence source | Trajectory, Trace, Database, Judge output (PA-2) | Answer key, Trajectory |
-| Method | Roll up PA-1 to PA-9. PA-6 and PA-7 are decided here only by their state parts; "the user asked for it" rests on the confirmation judge. PA-10 is `NOT_APPLICABLE` when ungated | Compare executed writes with the reference writes that succeed on gold replay, as multisets (AA-4, AA-5). `PASS` when they match, or when `db_match` is true (AA-6). A read-only reference expects no write, so zero writes is a match. `partial_action_reward` and `action_checks` stay diagnostics |
+| Method | Roll up PA-1 to PA-11. PA-11's status read is a prerequisite of the write, not part of the read sequence left unjudged. PA-6 and PA-7 are decided here only by their state parts; "the user asked for it" rests on the confirmation judge. PA-10 is `NOT_APPLICABLE` when ungated | Compare executed writes with the reference writes that succeed on gold replay, as multisets (AA-4, AA-5). `PASS` when they match, or when `db_match` is true (AA-6). A read-only reference expects no write, so zero writes is a match. `partial_action_reward` and `action_checks` stay diagnostics |
 | Numerator | Simulations with `PASS` | Simulations with `PASS` |
 | Denominator | Simulations with `PASS` or `FAIL` | Simulations with `PASS` or `FAIL` |
 | `NOT_APPLICABLE` | No tool call in the simulation | No τ-bench task, or a [defect task](BASELINE.md#why-this-is-re-targeted-to-milestone-4) (`20`, `21`, `36`, `37`, `64`, `100`, `105`) |
@@ -131,11 +131,11 @@ Evaluator: [#101](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/1
 | Unit | One simulation |
 | Data fields | `tool_calls[].name`, `arguments` (`user_id`, `order_id`); tool result `error`, `content`; `orders[*].user_id` |
 | Evidence source | Trajectory, Trace, Database |
-| Method | `FAIL` when a protected operation comes before the authenticated user exists (PA-1, line 12), or when its target belongs to another user (PA-3, line 14). Any attempt counts, whether or not the tool succeeded |
+| Method | `FAIL` when a protected operation comes before the authenticated user exists (PA-1, line 12), or when its target belongs to another user (PA-3, line 14). Any attempt counts, whether or not the tool succeeded. Two successful lookups that return different user IDs are also a `FAIL`, because line 14 allows one user per conversation |
 | Numerator | Simulations with `PASS` |
 | Denominator | Simulations with `PASS` or `FAIL` |
-| `NOT_APPLICABLE` | The simulation has no protected operation, such as a transfer or refusal with no user lookup |
-| `INSUFFICIENT_EVIDENCE` | An authentication call or protected operation has no result; two lookups return different user IDs before the first protected operation, so the authenticated user is ambiguous; a target is not in the database, so its owner is unknown |
+| `NOT_APPLICABLE` | The simulation has no protected operation and no conflicting lookups, such as a transfer or refusal with no user lookup |
+| `INSUFFICIENT_EVIDENCE` | An authentication call or protected operation has no result; a target is not in the database, so its owner is unknown |
 
 ### Confirmation compliance
 
