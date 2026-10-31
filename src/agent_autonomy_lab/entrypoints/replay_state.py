@@ -30,7 +30,7 @@ from agent_autonomy_lab.domain.simulations import SavedSimulation
 _ANY_ZONE = ZoneInfo("UTC")
 
 
-def _simulations(run: str) -> tuple[Path, tuple[SavedSimulation, ...]]:
+def saved_simulations(run: str) -> tuple[Path, tuple[SavedSimulation, ...]]:
     path = Path(run).expanduser()
     single = path if path.name == "simulation.json" else path / "simulation.json"
     if single.is_file():
@@ -50,7 +50,7 @@ def _live_hash(directory: Path) -> str | None:
 def report(runs: Sequence[str], source: ReplayedRetailState) -> list[dict]:
     rows = []
     for run in runs:
-        directory, simulations = _simulations(run)
+        directory, simulations = saved_simulations(run)
         live_hash = _live_hash(directory)
         for simulation in simulations:
             timeline = source.timeline(simulation)
