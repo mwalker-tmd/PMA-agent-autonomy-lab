@@ -150,6 +150,58 @@ def test_a_rejected_output_is_kept_for_audit():
     assert evaluated.raw_outputs[1].payload["rejected_results"][0]["status"] == "PASS"
 
 
+def per_write(*results):
+    return EvaluatorOutput(results=tuple(r for o in results for r in o.results))
+
+
+def test_a_rejected_unit_does_not_cost_a_proved_violation_beside_it():
+    output = per_write(
+        make_output(ResultStatus.FAIL, target="write-1"),
+        make_output(target="write-2", evidence_ids=(uuid4(),)),
+    )
+    evaluated = evaluate_simulation(make_subject("infrastructure_error"), [canned(output)])
+    by_target = {result.target: result for result in evaluated.results}
+    assert by_target["write-1"].status is ResultStatus.FAIL
+    assert by_target["write-1"].failure_kind is FailureKind.VIOLATION
+    assert by_target["write-2"].status is ResultStatus.INVALID
+    metric = aggregate(evaluated.results)["metric"]
+    assert (metric.denominator, metric.invalid) == (1, 1)
+
+
+def test_a_rejected_unit_is_an_error_row_for_that_unit_only():
+    output = per_write(
+        make_output(target="write-1"),
+        make_output(target="write-2", evidence_ids=(uuid4(),)),
+    )
+    evaluated = evaluate_simulation(make_subject(), [canned(output)])
+    metric = aggregate(evaluated.results)["metric"]
+    assert (metric.numerator, metric.denominator, metric.evaluator_error) == (1, 1, 1)
+    [error] = [r for r in evaluated.results if r.status is ResultStatus.EVALUATOR_ERROR]
+    assert error.target == "write-2"
+
+
+def test_a_repeated_unit_leaves_one_error_row_and_aggregates():
+    output = per_write(make_output(target="write-1"), make_output(target="write-1"))
+    evaluated = evaluate_simulation(make_subject(), [canned(output)])
+    assert aggregate(evaluated.results)["metric"].evaluator_error == 1
+    assert len(evaluated.results) == 1
+
+
+def test_a_malformed_output_built_inside_an_evaluator_does_not_stop_the_others():
+    class Malformed:
+        evaluation_key = "metric"
+        version = "v1"
+
+        def evaluate(self, subject):
+            return EvaluatorOutput(results=(object(),))
+
+    evaluated = evaluate_simulation(
+        make_subject(), [Malformed(), canned(make_output(key="other"), "other")]
+    )
+    by_key = {result.evaluation_key: result.status for result in evaluated.results}
+    assert by_key == {"metric": ResultStatus.EVALUATOR_ERROR, "other": ResultStatus.PASS}
+
+
 @pytest.mark.parametrize("reason", [None, "new_reason"])
 def test_a_run_with_no_known_standing_calls_no_evaluator_and_leaves_error_rows(reason):
     evaluator = canned(make_output())

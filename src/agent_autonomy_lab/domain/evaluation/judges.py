@@ -38,11 +38,6 @@ def _status_and_score(stored: Any) -> tuple[ResultStatus, int | None, str]:
     """Return the status, score, and default reason for one stored judge output."""
     if not isinstance(stored, Mapping):
         return ResultStatus.EVALUATOR_ERROR, None, "The judge's output is not a mapping."
-    uncertain = stored.get("uncertain", False)
-    if not isinstance(uncertain, bool):
-        return ResultStatus.EVALUATOR_ERROR, None, "The judge's uncertainty flag is not a boolean."
-    if uncertain:
-        return ResultStatus.INSUFFICIENT_EVIDENCE, None, "The judge raised its uncertainty flag."
     score = stored.get("score")
     if score is None:
         return ResultStatus.EVALUATOR_ERROR, None, "The judge stored no score."
@@ -52,6 +47,11 @@ def _status_and_score(stored: Any) -> tuple[ResultStatus, int | None, str]:
             None,
             f"The judge's score is not one of {RUBRIC_SCORES}.",
         )
+    uncertain = stored.get("uncertain", False)
+    if not isinstance(uncertain, bool):
+        return ResultStatus.EVALUATOR_ERROR, None, "The judge's uncertainty flag is not a boolean."
+    if uncertain:
+        return ResultStatus.INSUFFICIENT_EVIDENCE, None, "The judge raised its uncertainty flag."
     status = ResultStatus.PASS if score == RUBRIC_PASS_SCORE else ResultStatus.FAIL
     return status, int(score), f"The judge scored {int(score)}."
 
@@ -69,9 +69,10 @@ def judge_output(
 ) -> EvaluatorOutput:
     """Turn one stored 0–2 judge output into one result and its raw output.
 
-    Only a score of 2 is a ``PASS``. An uncertainty flag gives
-    ``INSUFFICIENT_EVIDENCE``, and a missing or malformed score gives
-    ``EVALUATOR_ERROR``. The judge's reason is used only on a ``PASS`` or
+    A missing or malformed score gives ``EVALUATOR_ERROR``, even with an
+    uncertainty flag, because the contract treats a judge stored with no score as
+    a failure. Otherwise an uncertainty flag gives ``INSUFFICIENT_EVIDENCE``, and
+    only a score of 2 is a ``PASS``. The judge's reason is used only on a ``PASS`` or
     ``FAIL``; it stays readable in the raw output otherwise. A ``PASS`` or ``FAIL``
     with no ``evidence_ids`` raises ``ValueError``, as any such result does.
     """
