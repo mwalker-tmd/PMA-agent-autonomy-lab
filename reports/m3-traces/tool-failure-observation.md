@@ -15,7 +15,7 @@ Milestone 3, [#78](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/
 | Thread | `thread_id` `ea241be4-5f8e-5a73-9066-22d876889706`, `simulation_id` `8b6d0988-d32e-4cab-9241-118dbe0a59cb` |
 | Labels | `traffic_type: synthetic`, `experiment_class: custom_lab_experiment`, `fault_injected: true`, on all 20 runs |
 
-It is the trace's only error run. Screenshot (trace URLs expire with the project's 14-day retention): [the failure event](screenshots/m3-08-tool-failure.png).
+It is the trace's only error run. Screenshot (trace URLs expire with the project's 14-day retention): [the failure event](screenshots/m3-08-tool-failure.png), showing the error, the tool name, the span's place in the trace, and its metadata. Its Input section is collapsed, so it shows the arguments as `argument_hash` only; hashing `{"order_id": "#W2378156"}` with the lab's `argument_hash()` gives that same value, and the run inputs read back through the API hold those arguments.
 
 ## What the agent did
 
