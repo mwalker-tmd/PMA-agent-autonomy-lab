@@ -1,0 +1,94 @@
+# Authentication, access, and message-form checks manifest (M4-03, #101).
+# Values are recorded from the command below, never estimated. No model was
+# called and nothing was sent. See docs/EVALUATION.md "Authentication compliance".
+
+recorded_on: 2026-10-31
+tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7  # pinned git dependency, unmodified
+command: >-
+  uv run python -m agent_autonomy_lab.entrypoints.check_access
+  RUN_DIRECTORY...   # under ../tau2-bench/data/simulations; exit 0
+evaluators:
+  authentication_order: authentication-order-v1  # lines 10, 12; PA-1
+  user_access: user-access-v1                    # line 14; PA-3
+  message_form: message-form-v1                  # line 20; PA-8
+trace_source: simulation_trace  # the spans a saved-run export builds; results cite their event IDs
+prototype_comparison: >-
+  The Milestone 2 prototype passed all five baseline simulations on these rules
+  (docs/BASELINE.md, "What the baseline run showed"). These checks pass the same
+  five, so there is no difference to explain.
+totals:
+  simulations: 13
+  m2_baseline_simulations: 5
+  m2_baseline_authentication_compliance_pass: 5
+  authentication_compliance_pass: 13
+  concerns: 0
+  results_by_check:
+    authentication_order: {PASS: 51}
+    message_form: {PASS: 90}
+    user_access: {PASS: 51}
+simulations:
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 8be368a8-4ab9-4a5d-ba7d-9ca0b83587bc
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 2039e531-8f4e-4344-8664-6012099796f9
+    task_id: "1"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 524e2e82-2b21-4c9d-a286-b9c91e31ee45
+    task_id: "2"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 7}, message_form: {PASS: 10}, user_access: {PASS: 7}}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: b1a35955-60f4-4865-9e44-37a1e62560eb
+    task_id: "3"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 7}, message_form: {PASS: 10}, user_access: {PASS: 7}}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: dfc6e9c7-0f28-4072-b224-2bf94d5a8ddd
+    task_id: "4"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 8}, message_form: {PASS: 11}, user_access: {PASS: 8}}
+  - run: m3-05-live-task-0
+    simulation_id: a428164f-fdfc-4245-b30b-f871b8d62e7f
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 2}, message_form: {PASS: 5}, user_access: {PASS: 2}}
+  - run: m3-07-record
+    simulation_id: c66860b3-9a38-4e33-8048-a5308519edde
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
+  - run: m3-07-replay-off
+    simulation_id: a80c0b3e-2429-41bf-af65-5a251b159c38
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
+  - run: m3-07-replay-off-recheck
+    simulation_id: e3ecd6f6-5aad-4866-b998-e4ff8444f453
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
+  - run: m3-07-replay-on
+    simulation_id: 2aeb4ee0-01db-4c46-a5ca-afe17bd80dee
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
+  - run: m3-08-fault-task-0
+    simulation_id: 8b6d0988-d32e-4cab-9241-118dbe0a59cb
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
+  - run: m3-09-replay
+    simulation_id: 7e7dbafc-910c-4fff-8d86-97359d816507
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
+  - run: m3-09-replay-2
+    simulation_id: d0422c82-8cc8-44b0-b528-8af05d8f803e
+    task_id: "0"
+    authentication_compliance: PASS
+    checks: {authentication_order: {PASS: 3}, message_form: {PASS: 6}, user_access: {PASS: 3}}
