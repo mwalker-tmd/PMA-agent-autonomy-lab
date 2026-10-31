@@ -386,6 +386,78 @@ Setup points that will catch the next person:
 - **Retention stays on the 14-day tier only if you opt out.** Both evaluators have 180-day retention off, and the project remains `shortlived`.
 - **Evaluators judge every new thread.** Sampling and filters limit this, and a spend limit caps it ($5 a week here). The two evaluators were disabled after this check, so later runs are not judged by accident.
 
+### Navigating a trace
+
+Start from a `simulation_id` and reach the thread, a turn, a tool span, and the reward. A worked example on the Milestone 3 failure is in [`reports/m3-traces/walkthrough.md`](../reports/m3-traces/walkthrough.md).
+
+#### Expected trace shape
+
+A finished simulation traced by hook A looks like this:
+
+```text
+Thread                  thread_id = thread_id_for(simulation_id). One simulation, one thread
+└─ conversation         Root run (chain). LangSmith labels it "Turn 1": one trace is one
+   │                    LangSmith turn, however many messages it holds
+   │                    inputs.messages + outputs.messages = the whole transcript, in order
+   │                    Feedback: reward, reward_<component> (root only, never on a child)
+   │
+   │   All children hang directly from the root, ordered by start time
+   ├─ model_call        turn_index 1. Simulated user: no inputs, no outcome, 0.00s (no timing)
+   ├─ model_call        turn_index 2. Agent: inputs hold the messages this turn answered,
+   │                    plus model and version hashes; outputs hold its reply or tool call
+   ├─ <tool name>       turn_index 5. One per tool result, named after the tool: arguments as
+   │                    inputs, result as outputs, 0.00s (τ-bench records no tool timing).
+   │                    A sibling of the agent turn that called it, not its child
+   ├─ <tool name>       outcome error: status error, plus error_class and error_message
+   │     └┄ gate:<class> events on the tool run, not runs (none until Milestone 6)
+   └─ ...               turn_index N is message N of the root's transcript
+```
+
+Check a trace against this shape:
+
+| Check | Expected | Seen in Milestone 3 |
+| --- | --- | --- |
+| Roots in the thread | 1, named `conversation` | 1 in each of the three live-path traces |
+| Run count | One per message, because the root takes the place of the fixed opener, which has no span of its own | 20 runs and 20 messages (task `0`); 22 and 22 (replay); 20 and 20 (failure) |
+| Run types | `llm` = agent turns + simulated-user calls; `tool` = tool results | 9 + 5 and 5; 10 + 5 and 6; 9 + 4 and 6 |
+| Parents | Every child's `parent_run_id` is the root | Recorded in the [manifest](../reports/m3-traces/manifest.yaml) |
+| Labels | `simulation_id`, `thread_id`, and `traffic_type: synthetic` on every run | All 62 runs of those traces carry the IDs |
+| Feedback | `reward` and one `reward_<component>` on the root | `reward`, `reward_db`, `reward_nl_assertion` |
+
+Other shapes differ on purpose. A saved-run export (hook D) has the same tree, but its agent `model_call` spans hold only the reply as outputs. A run that raised has an `error` root, a `simulation_id` of the form `unfinished-<UUIDv7>`, and no reward feedback ([Runs that raise](#tracing-a-live-run-hook-a)). A fault run also has `fault_injected: true` on every span.
+
+#### From `simulation_id` to the evidence
+
+| To reach | Do this | What you see |
+| --- | --- | --- |
+| The `simulation_id` | Read `summary.json` in `$TAU2_DATA_DIR/simulations/<--save-to>/` or the run's entry in [`manifest.yaml`](../reports/m3-traces/manifest.yaml). `summary.json` also gives `thread_id` and `root_run_id`, and a fault run's `fault.tool_run_id` | A UUID, or `unfinished-<UUIDv7>` |
+| The trace | Open the project (`LANGSMITH_PROJECT`, default `agent-autonomy-lab-synthetic`), then **Tracing**. In the search bar, with **in any run** selected, enter `metadata.simulation_id:<id>`. Remove the quotes if the UI adds them. Widen the time window if nothing appears (it may default to **Last 1 day**) | One `conversation` row |
+| The thread | Open that row. The panel header reads **Thread** and lists **Turns** | The root as **Turn 1**, with its runs below it. **Full tree** shows all of them |
+| The transcript | Select `conversation`, then read **Input** and **Output** in order | Every message, including tool calls and results |
+| A turn | Select a `model_call` and find `turn_index` under **Attributes** → **Metadata**. Its **Input** is what the turn answered, and its **Output** is what it did | One agent or simulated-user message. This is the lab's turn, not LangSmith's **Turn 1** |
+| A tool span | Select a run with the wrench icon and the tool's name. To find failures, use the **Status** filter set to `error` | **Input** (arguments), **Output** (result), and an **Error** tab if it failed |
+| The reward | Select `conversation`, then **Feedback** | `reward` and its components. The JSON detail is in the `reward` item's `value` |
+
+Through the API, this filter returned all 20 runs of the failure trace, and the same form works with `thread_id`:
+
+```python
+client.list_runs(
+    project_name=project,
+    filter=f'and(eq(metadata_key, "simulation_id"), eq(metadata_value, "{simulation_id}"))',
+)
+```
+
+SDK 0.14.14 marks `list_runs` deprecated, to be removed after January 31, 2027. `client.list_runs(project_name=project, trace_id=root_run_id, error=True)` returns a trace's failed runs, and `client.list_feedback(run_ids=[root_run_id])` returns its reward.
+
+#### Reading it correctly
+
+- **Two meanings of "turn".** LangSmith's **Turn 1** is the whole trace. The lab's `turn_index` is one message.
+- **A tool span does not point at its call.** Tool runs carry no `tool_call_id`. To match them, take the span's `turn_index`, find that message in the root's transcript, and follow its `tool_call_id` back to the agent message that holds the same ID.
+- **`0.00s` is not a measurement.** Tool spans and simulated-user spans have no timing, so the waterfall shows only agent latency.
+- **Shifted start times.** An old trace may have been [shifted to its export time](#langsmith-run-mapping). The real time is in metadata `timestamp`.
+- **The trace holds no reasoning.** A turn's span shows what the agent received and what it did, not why it chose that. Any motive is an inference.
+- **Traces expire.** The project keeps them for 14 days, so evidence that must last is a committed screenshot, not a URL.
+
 ### Rechecking LangSmith behavior on upgrade
 
 The adapter relies on behavior we observed against the live service and SDK, not only on our own code. The tests run the real `langsmith.Client` with a fake HTTP session, so they catch a change in what the SDK sends, but not in how the service answers. Recheck these after upgrading `langsmith` or when LangSmith announces API changes:
