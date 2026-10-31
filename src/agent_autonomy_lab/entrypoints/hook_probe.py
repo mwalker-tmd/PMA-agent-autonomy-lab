@@ -19,7 +19,9 @@ upstream's agent, unwrapped, and reports replay times and an outcome digest:
 
 Run one mode per process. LiteLLM drops a second ``CustomLogger`` of the same
 class without saying so, and this module keeps one for that reason. The first
-replay of each mode is a warm-up and is not timed.
+replay of each mode is a warm-up and is not timed. The command exits 1 if the
+replays' outcomes differ from each other or from ``--reference``, or if the
+callback missed a model call.
 """
 
 import argparse
@@ -229,7 +231,10 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    parser = _parser()
+    args = parser.parse_args(argv)
+    if args.repeats < 1:
+        parser.error("--repeats must be at least 1")
     if not args.cassette.is_file():
         print(f"{args.cassette} is not a cassette file", file=sys.stderr)
         return 1
@@ -272,7 +277,9 @@ def main(argv: list[str] | None = None) -> int:
         ]
         report["wrapper_own_ms_per_replay"] = round(timer.own_ms, 4)
     print(json.dumps(report, indent=2))
-    return 0
+    consistent = len(digests) == 1 and report.get("equal_to_reference", True)
+    missed = args.mode == "c" and calls_per_replay != [r["served"] for r in replays]
+    return 0 if consistent and not missed else 1
 
 
 if __name__ == "__main__":

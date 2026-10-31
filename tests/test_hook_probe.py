@@ -74,6 +74,24 @@ def test_nothing_is_added_in_plain_mode(recorded, capsys):
     assert "tool_calls" not in report
 
 
+def test_an_outcome_other_than_the_reference_fails(recorded, capsys):
+    changed = json.loads(recorded.read_text(encoding="utf-8"))
+    changed["outcome"]["final_db_hash"] = "another database"
+    recorded.write_text(json.dumps(changed), encoding="utf-8")
+
+    args = ["plain", "--cassette", CASSETTE, "--repeats", "1", "--reference", str(recorded)]
+    capsys.readouterr()
+    assert hook_probe.main(args) == 1
+    assert json.loads(capsys.readouterr().out)["equal_to_reference"] is False
+
+
+def test_a_missed_model_call_fails(recorded, capsys, monkeypatch):
+    monkeypatch.setattr(hook_probe, "CALLBACK_WAIT_SECONDS", 0.0)
+    monkeypatch.setattr(hook_probe.CallCounter, "log_success_event", lambda *args: None)
+
+    assert hook_probe.main(["c", "--cassette", CASSETTE, "--repeats", "1"]) == 1
+
+
 def test_a_missing_cassette_is_refused(tmp_path, capsys):
     assert hook_probe.main(["plain", "--cassette", str(tmp_path / "none.json")]) == 1
     assert "is not a cassette file" in capsys.readouterr().err
