@@ -435,3 +435,16 @@ policy_check_fields:  # M3-11 (#81): docs/BASELINE.md "Lab rules beyond the reta
   tool_outcomes: {success: 16, error: 1, rejected: 0}
   runs_with_gate_events: 0
   tool_call_id_in_tool_run_metadata: 0   # τ-bench's ID is only inside message content (tool_calls[].id)
+
+trace_walkthrough:  # M3-12 (#82): reports/m3-traces/walkthrough.md, docs/ARCHITECTURE.md "Navigating a trace"
+  recorded_on: 2026-10-31
+  method: tool_failure_task_0 read back from LangSmith by simulation_id; no model calls and nothing sent
+  simulation_id: 8b6d0988-d32e-4cab-9241-118dbe0a59cb
+  runs_found_by_simulation_id: 20
+  runs_found_by_thread_id: {total: 20, roots: 1}
+  error_runs_found_by_trace_id: [01a18f25-2a06-7554-8c02-6b9dccb23d7b]
+  root_messages: {inputs: 2, outputs: 18}
+  turn_index_equals_transcript_position: true   # all 19 child spans; message 0, the fixed opener, has no span
+  simulated_user_span: {inputs: empty, outcome: absent, elapsed_ms: absent}
+  feedback_on_root: {reward: 1.0, reward_db: 1.0, reward_nl_assertion: 1.0}
+  reward_detail: {termination_reason: user_stop, db_match: true, nl_assertions: 0, action_checks: 5, action_checks_matched: 5, env_assertions: 0}
