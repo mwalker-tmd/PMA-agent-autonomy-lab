@@ -56,7 +56,7 @@ Lab code follows ports-and-adapters ([ADR-013](docs/DECISIONS.md#adr-013--adopt-
 
 - **Dependency rule:** code in `domain/`, `ports/`, and `application/` never imports τ-bench (`tau2`), LangSmith (`langsmith`), or a provider SDK (`openai`, `anthropic`, `litellm`). Only `adapters/` and `entrypoints/` do.
 - New infrastructure goes behind an existing port as a new adapter. Add or change a port only when the core needs a capability no port offers, and add an in-memory test double with it.
-- Enforcement: from Milestone 3, `import-linter` contracts in `pyproject.toml` check the rule; run `lint-imports` before opening a pull request. Until code exists, reviewers check it by hand.
+- Enforcement: `import-linter` contracts in `pyproject.toml` check the rule; run `lint-imports` before opening a pull request.
 
 ## Branches
 

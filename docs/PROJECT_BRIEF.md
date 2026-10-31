@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master implementation plan](../DEVELOPMENT.md)
 
-**Status:** Planning proposal; no application implementation has begun.  
+**Status:** Planning proposal. LangSmith tracing is implemented (Milestone 3); the evaluators, authorization gate, and traffic harness are not.  
 **Baseline:** October 18, 2026.
 
 ## Executive summary
