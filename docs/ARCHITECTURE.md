@@ -431,12 +431,12 @@ Other shapes differ on purpose. A saved-run export (hook D) has the same tree, b
 | To reach | Do this | What you see |
 | --- | --- | --- |
 | The `simulation_id` | Read `summary.json` in `$TAU2_DATA_DIR/simulations/<--save-to>/` or the run's entry in [`manifest.yaml`](../reports/m3-traces/manifest.yaml). `summary.json` also gives `thread_id` and `root_run_id`, and a fault run's `fault.tool_run_id` | A UUID, or `unfinished-<UUIDv7>` |
-| The trace | Open the project (`LANGSMITH_PROJECT`, default `agent-autonomy-lab-synthetic`), then **Tracing**. In the search bar, with **in any run** selected, enter `metadata.simulation_id:<id>`. Remove the quotes if the UI adds them. Widen the time window if nothing appears (it may default to **Last 1 day**) | One `conversation` row |
-| The thread | Open that row. The panel header reads **Thread** and lists **Turns** | The root as **Turn 1**, with its runs below it. **Full tree** shows all of them |
+| The trace | Open the project (`LANGSMITH_PROJECT`, default `agent-autonomy-lab-synthetic`), then **Tracing**. In the search bar, enter `metadata.simulation_id:<id>`; **in root run** and **in any run** both find it. Remove the quotes if the UI adds them. Widen the time window if nothing appears (it may default to **Last 1 day**) | One `conversation` row |
+| The thread | Open that row. The panel header reads **Thread** and lists **Turns** | The root as **Turn 1**, with its runs below it |
 | The transcript | Select `conversation`, then read **Input** and **Output** in order | Every message, including tool calls and results |
 | A turn | Select a `model_call` and find `turn_index` under **Attributes** → **Metadata**. Its **Input** is what the turn answered, and its **Output** is what it did | One agent or simulated-user message. This is the lab's turn, not LangSmith's **Turn 1** |
-| A tool span | Select a run with the wrench icon and the tool's name. To find failures, use the **Status** filter set to `error` | **Input** (arguments), **Output** (result), and an **Error** tab if it failed |
-| The reward | Select `conversation`, then **Feedback** | `reward` and its components. The JSON detail is in the `reward` item's `value` |
+| A tool span | Select a run with the wrench icon and the tool's name. In the tree, a red line runs from the root to a failed run | **Input** (arguments), **Output** (result), and an **Error** tab if it failed |
+| The reward | Select `conversation`, then **Feedback** | The scores of `reward` and its components. The checks behind them are in the `reward` item's `value`, read through the API |
 
 Through the API, this filter returned all 20 runs of the failure trace, and the same form works with `thread_id`:
 
@@ -452,6 +452,8 @@ SDK 0.14.14 marks `list_runs` deprecated, to be removed after January 31, 2027. 
 #### Reading it correctly
 
 - **Two meanings of "turn".** LangSmith's **Turn 1** is the whole trace. The lab's `turn_index` is one message.
+- **A failed tool leaves the root `success`.** The run list shows a green check for a conversation with a failed tool, and the status of a child does not carry up. A search for error runs must cover every run: through the API, the failure trace has one error run in any run and none among root runs.
+- **Agent replies can appear as JSON.** The agent's messages to the customer show as `{"message":"…"}`, because that is the content τ-bench recorded.
 - **A tool span does not point at its call.** Tool runs carry no `tool_call_id`. To match them, take the span's `turn_index`, find that message in the root's transcript, and follow its `tool_call_id` back to the agent message that holds the same ID.
 - **`0.00s` is not a measurement.** Tool spans and simulated-user spans have no timing, so the waterfall shows only agent latency.
 - **Shifted start times.** An old trace may have been [shifted to its export time](#langsmith-run-mapping). The real time is in metadata `timestamp`.

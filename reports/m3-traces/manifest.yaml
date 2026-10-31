@@ -448,3 +448,9 @@ trace_walkthrough:  # M3-12 (#82): reports/m3-traces/walkthrough.md, docs/ARCHIT
   simulated_user_span: {inputs: empty, outcome: absent, elapsed_ms: absent}
   feedback_on_root: {reward: 1.0, reward_db: 1.0, reward_nl_assertion: 1.0}
   reward_detail: {termination_reason: user_stop, db_match: true, nl_assertions: 0, action_checks: 5, action_checks_matched: 5, env_assertions: 0}
+  root_status: success                          # the failed tool does not fail the root
+  error_runs_by_simulation_id: {any_run: 1, root_runs: 0}
+  next_agent_turn_input_messages: 1             # the failed tool result only
+  screenshots_checked_against_api:              # event IDs, tokens, cost, scores, tree order
+    - screenshots/m3-12-thread-feedback.png     # root: 49,345 tokens, $0.00195454, 3 feedback scores, messages 2-11
+    - screenshots/m3-12-next-turn.png           # event_id aedbd18f-e1d6-54ec-927b-3e91423a48b5, 3845 + 47 tokens; turn_index is below the visible metadata

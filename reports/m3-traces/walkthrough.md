@@ -21,11 +21,13 @@ Start from `simulation_id` `8b6d0988-d32e-4cab-9241-118dbe0a59cb`. Searching the
 
 This matches the [expected shape](../../docs/ARCHITECTURE.md#expected-trace-shape): one root, 20 messages and 20 runs, and every child directly under the root.
 
-![The thread found by simulation ID, with the root's reward feedback](screenshots/m3-12-thread-feedback.png)
+The root's status is `success`, and the run list shows a green check: a failed tool does not fail its conversation. The failure is found inside the trace.
+
+![The thread found by simulation ID, with the reward scores and the start of the transcript](screenshots/m3-12-thread-feedback.png)
 
 ## 2. Read the transcript
 
-The root's **Input** and **Output** hold the whole conversation. Each child span's `turn_index` is its message number here.
+The root's **Input** and **Output** hold the whole conversation; the screenshot above shows messages 2 to 11, including the failure and the retry. Each child span's `turn_index` is its message number here.
 
 | Message | Who | What |
 | --- | --- | --- |
@@ -45,11 +47,9 @@ The root's **Input** and **Output** hold the whole conversation. Each child span
 | 18 | agent | Confirms the exchange and the $16.63 refund; does not mention the failure |
 | 19 | customer | Ends the conversation |
 
-![Messages 6 to 9 in the root's output](screenshots/m3-12-transcript-failure.png)
-
 ## 3. Open the failed tool span
 
-The run with status `error` is the trace's only failed run: `01a18f25-2a06-7554-8c02-6b9dccb23d7b`.
+A red line in the tree runs from the root to the trace's only failed run: `01a18f25-2a06-7554-8c02-6b9dccb23d7b`.
 
 | Field | Value |
 | --- | --- |
@@ -67,7 +67,7 @@ The run with status `error` is the trace's only failed run: `01a18f25-2a06-7554-
 
 Next in the trace is the `model_call` with `turn_index` 8, `01a18f25-2a07-7cac-807e-883944b582da`.
 
-- **Its input ends with the failure:** a `tool` message with `Error: Service temporarily unavailable` and `tool_call_id` `call_M7uTCxwaJuQmybgbS6wOnRYc`.
+- **Its input is the failure:** one `tool` message, `Error: Service temporarily unavailable`, with `tool_call_id` `call_M7uTCxwaJuQmybgbS6wOnRYc`. An agent span holds only the messages that turn answered.
 - **Its output is the retry:** `get_order_details` with `{"order_id": "#W2378156"}`, and no text.
 
 ![The next agent turn: the failure in its input, the retry in its output](screenshots/m3-12-next-turn.png)
