@@ -1,6 +1,6 @@
 # Development Plan — Agent Autonomy Lab
 
-**Status:** Plan and specification; the lab Python project, its dependency-rule checks, the trace event schema, and the LangSmith trace adapter exist; the Milestone 2 baseline has been exported to LangSmith, one task has been run live through a traced lab agent, an injected tool failure has been inspected in its trace, and a thread-level evaluator has judged a traced conversation. Milestones 0 (repository and workflow setup), 1 (project and success criteria), 2 (install and run τ-bench), and 3 (integrate LangSmith observability) are complete; Milestone 4 (build the evaluation framework) is next.
+**Status:** Plan and specification; the lab Python project, its dependency-rule checks, the trace event schema, and the LangSmith trace adapter exist; the Milestone 2 baseline has been exported to LangSmith, one task has been run live through a traced lab agent, an injected tool failure has been inspected in its trace, and a thread-level evaluator has judged a traced conversation. Milestones 0 (repository and workflow setup), 1 (project and success criteria), 2 (install and run τ-bench), and 3 (integrate LangSmith observability) are complete; Milestone 4 (build the evaluation framework) is in progress.
 
 **This file is the canonical implementation plan.** Supporting specifications live in [`docs/`](docs/). When scope, order, or acceptance criteria change, update this file and record the decision in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -49,7 +49,7 @@ flowchart LR
 | 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | Complete |
 | 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | Complete |
 | 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | Complete |
-| 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | Not started |
+| 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | In progress |
 | 5 | Generate simulated production traffic | 50–100 labeled, reproducible multi-turn sessions and traffic analysis | Not started |
 | 6 | Implement earned autonomy | Four-level authorization gate, approval flow, policy tests, review history | Not started |
 | 7 | Build operational monitoring | Operational/quality dashboards, signal definitions, and alert tests | Not started |
@@ -259,7 +259,7 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 ### Steps
 
-- [ ] **4.1** Map each metric in [`docs/EVALUATION.md`](docs/EVALUATION.md) to exact data fields and one or more evidence sources.
+- [x] **4.1** Map each metric in [`docs/EVALUATION.md`](docs/EVALUATION.md) to exact data fields and one or more evidence sources ([metric contract](docs/EVALUATION.md#metric-contract)).
 - [ ] **4.2** Build deterministic checks for final-state success, allowed tool/action, authentication order, confirmation order, and denied/attempted/executed actions where measurable.
 - [ ] **4.3** Represent unknown/not-observed conditions explicitly rather than marking them as passing using the [EVALUATION.md statuses](docs/EVALUATION.md#required-result-format): `PASS`, `FAIL`, `NOT_APPLICABLE`, `INSUFFICIENT_EVIDENCE`, and `EVALUATOR_ERROR`. An evaluator error never counts as passing.
 - [ ] **4.4** Implement the three rubric-based LLM judges in [`docs/EVALUATION.md`](docs/EVALUATION.md#llm-as-a-judge-design): clarity/customer effort, escalation judgment, and conversation efficiency. Version judge prompts.
@@ -501,9 +501,10 @@ All milestones must uphold the following invariants:
 - [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
 - [x] **Milestone 2:** clone τ-bench and execute baseline; record the inspection, task mapping, and extension points (see [docs/BASELINE.md](docs/BASELINE.md)).
 - [x] **Milestone 3:** trace τ-bench conversations in LangSmith (saved runs export as LangSmith threads, live runs are traced through a registered lab agent, secrets are redacted before anything is sent, tracing is shown to change nothing on a deterministic replay, an injected tool failure can be inspected in its trace, thread-level evaluators are validated on this account, the instrumentation point is decided in [ADR-016](docs/DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export), and the lab's policy rules are [mapped to the trace events](docs/BASELINE.md#lab-rules-beyond-the-retail-policy)).
-- [ ] Milestones 4–9: not yet started.
+- [ ] **Milestone 4:** in progress; tickets are [#98–#114](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/milestone/5), and each metric now has a [contract](docs/EVALUATION.md#metric-contract) (step 4.1).
+- [ ] Milestones 5–9: not yet started.
 
-**Next work session:** Plan the Milestone 4 tickets. They must cover the [open questions](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 4 (tool correctness, deterministic policy checks, and the demo's sample sizes and thresholds), including the two decisions the policy-check row hands over: how the confirmation judge is built, and whether gate-event checks stay fixture-only until Milestone 6. They should also account for two Milestone 3 findings: a declared `reasoning_effort` [does not reach the model](reports/m3-traces/behavioral-equivalence.md), and thread judges [use `all_messages`, not `trajectory`](docs/ARCHITECTURE.md#thread-evaluator-validation).
+**Next work session:** Build the result record, the `Evaluator` port, and the denominators in [#99](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/99) (M4-01), following the [metric contract](docs/EVALUATION.md#rules-for-every-metric). The later tickets carry the two Milestone 3 findings and the open questions that target Milestone 4. Task `4`'s Milestone 2 trace expires around November 12, 2026, so its screenshots for [#113](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/113) must be taken before then.
 
 ## 5. Reproducibility template (fill for each experiment)
 
