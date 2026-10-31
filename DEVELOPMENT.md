@@ -1,6 +1,6 @@
 # Development Plan — Agent Autonomy Lab
 
-**Status:** Plan and specification; the lab Python project, its dependency-rule checks, the trace event schema, and the LangSmith trace adapter exist; the Milestone 2 baseline has been exported to LangSmith, one task has been run live through a traced lab agent, an injected tool failure has been inspected in its trace, and a thread-level evaluator has judged a traced conversation. Milestones 0 (repository and workflow setup), 1 (project and success criteria), and 2 (install and run τ-bench) are complete; Milestone 3 (integrate LangSmith observability) is in progress.
+**Status:** Plan and specification; the lab Python project, its dependency-rule checks, the trace event schema, and the LangSmith trace adapter exist; the Milestone 2 baseline has been exported to LangSmith, one task has been run live through a traced lab agent, an injected tool failure has been inspected in its trace, and a thread-level evaluator has judged a traced conversation. Milestones 0 (repository and workflow setup), 1 (project and success criteria), 2 (install and run τ-bench), and 3 (integrate LangSmith observability) are complete; Milestone 4 (build the evaluation framework) is next.
 
 **This file is the canonical implementation plan.** Supporting specifications live in [`docs/`](docs/). When scope, order, or acceptance criteria change, update this file and record the decision in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -8,7 +8,7 @@
 | --- | --- |
 | Baseline date | October 18, 2026 |
 | Plan version | 1.0 |
-| Implementation status | **Started:** project skeleton (Milestone 3) |
+| Implementation status | **Started:** LangSmith tracing (Milestone 3); evaluators, authorization gate, and traffic harness not built |
 | Repository strategy | Single `agent-autonomy-lab` repository; separate upstream τ-bench checkout |
 | Initial domain | Retail, text-based, multi-turn customer support |
 | Primary observability platform | LangSmith |
@@ -48,7 +48,7 @@ flowchart LR
 | 0 | Repository and workflow setup | Repository, issue templates, labels, protected `main`, [CONTRIBUTING.md](CONTRIBUTING.md) | Complete |
 | 1 | Establish project and success criteria | Approved scope, metrics, three scenario specifications, initial evidence contract | Complete |
 | 2 | Install and run τ-bench | Five inspectable baseline simulations, reproducibility manifest | Complete |
-| 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | In progress |
+| 3 | Integrate LangSmith observability | Correlated conversation, LLM, tool, and decision traces | Complete |
 | 4 | Build the evaluation framework | Tested evaluators and ~20-case baseline scorecard | Not started |
 | 5 | Generate simulated production traffic | 50–100 labeled, reproducible multi-turn sessions and traffic analysis | Not started |
 | 6 | Implement earned autonomy | Four-level authorization gate, approval flow, policy tests, review history | Not started |
@@ -83,6 +83,7 @@ agent-autonomy-lab/
 │   ├── adapters/                 # the only code that imports third-party infrastructure
 │   │   ├── tau2/                 # τ-bench agent/orchestrator hook, ToolExecutor, run metadata
 │   │   ├── langsmith/            # TraceSink
+│   │   ├── litellm/              # replay cassette transport (Milestone 3)
 │   │   ├── models/               # ModelClient (LiteLLM / provider SDK)
 │   │   ├── approvals/            # ApprovalSource: fixture; FastAPI UI only if M6 chooses one
 │   │   └── evaluators/           # LLM judge and τ-bench reward reader
@@ -90,11 +91,12 @@ agent-autonomy-lab/
 ├── tests/                        # unit/integration/regression cases
 ├── datasets/                     # planned scenario definitions and safe examples
 ├── scripts/                      # planned repeatable run utilities
-├── reports/                      # planned run manifests and evaluation summaries
+├── reports/                      # run manifests and summaries; evaluation summaries planned
+├── cassettes/                    # local replay recordings, ignored by Git
 └── demo/                         # planned teaching materials and backup evidence
 ```
 
-Milestone 3 created `pyproject.toml`, `.env.example`, the five layer packages, and `tests/`, then the trace event schema (`domain/events/`), the `TraceSink` port (`ports/trace_sink.py`), and the composition-root settings (`entrypoints/`); the other subpackages and directories are **planned**. The layout follows [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture): dependencies point inward, and only `adapters/` and `entrypoints/` import τ-bench, LangSmith, or a provider SDK (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#code-structure-ports-and-adapters)). τ-bench remains a sibling clone or separately pinned dependency unless a later decision changes that.
+Milestone 3 created `pyproject.toml`, `.env.example`, the five layer packages, and `tests/`, then the trace event schema (`domain/events/`), the `TraceSink` port (`ports/trace_sink.py`), its adapters (`adapters/langsmith/`, `adapters/tau2/`, `adapters/litellm/`), the trace and replay use cases (`application/`), the run commands (`entrypoints/`), and the run records (`reports/m3-traces/`). The other subpackages and directories are **planned**. The layout follows [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture): dependencies point inward, and only `adapters/` and `entrypoints/` import τ-bench, LangSmith, or a provider SDK (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#code-structure-ports-and-adapters)). τ-bench remains a sibling clone or separately pinned dependency unless a later decision changes that.
 
 ---
 
@@ -210,6 +212,8 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 ## Milestone 3 — Integrate LangSmith observability
 
+**Status:** Complete (October 31, 2026). The trace contract and navigation steps are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#navigating-a-trace), the run records and walkthrough are in [`reports/m3-traces/`](reports/m3-traces/), and the decisions are [ADR-016](docs/DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export) and [ADR-017](docs/DECISIONS.md#adr-017--shift-old-traces-to-export-time-in-the-langsmith-adapter).
+
 **Objective:** Make a multi-turn customer conversation reconstructable, with LLM calls, tool calls, failures, and version metadata correlated. Observability should let us understand the agent's behavior without changing it.
 
 **Prerequisites:** Milestone 2 baseline and identified supported integration point.
@@ -236,12 +240,12 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 
 ### Acceptance Criteria
 
-- [ ] Given a simulation ID, we can find the corresponding LangSmith conversation and tool trajectory.
-- [ ] At least one full multi-turn interaction is assembled correctly for thread-level evaluation.
-- [ ] Tool failure observability verified: a controlled, one-shot fault injection produces an inspectable LangSmith failure event containing the tool name, triggering arguments, error classification, and correlation to the parent conversation. The agent receives the failure and has an opportunity to respond naturally. The experiment is clearly labeled as synthetic, and the uninstrumented benchmark baseline and deterministic replay cassette remain unchanged.
-- [ ] Behavioral equivalence verified: on a deterministic replay of a known task, enabling tracing changes no agent response, tool call, final state, or benchmark outcome, and the traced run produces complete, correlated traces.
-- [ ] We can answer **what happened** and **why** using trace evidence.
-- [ ] Each open question in `docs/DECISIONS.md` that targets this milestone is resolved (decision recorded) or re-targeted with a stated reason.
+- [x] Given a simulation ID, we can find the corresponding LangSmith conversation and tool trajectory.
+- [x] At least one full multi-turn interaction is assembled correctly for thread-level evaluation.
+- [x] Tool failure observability verified: a controlled, one-shot fault injection produces an inspectable LangSmith failure event containing the tool name, triggering arguments, error classification, and correlation to the parent conversation. The agent receives the failure and has an opportunity to respond naturally. The experiment is clearly labeled as synthetic, and the uninstrumented benchmark baseline and deterministic replay cassette remain unchanged.
+- [x] Behavioral equivalence verified: on a deterministic replay of a known task, enabling tracing changes no agent response, tool call, final state, or benchmark outcome, and the traced run produces complete, correlated traces.
+- [x] We can answer **what happened** and **why** using trace evidence.
+- [x] Each open question in `docs/DECISIONS.md` that targets this milestone is resolved (decision recorded) or re-targeted with a stated reason.
 
 **Dependencies / risks:** Tracing overhead, message-shape compatibility, region/plan-specific features (e.g. trajectory variables), avoiding accidental double-counting or credential exposure. Online multi-turn evaluation is asynchronous; do not confuse it with enforcement.
 
@@ -496,10 +500,10 @@ All milestones must uphold the following invariants:
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
 - [x] **Milestone 2:** clone τ-bench and execute baseline; record the inspection, task mapping, and extension points (see [docs/BASELINE.md](docs/BASELINE.md)).
-- [ ] **Milestone 3:** trace τ-bench conversations in LangSmith (in progress; saved runs export as LangSmith threads, live runs are traced through a registered lab agent, secrets are redacted before anything is sent, tracing is shown to change nothing on a deterministic replay, an injected tool failure can be inspected in its trace, thread-level evaluators are validated on this account, the instrumentation point is decided in [ADR-016](docs/DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export), and the lab's policy rules are [mapped to the trace events](docs/BASELINE.md#lab-rules-beyond-the-retail-policy)).
+- [x] **Milestone 3:** trace τ-bench conversations in LangSmith (saved runs export as LangSmith threads, live runs are traced through a registered lab agent, secrets are redacted before anything is sent, tracing is shown to change nothing on a deterministic replay, an injected tool failure can be inspected in its trace, thread-level evaluators are validated on this account, the instrumentation point is decided in [ADR-016](docs/DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export), and the lab's policy rules are [mapped to the trace events](docs/BASELINE.md#lab-rules-beyond-the-retail-policy)).
 - [ ] Milestones 4–9: not yet started.
 
-**Next work session:** Continue Milestone 3 with its remaining tickets (#82–#83). Every open question in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that targeted Milestone 3 is now resolved or re-targeted.
+**Next work session:** Plan the Milestone 4 tickets. They must cover the [open questions](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 4 (tool correctness, deterministic policy checks, and the demo's sample sizes and thresholds), including the two decisions the policy-check row hands over: how the confirmation judge is built, and whether gate-event checks stay fixture-only until Milestone 6. They should also account for two Milestone 3 findings: a declared `reasoning_effort` [does not reach the model](reports/m3-traces/behavioral-equivalence.md), and thread judges [use `all_messages`, not `trajectory`](docs/ARCHITECTURE.md#thread-evaluator-validation).
 
 ## 5. Reproducibility template (fill for each experiment)
 
