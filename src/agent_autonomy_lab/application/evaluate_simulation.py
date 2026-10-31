@@ -7,6 +7,7 @@ standing is then applied to every result (docs/EVALUATION.md, "Invalid runs").
 """
 
 from collections.abc import Iterable
+from uuid import UUID
 
 from agent_autonomy_lab.domain.evaluation import (
     EvaluationResult,
@@ -107,17 +108,51 @@ def _run_evaluator(evaluator: Evaluator, subject: EvaluationSubject) -> Evaluato
             {"error_class": type(error).__name__, "error_message": str(error)},
         )
     if not isinstance(output, EvaluatorOutput):
-        problem = f"returned a {type(output).__name__}, not an EvaluatorOutput"
-    elif not output.results:
-        problem = "returned no results"
-    else:
-        return _checked_output(evaluator, subject, output)
-    return _error_output(
-        evaluator,
-        subject,
-        f"The evaluator's output was rejected: {problem}.",
-        {"errors": [problem]},
+        return _rejected_output(
+            evaluator, subject, f"returned a {type(output).__name__}, not an EvaluatorOutput"
+        )
+    if not output.results:
+        return _rejected_output(evaluator, subject, "returned no results", output.raw_outputs)
+    return _checked_output(evaluator, subject, output)
+
+
+def _rejected_output(
+    evaluator: Evaluator,
+    subject: EvaluationSubject,
+    problem: str,
+    kept: tuple[RawEvaluatorOutput, ...] = (),
+    rejected_results: tuple[EvaluationResult, ...] = (),
+) -> EvaluatorOutput:
+    """Replace a whole output with an error row, keeping its raw outputs for audit."""
+    payload: dict[str, object] = {"errors": [problem]}
+    if rejected_results:
+        payload["rejected_results"] = [result.to_dict() for result in rejected_results]
+    error = _error_output(
+        evaluator, subject, f"The evaluator's output was rejected: {problem}.", payload
     )
+    return EvaluatorOutput(results=error.results, raw_outputs=(*kept, *error.raw_outputs))
+
+
+def _unique_raw_outputs(
+    evaluator: Evaluator, subject: EvaluationSubject, output: EvaluatorOutput, seen: set[UUID]
+) -> EvaluatorOutput:
+    """Reject an output that reuses another evaluator's raw ``output_id``.
+
+    The combined output holds every evaluator's raw outputs, so a reused ID would
+    otherwise raise there and lose every evaluator's results for this simulation.
+    The reused record is dropped, because the ID already names another one.
+    """
+    reused = [raw for raw in output.raw_outputs if raw.output_id in seen]
+    if reused:
+        output = _rejected_output(
+            evaluator,
+            subject,
+            f"reused raw output id {reused[0].output_id}",
+            tuple(raw for raw in output.raw_outputs if raw.output_id not in seen),
+            output.results,
+        )
+    seen.update(raw.output_id for raw in output.raw_outputs)
+    return output
 
 
 def evaluate_simulation(
@@ -144,7 +179,11 @@ def evaluate_simulation(
         ]
         standing = None
     else:
-        outputs = [_run_evaluator(evaluator, subject) for evaluator in evaluators]
+        seen: set[UUID] = set()
+        outputs = [
+            _unique_raw_outputs(evaluator, subject, _run_evaluator(evaluator, subject), seen)
+            for evaluator in evaluators
+        ]
     results = [result for output in outputs for result in output.results]
     raw_outputs = tuple(raw for output in outputs for raw in output.raw_outputs)
     settled = settle_results(results, standing) if standing else tuple(results)
