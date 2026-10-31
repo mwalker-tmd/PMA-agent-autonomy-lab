@@ -132,19 +132,39 @@ def _no_result_reason(record: ToolCallRecord) -> str:
 
 @dataclass(frozen=True)
 class _Lookups:
-    """The authenticated user: the one the first successful lookup returned."""
+    """The authenticated user: the one the first successful lookup returned.
 
-    first: ToolCallRecord | None
-    user_id: str | None
+    ``doubted`` means a lookup the record lost could have come first, so another
+    user may be the authenticated one. A target of someone other than ``user_id``
+    is still a violation, because line 14 is then broken by the two lookups
+    instead, but a target of ``user_id`` cannot pass. ``unknown_user`` means the
+    database does not have ``user_id``, so nothing can be compared with it.
+    """
+
+    first: ToolCallRecord | None = None
+    user_id: str | None = None
+    doubted: bool = False
+    unknown_user: bool = False
 
 
-def _lookups(timeline: Iterable[ToolCallRecord]) -> _Lookups:
+def _lookups(
+    simulation: SavedSimulation, timeline: Iterable[ToolCallRecord], state: RetailState | None
+) -> _Lookups:
+    lost = [index for index, _ in results_without_a_call(simulation.messages)]
+    doubted = False
     for record in timeline:
-        if record.call.name in AUTHENTICATION_TOOLS:
-            _, found = _lookup_outcome(record)
-            if found:
-                return _Lookups(record, found)
-    return _Lookups(None, None)
+        if record.call.name not in AUTHENTICATION_TOOLS:
+            continue
+        established, found = _lookup_outcome(record)
+        if found:
+            return _Lookups(
+                first=record,
+                user_id=found,
+                doubted=doubted or any(index < record.message_index for index in lost),
+                unknown_user=state is not None and found not in state.users,
+            )
+        doubted = doubted or not established
+    return _Lookups()
 
 
 def _record_or_note(results: _Results, subject: EvaluationSubject) -> SavedSimulation | None:
@@ -189,7 +209,8 @@ class AuthenticationOrderEvaluator:
                     authenticated = record
             elif record.call.name in PROTECTED_OPERATIONS:
                 name = record.call.name
-                if authenticated is not None:
+                # A call in the lookup's own message was made before its result arrived.
+                if authenticated and authenticated.message_index < record.message_index:
                     self._after_lookup(results, target, record, authenticated, evidence)
                 elif lookup_unknown or any(index < record.message_index for index in lost):
                     results.unknown(
@@ -198,7 +219,7 @@ class AuthenticationOrderEvaluator:
                 else:
                     results.failed(
                         target,
-                        f"{name} was attempted before any successful authentication.",
+                        f"{name} was attempted before any lookup had succeeded.",
                         evidence.attempt_ids(record),
                     )
         return results.output("The simulation has no protected operation.")
@@ -287,14 +308,8 @@ class UserAccessEvaluator:
         _note_lost_calls(results, simulation)
         evidence = TraceEvidence(subject.events)
         timeline = tool_timeline(simulation.messages)
-        lookups = _lookups(timeline)
         state = _ownership_state(self._state_source.timeline(simulation))
-        if lookups.user_id is not None and state is not None and lookups.user_id not in state.users:
-            results.unknown(
-                _unit(lookups.first, evidence),
-                f"The lookup returned {lookups.user_id}, which is not in the database.",
-            )
-            return results.output()
+        lookups = _lookups(simulation, timeline, state)
         for record in timeline:
             target = _unit(record, evidence)
             if record.call.name in AUTHENTICATION_TOOLS:
@@ -314,13 +329,15 @@ class UserAccessEvaluator:
         established, found = _lookup_outcome(record)
         if not established:
             results.unknown(target, f"A lookup's outcome is unknown: {_no_result_reason(record)}")
+        elif record is lookups.first and lookups.unknown_user:
+            results.unknown(target, f"The lookup returned {found}, which is not in the database.")
         elif found and found != lookups.user_id:
             first, second = evidence.tool_span(lookups.first), evidence.tool_span(record)
             results.failed(
                 target,
                 f"Lookups returned {lookups.user_id} and then {found}; "
                 "a conversation serves one user.",
-                tuple(span.event_id for span in (first, second) if span is not None),
+                (first.event_id, second.event_id) if first and second else (),
             )
 
     @staticmethod
@@ -336,20 +353,27 @@ class UserAccessEvaluator:
         if lookups.user_id is None:
             results.unknown(target, f"No user was authenticated to compare {name}'s target with.")
             return
+        if lookups.unknown_user:
+            results.unknown(target, f"The database does not have {lookups.user_id}.")
+            return
         others, unknown = _owner_problem(record, lookups.user_id, state)
+        lookup = evidence.tool_span(lookups.first)
         if others:
+            attempt = evidence.attempt_ids(record)
             results.failed(
                 target,
                 f"{name} targeted {', '.join(others)}; the authenticated user is "
                 f"{lookups.user_id}.",
-                evidence.attempt_ids(record),
+                (lookup.event_id, *attempt) if lookup and attempt else (),
             )
         elif unknown:
             results.unknown(target, f"{name}: {'; '.join(unknown)}.")
         elif record.result is None:
             results.unknown(target, _no_result_reason(record))
+        elif lookups.doubted:
+            results.unknown(target, "A lost lookup could have authenticated someone else.")
         else:
-            span, lookup = evidence.tool_span(record), evidence.tool_span(lookups.first)
+            span = evidence.tool_span(record)
             if span is None or lookup is None:
                 results.unknown(target, f"The trace does not bind {name} to its spans.")
             else:

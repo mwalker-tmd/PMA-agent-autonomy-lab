@@ -2,16 +2,23 @@
 
 A tool span holds no ``tool_call_id``, so it is matched to its call through the
 result message's ``turn_index`` (docs/ARCHITECTURE.md, "Reading it correctly").
-A span whose tool name or argument hash disagrees with the call is not evidence
-for it, and neither is a turn with several spans of a type: the check then has
-nothing to cite, and it reports ``INSUFFICIENT_EVIDENCE``.
+A span whose tool name, argument hash, or outcome disagrees with the call is not
+evidence for it, and neither is a turn with several spans of a type: the check
+then has nothing to cite, and it reports ``INSUFFICIENT_EVIDENCE``.
 """
 
 from collections.abc import Iterable
 from uuid import UUID
 
-from agent_autonomy_lab.domain.events import EventType, TraceEvent, argument_hash
+from agent_autonomy_lab.domain.events import EventType, Outcome, TraceEvent, argument_hash
+from agent_autonomy_lab.domain.simulations import ExecutionStatus, Message
 from agent_autonomy_lab.domain.tool_timeline import ToolCallRecord
+
+
+def _outcome(result: Message) -> Outcome:
+    if result.execution_status is ExecutionStatus.REJECTED:
+        return Outcome.REJECTED
+    return Outcome.ERROR if result.error else Outcome.SUCCESS
 
 
 class TraceEvidence:
@@ -35,9 +42,14 @@ class TraceEvidence:
         """The tool span for this call, if the record and the trace agree on it."""
         result = record.result
         span = self._only(EventType.TOOL_CALL, result.turn_index) if result else None
-        if span is None or span.tool_name != record.call.name:
+        if (
+            span is None
+            or span.tool_name != record.call.name
+            or span.argument_hash != argument_hash(record.call.arguments)
+            or span.outcome is not _outcome(result)
+        ):
             return None
-        return span if span.argument_hash == argument_hash(record.call.arguments) else None
+        return span
 
     def attempt_ids(self, record: ToolCallRecord) -> tuple[UUID, ...]:
         """Every event that shows this call was attempted: the model call and the tool span."""
