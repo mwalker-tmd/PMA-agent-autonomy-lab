@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md)
 
-**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), the baseline model choice (ADR-014, October 27, 2026), the task-to-workflow mapping (ADR-015, October 27, 2026), how traces older than LangSmith accepts are exported (ADR-017, October 29, 2026), and the LangSmith instrumentation point (ADR-016, October 31, 2026); ADR-013's dependency rule, ADR-016's two hooks, and ADR-017 are implemented and tested, and the rest of the plan is not. “Selected” means selected for the **plan**.
+**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), the baseline model choice (ADR-014, October 27, 2026), the task-to-workflow mapping (ADR-015, October 27, 2026), how traces older than LangSmith accepts are exported (ADR-017, October 29, 2026), the LangSmith instrumentation point (ADR-016, October 31, 2026), and the separation of invalid runs from application failures (ADR-018, October 31, 2026); ADR-013's dependency rule, ADR-016's two hooks, and ADR-017 are implemented and tested, and the rest of the plan is not. “Selected” means selected for the **plan**.
 
 **Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.md).
 
@@ -27,6 +27,7 @@
 | ADR-015 | 2026-10-27 | **Accepted:** Real retail tasks for the three workflows; order lookup adapted to order detail lookup ([note](#adr-015--map-real-retail-tasks-to-the-three-workflows)) | Every workflow has verified tasks at `0c69df4`; no task is a pure status lookup, but the tools support one | Upstream tasks change, a lesson needs a pure status lookup, or a selected task proves unstable |
 | ADR-016 | 2026-10-31 | **Accepted:** Trace live runs at the lab agent wrapper (hook A) and saved runs by export (hook D), one hook per simulation ([note](#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export)) | Hook A is the narrowest hook that traces every agent turn through public τ-bench APIs, and a replay showed it changes nothing; hook D needs no run at all | The lab agent stops matching upstream, a τ-bench upgrade breaks the registry path, or traces must arrive during a run |
 | ADR-017 | 2026-10-29 | **Accepted:** The LangSmith adapter shifts a trace older than LangSmith accepts to export time and keeps the real time in metadata ([note](#adr-017--shift-old-traces-to-export-time-in-the-langsmith-adapter)) | LangSmith rejects start times more than 24 hours from now; shifting in the adapter keeps the event schema truthful and re-exports free of duplicates | LangSmith accepts historical start times, or time-based views of exported runs mislead a lesson or dashboard |
+| ADR-018 | 2026-10-31 | **Accepted:** Metrics evaluate the application; a run an outside cause stopped is `INVALID`, outside the denominators and reported separately ([note](#adr-018--separate-invalid-runs-from-application-failures)) | An outage says nothing about the agent, and counting it as a failure would misstate the agent's rate | Invalid runs become common, or the record cannot show a run's cause |
 
 ## Decision notes
 
@@ -162,6 +163,20 @@
   - Mixing shifted and live traces on one time chart can mislead; label exported runs by `experiment_class` and filter on it.
 - Artifacts affected: [`adapters/langsmith/trace_sink.py`](../src/agent_autonomy_lab/adapters/langsmith/trace_sink.py) (`MAX_CLOCK_DISTANCE`, `_shift`), its tests, and [ARCHITECTURE.md](ARCHITECTURE.md#langsmith-run-mapping) (run mapping).
 - Verification or reconsideration trigger: Verified by the M3-04 export: all 128 runs of the five baseline simulations were accepted, LangSmith shows them at export time, and their metadata keeps the 2026-10-27 times. Reconsider if LangSmith accepts historical start times (then send real times), if a Milestone 7 dashboard needs simulation time on its axis, or if students misread exported runs as live traffic (then add an explicit shift flag to metadata).
+
+### ADR-018 — Separate invalid runs from application failures
+- Date: 2026-10-31
+- Status: Accepted
+- Context: The Milestone 4 metric contract ([#98](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/98)) must say what a run that stops early counts as. τ-bench scores every conversation that does not end by `agent_stop` or `user_stop` as `0.0`, whatever stopped it, and a run with `infrastructure_error` can have no reward or messages at all (the first Milestone 2 attempt).
+- Options considered:
+  1. **Count every early stop as a `FAIL`,** following τ-bench's reward. Simple, but it charges the agent for outages and simulator faults.
+  2. **Report empty runs as `INSUFFICIENT_EVIDENCE`.** It keeps them out of the denominator, but mixes "the run says nothing about the application" with "a valid run could not prove a condition", and it still fails an early stop the simulator caused.
+  3. **Add an `INVALID` status, assigned from the cause of the stop.**
+- Decision: Option 3. The metrics evaluate the agentic application, not the infrastructure under it. Application failures (insufficient or incorrect tool calls, replies that do not address the customer, `agent_error`, `max_steps`, `too_many_errors`, `context_window_exceeded`) are `FAIL`. `infrastructure_error`, `user_error`, and a run that raised an exception are `INVALID`. `timeout` and `unexpected_error` are `FAIL` unless the record shows an outside cause. The [contract](EVALUATION.md#invalid-runs) has the mapping. `INVALID` results leave every denominator and are reported separately with their reason. A violation already proved in an invalid run stays a `FAIL` in its metric.
+- Why: A pass rate should describe the agent, while infrastructure failures stay visible as a reliability figure. Requiring evidence of an outside cause stops an unexplained failure from being excluded. Keeping proved violations stops an outage from hiding an unauthorized execution.
+- Tradeoffs/risks: A sixth status for every evaluator and report to handle. Excluded runs can flatter a pass rate if they are common, so their count and reasons are published beside it. Keeping only violations from an invalid run, and not its passes, slightly raises violation rates; this errs on the safe side. A raised exception is treated as outside the application although a defect in lab agent code could cause one, so its `error_class` is reported.
+- Artifacts affected: [EVALUATION.md](EVALUATION.md#invalid-runs), `DEVELOPMENT.md` step 4.3, [OPERATIONS.md](OPERATIONS.md), and the acceptance criteria of [#99](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/99) and [#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/109).
+- Verification or reconsideration trigger: #99's tests show `INVALID` never counts as passing and leaves the denominator; #109 reports the count and reasons on real runs. Reconsider if invalid runs become common or the record cannot show a run's cause.
 
 ## Open questions to resolve deliberately
 
