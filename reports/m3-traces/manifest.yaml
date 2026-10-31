@@ -274,9 +274,10 @@ tool_failure_task_0:  # M3-08 (#78): tool-failure observability, docs/ARCHITECTU
     ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3/results.json: fb2c574071b75a0004f281c8d5c0a3f82d853adb3815fd3767da99aced0c1252
     cassettes/m3-07-task-0.cassette.json: ed5187636a8d8ba878ade84e90dbad7b172479b32357220d2f74b7a54734095b
   notes: >-
-    The first attempt stalled on the run's first model call, the simulated
-    user's opening message, before any tool was called. It was stopped after
-    more than six minutes, while the OpenAI and LangSmith endpoints answered
-    separately. It saved nothing and sent nothing to LangSmith; whether the
-    stalled call was billed is not known. The recorded run is the second
-    attempt, unchanged. The cause of the stall was not determined.
+    The first attempt, started at 17:19:25 America/Denver, hung on the run's
+    first model call, before any tool was called, because the laptop went to
+    sleep: the power log (pmset -g log) shows sleep at 17:19:25 and wake at
+    17:28:02. It was stopped soon after the wake. It saved nothing and sent
+    nothing to LangSmith; whether that call was billed is not known. The
+    recorded run is the second attempt, with the same command, started at
+    17:28:48.
