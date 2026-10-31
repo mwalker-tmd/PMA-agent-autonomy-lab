@@ -237,6 +237,100 @@ def test_conflicting_results_for_one_write_withhold_later_state(source, order):
     assert "several results" in timeline.divergences[0].reason
 
 
+def test_one_result_cannot_answer_two_writes_with_the_same_id(source):
+    """An idempotent write would otherwise match the one result twice."""
+    arguments = {
+        "user_id": "yusuf_rossi_9620",
+        "address1": "1 A St",
+        "address2": "",
+        "city": "Denver",
+        "state": "CO",
+        "country": "USA",
+        "zip": "80000",
+    }
+    call = ToolCall("call-0", "modify_user_address", arguments)
+    simulation, _ = live_record(("modify_user_address", arguments))
+    timeline = source.timeline(simulation_of(call_message(call, call), simulation.messages[1]))
+    assert {write.outcome for write in timeline.writes} == {WriteOutcome.AMBIGUOUS}
+    assert timeline.final is None
+    assert timeline.replayed_hash == INITIAL_HASH
+    assert "more than once" in timeline.divergences[0].reason
+
+
+def test_a_call_id_repeated_across_messages_withholds_state_from_its_first_use(source):
+    simulation, _ = live_record(("exchange_delivered_order_items", TASK_0_WRITE))
+    call, result = simulation.messages
+    timeline = source.timeline(simulation_of(call, result, call, result))
+    assert [w.outcome for w in timeline.writes] == [WriteOutcome.AMBIGUOUS] * 2
+    assert timeline.before("call-0") is None
+    assert timeline.final is None
+
+
+def test_a_call_id_shared_by_a_read_and_a_write_is_ambiguous_for_both(source):
+    read = ToolCall("call-0", "get_order_details", {"order_id": TASK_0_ORDER})
+    write = ToolCall("call-0", "exchange_delivered_order_items", TASK_0_WRITE)
+    timeline = source.timeline(
+        simulation_of(call_message(read, write), result_message("call-0", "{}"))
+    )
+    assert timeline.status_reads_checked == 0
+    assert len(timeline.divergences) == 2
+    assert timeline.writes[0].outcome is WriteOutcome.AMBIGUOUS
+
+
+def test_a_write_with_no_execution_status_is_not_replayed(source):
+    """The contract's executed write needs ``execution_status: executed``."""
+    simulation, _ = live_record(("exchange_delivered_order_items", TASK_0_WRITE))
+    call, result = simulation.messages
+    missing = result_message("call-0", result.content, execution_status=None)
+    timeline = source.timeline(simulation_of(call, missing))
+    assert timeline.writes[0].outcome is WriteOutcome.AMBIGUOUS
+    assert timeline.final is None
+    assert timeline.replayed_hash == INITIAL_HASH
+    assert "execution status" in timeline.divergences[0].reason
+
+
+def test_a_write_marked_rejected_with_no_error_is_not_trusted(source):
+    """τ-bench's ``ToolMessage`` refuses this combination; a saved file can still hold it."""
+    call = ToolCall("call-0", "exchange_delivered_order_items", TASK_0_WRITE)
+    contradiction = result_message("call-0", "{}", execution_status=ExecutionStatus.REJECTED)
+    timeline = source.timeline(simulation_of(call_message(call), contradiction))
+    assert timeline.writes[0].outcome is WriteOutcome.AMBIGUOUS
+    assert timeline.final is None
+
+
+@pytest.mark.parametrize("fields", [{"execution_status": None}, {}], ids=["no status", "two"])
+def test_a_status_read_the_record_does_not_establish_withholds_later_state(source, fields):
+    call = ToolCall("call-0", "get_order_details", {"order_id": TASK_0_ORDER})
+    read = json.dumps({"status": "delivered"})
+    results = [result_message("call-0", read, **fields)]
+    if not fields:
+        results.append(result_message("call-0", json.dumps({"status": "pending"})))
+    timeline = source.timeline(simulation_of(call_message(call), *results))
+    assert timeline.status_reads_checked == 0
+    assert timeline.final is None
+
+
+def test_a_read_with_no_result_says_nothing_about_state(source):
+    """A read cannot change the database; the rules that need it report the gap themselves."""
+    call = ToolCall("call-0", "get_order_details", {"order_id": TASK_0_ORDER})
+    timeline = source.timeline(simulation_of(call_message(call)))
+    assert timeline.status_reads_checked == 0
+    assert timeline.final is not None
+
+
+@pytest.mark.parametrize("placement", ["alone", "answering another call"])
+def test_a_result_with_no_call_withholds_all_state(source, placement):
+    """The lost call could have been a write, at any earlier point."""
+    simulation, _ = live_record(("exchange_delivered_order_items", TASK_0_WRITE))
+    call, result = simulation.messages
+    ghost = result_message("ghost", "{}")
+    messages = (ghost, call, result) if placement == "alone" else (call, result, ghost)
+    timeline = source.timeline(simulation_of(*messages))
+    assert timeline.divergences[0].call_id == "ghost"
+    assert timeline.before("call-0") is None
+    assert timeline.final is None
+
+
 @pytest.mark.parametrize(
     "recorded, replayed, same",
     [
