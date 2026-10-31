@@ -407,3 +407,31 @@ hook_comparison:  # M3-10 (#80): evidence for ADR-016; hooks A, D, and E's fault
   litellm_callback_traps:
     - A second CustomLogger of the same class is dropped without a message; an earlier version of the probe that made a new one for each replay counted 0 calls and raised nothing.
     - An exception or wrong signature in a success callback produces no output at the default log level (LiteLLM logs it at debug), and the model call returns normally.
+
+policy_check_fields:  # M3-11 (#81): docs/BASELINE.md "Lab rules beyond the retail policy"
+  recorded_on: 2026-10-31
+  method: run metadata and events read back from LangSmith by trace ID; no model calls and nothing sent
+  traces:
+    - {name: live_run_task_0, root_run_id: 01a188f5-b82c-7701-9cdd-57f8687c14c7, runs: 20, llm: 14, tool: 5}
+    - {name: traced_replay, root_run_id: 01a18aa8-2d1e-7ef9-8c88-250ca1b31a16, runs: 22, llm: 15, tool: 6}
+    - {name: fault_injection, root_run_id: 01a18f24-fc61-76ea-bbd5-fc4f9709c4c7, runs: 20, llm: 13, tool: 6}
+  totals: {runs: 62, roots: 3, llm: 42, tool: 17}
+  fields_present_on_runs:
+    schema_version: 62
+    event_id: 62
+    event_type: 62
+    simulation_id: 62
+    thread_id: 62
+    autonomy_level: 62
+    turn_index: 59        # every llm and tool run; a conversation root has none
+    tool_name: 17
+    argument_hash: 17
+    outcome_on_tool_runs: 17
+    error_class: 1        # the injected fault
+    gate_event: 0
+    decision: 0
+    decision_reason: 0
+  autonomy_level_values: ["n/a"]
+  tool_outcomes: {success: 16, error: 1, rejected: 0}
+  runs_with_gate_events: 0
+  tool_call_id_in_tool_run_metadata: 0   # τ-bench's ID is only inside message content (tool_calls[].id)

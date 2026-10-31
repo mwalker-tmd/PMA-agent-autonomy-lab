@@ -606,7 +606,7 @@ The inspection answered how reference actions are scored and found the patterns 
 
 ## Policy-check classification
 
-Recorded on October 27, 2026 for [#48](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/48) (plan step 2.5). This works the open question "Which policy checks can be deterministic from actual data?". Each rule in the retail [`policy.md`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md) at `0c69df4` is classified against the data a run actually produces, and the classification was tested with a local script on the baseline run `m2-baseline-2026-10-27-r3`. The script calls no model and imports nothing from τ-bench. The question is re-targeted to Milestones 3–4 in [DECISIONS.md](DECISIONS.md#open-questions-to-resolve-deliberately).
+Recorded on October 27, 2026 for [#48](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/48) (plan step 2.5). This works the open question "Which policy checks can be deterministic from actual data?". Each rule in the retail [`policy.md`](https://github.com/sierra-research/tau2-bench/blob/0c69df456a96aa76a1162591574dad9c427a34d7/data/tau2/domains/retail/policy.md) at `0c69df4` is classified against the data a run actually produces, and the classification was tested with a local script on the baseline run `m2-baseline-2026-10-27-r3`. The script calls no model and imports nothing from τ-bench. The question was re-targeted to Milestones 3–4 on that date, and to Milestone 4 on October 31 once Milestone 3's events were [mapped to the lab rules](#lab-rules-beyond-the-retail-policy), in [DECISIONS.md](DECISIONS.md#open-questions-to-resolve-deliberately).
 
 ### Classes
 
@@ -661,6 +661,17 @@ These come from [AUTONOMY.md](AUTONOMY.md) and the [evaluation scorecard](EVALUA
 
 **Counts.** Of the 21 retail rows, 9 are decided by State alone, 4 combine a State part with a Judge part, and 8 need a Judge. Five of the eight Judge rows (lines 16, 24, 90, 114, 120) have a State precondition that can fail first, so a judge is only needed once it passes. All four lab rules need Trace events.
 
+**What Milestone 3 now emits.** Mapped on October 31, 2026 for [#81](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/81), against the [`trace-event/1`](ARCHITECTURE.md#event-and-identifier-contract) fields. Only the evidence-ID rule is covered by these fields alone; the other three need events that do not exist yet.
+
+| Rule | Fields emitted now | What they support today | What is missing, and which milestone adds it |
+| --- | --- | --- | --- |
+| No write outside the run's autonomy level (PA-10) | `autonomy_level` on every event, always `"n/a"`; `tool_name` and `outcome` on each `tool_call` | Which tools ran, and that no gate decided anything. `"n/a"` is not a level, so no write can be outside one | **Milestone 6:** the gate sets a numeric `autonomy_level` at decision time and emits `gate_event`, `decision`, and `decision_reason`. The schema defines these fields; nothing emits them |
+| Unauthorized attempts and unauthorized executions are counted separately | One `tool_call` span per call: `run_id`, `tool_name`, `argument_hash`, `outcome` | Counting attempts, and which of them failed. Every attempt executes, so attempts and executions are still one number and `outcome: rejected` does not occur | **Milestone 6:** gate events. Each attaches to its span through `run_id`, so that is the link, not τ-bench's tool call ID, which appears only inside message content (`tool_calls[].id`) |
+| Confirmation is established before a write is **attempted** | `turn_index` on `model_call` and `tool_call` spans; `inputs` and `argument_hash` on each `tool_call` | The order of messages and attempts, and the order, items, and method a confirmation must match. That is the State part of line 16, not the verdict | **Milestone 4:** the judge's verdict recorded as a confirmation event bound to an action. `trace-event/1` has no such event type, and none of the [three rubrics](EVALUATION.md#llm-as-a-judge-design) covers line 16, so Milestone 4 decides both. **Milestone 6:** the `ATTEMPTED` event for a premature attempt the gate denies |
+| Results carry evidence IDs | `event_id`, `run_id`, `simulation_id`, `thread_id` on every event | The IDs a result needs to cite. A LangSmith run's ID is the span's `run_id` | **Milestone 4:** the evaluators that write them into [result records](EVALUATION.md#required-result-format). No new field is needed |
+
+These fields were read back from three stored traces: the live run, the traced replay, and the fault-injection run, 62 runs and 17 `tool_call` spans in all ([`policy_check_fields`](../reports/m3-traces/manifest.yaml)). A saved-run export builds its spans with the same code. No stored run has a gate event, and `autonomy_level` is `"n/a"` on all 62.
+
 ### What the baseline run showed
 
 A prototype of the State checks for lines 10–14, 20, 24, 84, 88–130 (status and once-per-order), 112/132, and 124, plus the State part of line 16, ran on the five baseline simulations, using only `results.json` and `db.json`.
@@ -682,12 +693,12 @@ A prototype of the State checks for lines 10–14, 20, 24, 84, 88–130 (status 
 
 The prototype is evidence that the inputs exist and suffice, not the Milestone 4 evaluator: it has no unit tests, emits no [result records](EVALUATION.md#required-result-format), and takes order status from the agent's own `get_order_details` results rather than a replayed state. It discards a read once a later write to the same order succeeds, so a stale status never passes.
 
-### Why this is re-targeted to Milestones 3–4
+### Why this stays open until Milestone 4
 
 The classification answers which checks can be deterministic; it cannot finish them yet:
 
-- **Trace-class checks need events from Milestone 3.** The autonomy level, gate decisions, confirmation events, and run and thread IDs do not exist in τ-bench output. Milestone 3 defines the event schema and emits them; Milestone 6 adds the gate events.
-- **Fixtures and unit tests are Milestone 4 work.** State checks become evaluators with positive, negative, and ambiguous fixtures ([deterministic evaluator design](EVALUATION.md#deterministic-evaluator-design)), and the Judge parts become rubrics calibrated against human labels.
+- **Milestone 3 supplied the identifiers and the tool timeline, not the decisions.** [Its events](#lab-rules-beyond-the-retail-policy) cover the run, thread, and event IDs. Gate events and the autonomy level need the Milestone 6 gate, and the confirmation-bound-to-action event needs the Milestone 4 judge.
+- **Fixtures and unit tests are Milestone 4 work.** State checks become evaluators with positive, negative, and ambiguous fixtures ([deterministic evaluator design](EVALUATION.md#deterministic-evaluator-design)), and the Judge parts become rubrics calibrated against human labels. Checks over gate events can run only on fixtures until the gate exists, so Milestone 4 resolves the question or re-targets those checks to Milestone 6.
 - **Milestone 4 decisions left open here:** whether catalog reads before authentication count against line 12; whether to cross-check the agent's latest status read against a replayed state (with a re-read required after every write, the two agree unless something other than the agent changes the order); and how the defect tasks from [Tool correctness](#why-this-is-re-targeted-to-milestone-4) are scored.
 
 ## Findings
