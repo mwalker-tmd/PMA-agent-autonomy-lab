@@ -17,7 +17,7 @@ from tau2.domains.retail.utils import RETAIL_DB_PATH
 from tau2.evaluator.evaluator_env import EnvironmentEvaluator
 from tau2.registry import registry
 
-from agent_autonomy_lab.adapters.tau2.retail_state import ReplayedRetailState
+from agent_autonomy_lab.adapters.tau2.retail_state import ReplayedRetailState, _same_json
 from agent_autonomy_lab.domain.retail_state import WriteOutcome
 from agent_autonomy_lab.domain.simulations import (
     ExecutionStatus,
@@ -217,6 +217,40 @@ def test_an_error_flag_that_differs_from_the_record_is_a_divergence(source):
     failed = result_message("call-0", "Error: Service temporarily unavailable", error=True)
     timeline = source.timeline(simulation_of(call_message(call), failed))
     assert "error flag" in timeline.divergences[0].reason
+
+
+@pytest.mark.parametrize("order", [(0, 1), (1, 0)])
+def test_conflicting_results_for_one_write_withhold_later_state(source, order):
+    """Whichever comes first, the record does not say whether the write ran."""
+    call = ToolCall("call-0", "exchange_delivered_order_items", TASK_0_WRITE)
+    results = (
+        result_message("call-0", "{}"),
+        result_message("call-0", "denied", error=True, execution_status=ExecutionStatus.REJECTED),
+    )
+    timeline = source.timeline(
+        simulation_of(call_message(call), results[order[0]], results[order[1]])
+    )
+    assert timeline.writes[0].outcome is WriteOutcome.AMBIGUOUS
+    assert timeline.writes[0].state_before.db_hash == INITIAL_HASH
+    assert timeline.final is None
+    assert timeline.replayed_hash == INITIAL_HASH  # not run: no result was chosen
+    assert "several results" in timeline.divergences[0].reason
+
+
+@pytest.mark.parametrize(
+    "recorded, replayed, same",
+    [
+        ('{"a": false}', '{"a": 0.0}', False),
+        ('{"a": true}', '{"a": 1}', False),
+        ('{"a": 1}', '{"a": 1.0}', False),
+        ('{"a": 1, "b": 2}', '{ "b": 2,  "a": 1 }', True),
+        ("not json", "not json", True),
+        ('{"a": NaN}', '{"a": NaN}', False),
+        (None, None, True),
+    ],
+)
+def test_results_compare_as_typed_json(recorded, replayed, same):
+    assert _same_json(recorded, replayed) is same
 
 
 def test_results_compare_as_data_not_text(source):
