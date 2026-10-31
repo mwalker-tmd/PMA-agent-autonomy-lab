@@ -496,10 +496,10 @@ All milestones must uphold the following invariants:
 - [x] Select initial retail/text-mode τ-bench direction and LangSmith as the initial observability platform.
 - [x] **Milestone 1:** ratify scope/evaluation specifications; confirm candidate scenario success/failure conditions (accepted in [ADR-012](docs/DECISIONS.md#adr-012--accept-the-milestone-1-scope-and-rubric)).
 - [x] **Milestone 2:** clone τ-bench and execute baseline; record the inspection, task mapping, and extension points (see [docs/BASELINE.md](docs/BASELINE.md)).
-- [ ] **Milestone 3:** trace τ-bench conversations in LangSmith (in progress; saved runs export as LangSmith threads, live runs are traced through a registered lab agent, secrets are redacted before anything is sent, tracing is shown to change nothing on a deterministic replay, an injected tool failure can be inspected in its trace, thread-level evaluators are validated on this account, and the instrumentation point is decided in [ADR-016](docs/DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export)).
+- [ ] **Milestone 3:** trace τ-bench conversations in LangSmith (in progress; saved runs export as LangSmith threads, live runs are traced through a registered lab agent, secrets are redacted before anything is sent, tracing is shown to change nothing on a deterministic replay, an injected tool failure can be inspected in its trace, thread-level evaluators are validated on this account, the instrumentation point is decided in [ADR-016](docs/DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export), and the lab's policy rules are [mapped to the trace events](docs/BASELINE.md#lab-rules-beyond-the-retail-policy)).
 - [ ] Milestones 4–9: not yet started.
 
-**Next work session:** Continue Milestone 3 with its remaining tickets (#81–#83), which cover the open questions in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that target Milestone 3, including the two re-targeted from Milestone 2.
+**Next work session:** Continue Milestone 3 with its remaining tickets (#82–#83). Every open question in [`docs/DECISIONS.md`](docs/DECISIONS.md#open-questions-to-resolve-deliberately) that targeted Milestone 3 is now resolved or re-targeted.
 
 ## 5. Reproducibility template (fill for each experiment)
 
