@@ -295,7 +295,7 @@ Evaluator output, normalized by our code ([`EvaluationResult`](../src/agent_auto
 | `invalid_reason` | Required on `INVALID`, and only there: the `termination_reason`, or `raised_exception` |
 | `raw_output_id` | Links to the raw output, which is stored apart from the result and never embedded in it |
 
-**An evaluator error is not a passing outcome, and an invalid run is neither a pass nor a failure.** An evaluator that raises, returns no result, or cites an event outside its simulation's trace leaves an `EVALUATOR_ERROR` row, not a gap. A `termination_reason` missing from the [invalid-runs table](#invalid-runs) does the same for every evaluator. [Aggregation](../src/agent_autonomy_lab/domain/evaluation/aggregation.py) reports the numerator, the denominator, and a count of every other status per metric. A metric with an empty denominator has no pass rate, rather than a rate of 0 or 1.
+**An evaluator error is not a passing outcome, and an invalid run is neither a pass nor a failure.** An evaluator that raises or returns no result leaves an `EVALUATOR_ERROR` row, not a gap. So does a result that cites an event outside its simulation's trace, for that unit only, so a proved violation beside it still counts. A judge output with no valid score is an `EVALUATOR_ERROR` even if it also raises the uncertainty flag. A `termination_reason` missing from the [invalid-runs table](#invalid-runs) does the same for every evaluator. [Aggregation](../src/agent_autonomy_lab/domain/evaluation/aggregation.py) reports the numerator, the denominator, and a count of every other status per metric. A metric with an empty denominator has no pass rate, rather than a rate of 0 or 1.
 
 ## Ground-truth versus online evaluation
 

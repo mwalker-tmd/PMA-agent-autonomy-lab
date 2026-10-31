@@ -136,6 +136,27 @@ def test_an_output_rejects_a_link_to_a_raw_output_it_does_not_hold():
         EvaluatorOutput(results=(make_result(raw_output_id=uuid4()),))
 
 
+@pytest.mark.parametrize(
+    "owner",
+    [
+        (KEY, "confirmation-v1", "sim-2"),
+        (KEY, "confirmation-v2", "sim-1"),
+        ("another_metric", "confirmation-v1", "sim-1"),
+    ],
+)
+def test_an_output_rejects_a_link_to_another_results_raw_output(owner):
+    raw = RawEvaluatorOutput(uuid4(), *owner, {"judge": "reply"})
+    with pytest.raises(ValueError, match="belongs to another result"):
+        EvaluatorOutput(results=(make_result(raw_output_id=raw.output_id),), raw_outputs=(raw,))
+
+
+def test_an_output_holds_only_result_records():
+    with pytest.raises(ValueError, match="EvaluationResult"):
+        EvaluatorOutput(results=(object(),))
+    with pytest.raises(ValueError, match="RawEvaluatorOutput"):
+        EvaluatorOutput(results=(), raw_outputs=(object(),))
+
+
 def judge(stored, **overrides):
     fields = {
         "evaluation_key": "clarity",
@@ -152,6 +173,8 @@ def judge(stored, **overrides):
     [
         {"score": None, "comment": "400 messages: at least one message is required"},
         {"comment": "no score key"},
+        {"score": None, "uncertain": True},
+        {"uncertain": True},
     ],
 )
 def test_a_judge_failure_stored_with_no_score_is_a_row(stored):
@@ -171,6 +194,7 @@ def test_a_judge_failure_stored_with_no_score_is_a_row(stored):
         {"score": True},
         {"score": "2"},
         {"score": 2, "uncertain": "no"},
+        {"score": "bad", "uncertain": True},
         {"score": float("nan")},
         "not a mapping",
         None,

@@ -162,18 +162,37 @@ class EvaluationResult:
 
 @dataclass(frozen=True)
 class EvaluatorOutput:
-    """Normalized results and the raw outputs behind them, held apart."""
+    """Normalized results and the raw outputs behind them, held apart.
+
+    A result's ``raw_output_id`` must name a raw output here from the same
+    evaluator and simulation, so an audit link cannot reach another run's reply.
+    """
 
     results: tuple[EvaluationResult, ...]
     raw_outputs: tuple[RawEvaluatorOutput, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "results", tuple(self.results))
-        object.__setattr__(self, "raw_outputs", tuple(self.raw_outputs))
-        known = {raw.output_id for raw in self.raw_outputs}
-        for result in self.results:
-            if result.raw_output_id is not None and result.raw_output_id not in known:
+        results = tuple(self.results)
+        raw_outputs = tuple(self.raw_outputs)
+        if not all(isinstance(result, EvaluationResult) for result in results):
+            raise ValueError("results must be EvaluationResult records")
+        if not all(isinstance(raw, RawEvaluatorOutput) for raw in raw_outputs):
+            raise ValueError("raw_outputs must be RawEvaluatorOutput records")
+        object.__setattr__(self, "results", results)
+        object.__setattr__(self, "raw_outputs", raw_outputs)
+        known = {raw.output_id: raw for raw in raw_outputs}
+        for result in results:
+            if result.raw_output_id is None:
+                continue
+            raw = known.get(result.raw_output_id)
+            if raw is None:
                 raise ValueError(f"raw_output_id {result.raw_output_id} is not in raw_outputs")
+            if (raw.evaluation_key, raw.evaluator_version, raw.simulation_id) != (
+                result.evaluation_key,
+                result.evaluator_version,
+                result.simulation_id,
+            ):
+                raise ValueError(f"raw output {raw.output_id} belongs to another result")
 
 
 @dataclass(frozen=True)
