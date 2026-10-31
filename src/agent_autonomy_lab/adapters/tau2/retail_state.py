@@ -14,12 +14,11 @@ every run's starting point.
 The replay checks itself against the record: each write's result and each
 successful ``get_order_details`` status read must match. A mismatch, a write
 with no result, or a record that contradicts itself about what ran
-(``_record_problem``) is a divergence, and later state is withheld.
+(``ToolCallRecord.problem``) is a divergence, and later state is withheld.
 """
 
 import json
-from collections import Counter
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -40,10 +39,10 @@ from agent_autonomy_lab.domain.retail_state import (
 from agent_autonomy_lab.domain.simulations import (
     ExecutionStatus,
     Message,
-    Role,
     SavedSimulation,
     ToolCall,
 )
+from agent_autonomy_lab.domain.tool_timeline import results_without_a_call, tool_timeline
 
 _STATUS_READ = "get_order_details"
 
@@ -60,8 +59,7 @@ class ReplayedRetailState:
         divergences: list[ReplayDivergence] = []
         status_reads = 0
         messages = simulation.messages
-        call_id_uses = Counter(call.call_id for m in messages for call in m.tool_calls)
-        for orphan in _results_without_a_call(messages):
+        for _, orphan in results_without_a_call(messages):
             # A lost call could be a write at any earlier point, so no state can be vouched for.
             divergences.append(
                 ReplayDivergence(orphan, "unknown", "a tool result has no matching call")
@@ -70,9 +68,13 @@ class ReplayedRetailState:
         def diverged(call: ToolCall, reason: str) -> None:
             divergences.append(ReplayDivergence(call.call_id, call.name, reason))
 
-        for call, results in _calls_with_results(messages):
-            problem = _record_problem(call, results, call_id_uses)
-            result = results[0] if len(results) == 1 and not problem else None
+        for record in tool_timeline(messages):
+            call, results, problem, result = (
+                record.call,
+                record.results,
+                record.problem,
+                record.result,
+            )
             if _mutates_state(environment, call.name):
                 writes.append(
                     WriteAttempt(
@@ -106,55 +108,6 @@ class ReplayedRetailState:
             status_reads_checked=status_reads,
             divergences=tuple(divergences),
         )
-
-
-def _calls_with_results(
-    messages: Sequence[Message],
-) -> Iterator[tuple[ToolCall, tuple[Message, ...]]]:
-    """Each tool call in order, with every result for its ID in the tool messages right after it.
-
-    More than one means the record conflicts with itself, so no result is chosen.
-    """
-    for index, message in enumerate(messages):
-        if not message.tool_calls:
-            continue
-        block = []
-        for later in messages[index + 1 :]:
-            if later.role is not Role.TOOL:
-                break
-            block.append(later)
-        for call in message.tool_calls:
-            yield call, tuple(r for r in block if r.tool_call_id == call.call_id)
-
-
-def _results_without_a_call(messages: Sequence[Message]) -> list[str]:
-    """IDs of tool results that do not answer a call of the assistant message before them."""
-    orphans = []
-    open_call_ids: set[str] = set()
-    for message in messages:
-        if message.role is Role.TOOL:
-            if message.tool_call_id not in open_call_ids:
-                orphans.append(message.tool_call_id)
-        else:
-            open_call_ids = {call.call_id for call in message.tool_calls}
-    return orphans
-
-
-def _record_problem(
-    call: ToolCall, results: Sequence[Message], call_id_uses: Counter[str]
-) -> str | None:
-    """Say how the record fails to establish what this call did, if it does."""
-    if call_id_uses[call.call_id] > 1:
-        return "the call ID is used more than once, so its result cannot be attributed"
-    if len(results) > 1:
-        return "the call has several results, so what it did is unknown"
-    if results:
-        status, error = results[0].execution_status, results[0].error
-        if status is None:
-            return "the result has no execution status, so whether it ran is unknown"
-        if status is ExecutionStatus.REJECTED and not error:
-            return "the result is marked rejected with no error, which contradicts itself"
-    return None
 
 
 def _mutates_state(environment: Environment, tool_name: str) -> bool:
