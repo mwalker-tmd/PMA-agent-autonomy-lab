@@ -406,4 +406,4 @@ hook_comparison:  # M3-10 (#80): evidence for ADR-016; hooks A, D, and E's fault
     ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3/results.json: fb2c574071b75a0004f281c8d5c0a3f82d853adb3815fd3767da99aced0c1252
   litellm_callback_traps:
     - A second CustomLogger of the same class is dropped without a message; an earlier version of the probe that made a new one for each replay counted 0 calls and raised nothing.
-    - An exception or wrong signature in a callback is logged at debug level only; the run continues and the callback sees nothing.
+    - An exception or wrong signature in a success callback produces no output at the default log level (LiteLLM logs it at debug), and the model call returns normally.

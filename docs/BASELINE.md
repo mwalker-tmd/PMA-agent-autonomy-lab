@@ -443,7 +443,7 @@ Tool references at `0c69df4`: [`get_order_details`](https://github.com/sierra-re
 
 ## Extension points
 
-Recorded on October 27, 2026 for [#46](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/46) (plan step 2.8, deliverable 5). This traces how a proposed tool call becomes a database change in an unmodified half-duplex retail run at the pinned commit (`0c69df4`), then recommends where the LangSmith adapter and the authorization gate should attach. Everything here comes from reading the code; nothing was prototyped, because the baseline must stay unmodified. The decisions are re-targeted to Milestones 3 and 6 in [DECISIONS.md](DECISIONS.md#open-questions-to-resolve-deliberately).
+Recorded on October 27, 2026 for [#46](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/46) (plan step 2.8, deliverable 5). This traces how a proposed tool call becomes a database change in an unmodified half-duplex retail run at the pinned commit (`0c69df4`), then recommends where the LangSmith adapter and the authorization gate should attach. Everything here comes from reading the code; nothing was prototyped, because the baseline must stay unmodified. The decisions are re-targeted to Milestones 3 and 6 in [DECISIONS.md](DECISIONS.md#open-questions-to-resolve-deliberately); the LangSmith hook was decided in [ADR-016](DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export).
 
 ### Call path: agent → tool dispatch → state mutation
 
@@ -478,6 +478,8 @@ Each candidate is an adapter behind the ports in [ADR-013](DECISIONS.md#adr-013-
 | **E. Environment wrapper** | A lab wrapper around the live `Environment` that times and records each `get_response` | `ToolExecutor` adapter decorated by `TraceSink` | Actual tool execution: arguments, result, error, duration | Model calls and conversation | Same seam as gate option 2. Must wrap only the live environment, never the registry entry, or it also traces evaluation replay |
 
 **Recommendation for Milestone 3:** prototype **A** for live per-turn traces with **D** to attach the reward and evaluation to the same thread, both through a lab entrypoint (the composition root) that registers the agent and calls τ-bench's Python runner. Add **E** when the `ToolExecutor` adapter exists, and use **C** only to cross-check cost. The prototype must confirm three things before this is decided: the wrapped agent reproduces the baseline agent's prompts and model arguments, the trace nests correctly as a LangSmith thread with child tool spans ([plan step 3.5](../DEVELOPMENT.md#milestone-3--integrate-langsmith-observability)), and each trace links to τ-bench's `simulation_id`.
+
+**Decided in [ADR-016](DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export)** (October 31, 2026), which compares all five candidates on Milestone 3 evidence. The prototype confirmed all three things. One point changed: a live run takes its reward from the `SimulationRun` it gets back, so hook D serves saved runs only, and exporting a live run as well would add a second conversation root.
 
 ### Authorization gate boundary
 
