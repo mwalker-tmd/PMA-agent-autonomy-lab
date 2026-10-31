@@ -110,6 +110,16 @@ def test_a_missed_judge_call_fails(recorded, capsys, monkeypatch):
     assert report["judge"]["callback_saw"] == []
 
 
+def test_a_wrapper_that_sees_no_tool_call_fails(recorded, capsys, monkeypatch):
+    monkeypatch.setattr(hook_probe.ToolTimer, "install", lambda self, environment: None)
+
+    capsys.readouterr()
+    assert hook_probe.main(["e", "--cassette", CASSETTE, "--repeats", "1"]) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert report["tool_calls"] == []
+    assert report["tools_match_outcome"] is False
+
+
 def test_a_provider_the_transports_do_not_cover_is_refused(recorded, capsys):
     cassette = json.loads(Path(CASSETTE).read_text(encoding="utf-8"))
     cassette["settings"]["agent_llm"] = "mistral/mistral-large"

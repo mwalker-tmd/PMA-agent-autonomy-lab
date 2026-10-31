@@ -21,7 +21,8 @@ Run one mode per process. LiteLLM drops a second ``CustomLogger`` of the same
 class without saying so, and this module keeps one for that reason. The first
 replay of each mode is a warm-up and is not timed. The command exits 1 if the
 replays' outcomes differ from each other or from ``--reference``, or if the
-callback missed a model call or the judge call.
+callback missed a model call or the judge call, or the wrapper saw other tool
+calls than the run made.
 """
 
 import argparse
@@ -102,6 +103,10 @@ class ToolTimer:
     calls: list[dict[str, Any]] = field(default_factory=list)
     own_ms: float = 0.0
 
+    def seen(self) -> list[dict[str, Any]]:
+        """The calls in the shape of ``RunOutcome.tool_calls``."""
+        return [{"name": call["name"], "arguments": call["arguments"]} for call in self.calls]
+
     def install(self, environment: Environment) -> None:
         """Wrap this ``environment`` only; evaluation builds its own."""
         passthrough = environment.get_response
@@ -113,6 +118,7 @@ class ToolTimer:
             self.calls.append(
                 {
                     "name": message.name,
+                    "arguments": message.arguments,
                     "error": result.error,
                     "tool_ms": (returned - began) * 1000,
                 }
@@ -158,6 +164,7 @@ def _replay(cassette: Cassette, settings: LiveRunSettings, mode: str) -> dict[st
         "served": transport.served,
         "digest": _digest(outcome.to_dict()),
         "timer": timer,
+        "tools_match": canonical_json(timer.seen()) == canonical_json(outcome.tool_calls),
     }
 
 
@@ -277,8 +284,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.mode == "e":
         timer = replays[-1]["timer"]
         report["tool_calls"] = [
-            {**call, "tool_ms": round(call["tool_ms"], 3)} for call in timer.calls
+            {"name": call["name"], "error": call["error"], "tool_ms": round(call["tool_ms"], 3)}
+            for call in timer.calls
         ]
+        report["tools_match_outcome"] = all(replay["tools_match"] for replay in replays)
         report["wrapper_own_ms_per_replay"] = round(timer.own_ms, 4)
     print(json.dumps(report, indent=2))
     consistent = len(digests) == 1 and report.get("equal_to_reference", True)
@@ -286,7 +295,8 @@ def main(argv: list[str] | None = None) -> int:
         calls_per_replay != [r["served"] for r in replays]
         or len(report["judge"]["callback_saw"]) != 1
     )
-    return 0 if consistent and not missed else 1
+    unseen = args.mode == "e" and not report["tools_match_outcome"]
+    return 0 if consistent and not missed and not unseen else 1
 
 
 if __name__ == "__main__":
