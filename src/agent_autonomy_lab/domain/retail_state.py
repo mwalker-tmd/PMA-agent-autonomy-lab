@@ -23,6 +23,7 @@ class WriteOutcome(StrEnum):
     FAILED = "failed"  # the tool ran and returned an error; it may still have changed state
     REJECTED = "rejected"  # never reached the tool
     NO_RESULT = "no_result"  # the record has no result, so whether it ran is unknown
+    AMBIGUOUS = "ambiguous"  # the record has several results, so whether it ran is unknown
 
 
 @dataclass(frozen=True)

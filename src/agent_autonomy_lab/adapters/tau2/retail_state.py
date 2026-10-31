@@ -13,7 +13,7 @@ every run's starting point.
 
 The replay checks itself against the record: each write's result and each
 successful ``get_order_details`` status read must match. A mismatch, or a write
-with no result, is a divergence, and later state is withheld.
+with no result or several, is a divergence, and later state is withheld.
 """
 
 import json
@@ -27,6 +27,7 @@ from tau2.domains.retail.environment import get_environment
 from tau2.domains.retail.utils import RETAIL_DB_PATH
 from tau2.environment.environment import Environment
 
+from agent_autonomy_lab.domain.events import canonical_json
 from agent_autonomy_lab.domain.retail_state import (
     ReplayDivergence,
     RetailState,
@@ -60,18 +61,21 @@ class ReplayedRetailState:
         def diverged(call: ToolCall, reason: str) -> None:
             divergences.append(ReplayDivergence(call.call_id, call.name, reason))
 
-        for call, result in _calls_with_results(simulation.messages):
+        for call, results in _calls_with_results(simulation.messages):
+            result = results[0] if len(results) == 1 else None
             if _mutates_state(environment, call.name):
                 writes.append(
                     WriteAttempt(
                         call.call_id,
                         call.name,
-                        _outcome(result),
+                        _outcome(results),
                         None if divergences else _snapshot(environment),
                     )
                 )
-                if result is None:
+                if not results:
                     diverged(call, "the write has no result, so whether it ran is unknown")
+                elif result is None:
+                    diverged(call, "the write has several results, so whether it ran is unknown")
                 elif result.execution_status is not ExecutionStatus.REJECTED:
                     reason = _replay_write(environment, call, result)
                     if reason:
@@ -94,21 +98,21 @@ class ReplayedRetailState:
 
 def _calls_with_results(
     messages: Sequence[Message],
-) -> Iterator[tuple[ToolCall, Message | None]]:
-    """Each tool call in order, with its result from the tool messages right after it."""
+) -> Iterator[tuple[ToolCall, tuple[Message, ...]]]:
+    """Each tool call in order, with every result for its ID in the tool messages right after it.
+
+    More than one means the record conflicts with itself, so no result is chosen.
+    """
     for index, message in enumerate(messages):
         if not message.tool_calls:
             continue
-        results = []
+        block = []
         for later in messages[index + 1 :]:
             if later.role is not Role.TOOL:
                 break
-            results.append(later)
+            block.append(later)
         for call in message.tool_calls:
-            position = next(
-                (i for i, r in enumerate(results) if r.tool_call_id == call.call_id), None
-            )
-            yield call, None if position is None else results.pop(position)
+            yield call, tuple(r for r in block if r.tool_call_id == call.call_id)
 
 
 def _mutates_state(environment: Environment, tool_name: str) -> bool:
@@ -116,9 +120,12 @@ def _mutates_state(environment: Environment, tool_name: str) -> bool:
     return tools.has_tool(tool_name) and tools.tool_mutates_state(tool_name)
 
 
-def _outcome(result: Message | None) -> WriteOutcome:
-    if result is None:
+def _outcome(results: Sequence[Message]) -> WriteOutcome:
+    if not results:
         return WriteOutcome.NO_RESULT
+    if len(results) > 1:
+        return WriteOutcome.AMBIGUOUS
+    result = results[0]
     if result.execution_status is ExecutionStatus.REJECTED:
         return WriteOutcome.REJECTED
     return WriteOutcome.FAILED if result.error else WriteOutcome.EXECUTED
@@ -149,7 +156,7 @@ def _replay_write(environment: Environment, call: ToolCall, recorded: Message) -
     )
     if replayed.error != recorded.error:
         return f"the replay's error flag is {replayed.error}, the record's {recorded.error}"
-    if _parsed(replayed.content) != _parsed(recorded.content):
+    if not _same_json(replayed.content, recorded.content):
         return "the replay's result differs from the recorded one"
     return None
 
@@ -164,6 +171,17 @@ def _status_mismatch(environment: Environment, call: ToolCall, recorded: Message
     if read_status != order.status:
         return f"the agent read status {read_status!r}, the replay has {order.status!r}"
     return None
+
+
+def _same_json(first: str | None, second: str | None) -> bool:
+    """Compare as canonical JSON: Python's ``==`` would make ``false``, ``0``, and ``0.0`` equal.
+
+    Content JSON cannot carry, such as a NaN, proves nothing, so it does not match.
+    """
+    try:
+        return canonical_json(_parsed(first)) == canonical_json(_parsed(second))
+    except (TypeError, ValueError):
+        return False
 
 
 def _parsed(content: str | None) -> Any:
