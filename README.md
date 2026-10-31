@@ -1,6 +1,6 @@
 # Agent Autonomy Lab
 
-**Status:** Proposal and specification; the lab Python project, its trace event schema, and a LangSmith trace adapter exist; the Milestone 2 baseline has been exported to LangSmith, one task has been run live through a traced lab agent, an injected tool failure has been inspected in its trace, and a thread-level evaluator has judged a traced conversation. Milestones 0 (repository and workflow setup), 1 (project and success criteria), 2 (install and run τ-bench), and 3 (integrate LangSmith observability) are complete; Milestone 4 (build the evaluation framework) is next.  
+**Status:** Proposal and specification; the lab Python project, its trace event schema, and a LangSmith trace adapter exist; the Milestone 2 baseline has been exported to LangSmith, one task has been run live through a traced lab agent, an injected tool failure has been inspected in its trace, and a thread-level evaluator has judged a traced conversation. Milestones 0 (repository and workflow setup), 1 (project and success criteria), 2 (install and run τ-bench), and 3 (integrate LangSmith observability) are complete; Milestone 4 (build the evaluation framework) is in progress.  
 **Documentation baseline:** October 18, 2026.  
 **Approach:** One repository for our project; the upstream [τ-bench repository](https://github.com/sierra-research/tau2-bench) remains separate.
 
