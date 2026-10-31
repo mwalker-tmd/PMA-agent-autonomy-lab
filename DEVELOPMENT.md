@@ -223,7 +223,7 @@ These are the commands the Milestone 2 baseline actually ran ([#41](https://gith
 - [x] **3.5** Ensure top-level LangSmith thread runs contain supported `messages` input/output structures. Where relevant, test visibility of child tool spans separately.
 - [x] **3.6** Attach `traffic_type=synthetic`; redact secrets; ensure no hidden answer keys appear in agent-visible traces.
 - [x] **3.7** Run one known customer task and one failing/exceptional case through the adapter. Compare traced behavior to the τ-bench saved result.
-- [ ] **3.8** Document trace navigation steps and expected trace shape in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+- [x] **3.8** Document trace navigation steps and expected trace shape in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - [x] **3.9** Create `pyproject.toml` with `import-linter` contracts that enforce the [ADR-013](docs/DECISIONS.md#adr-013--adopt-the-ports-and-adapters-architecture) dependency rule; build the LangSmith tracing as a `TraceSink` adapter and run `lint-imports` before every pull request.
 
 ### Deliverables
