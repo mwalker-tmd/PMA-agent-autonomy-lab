@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md)
 
-**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), the baseline model choice (ADR-014, October 27, 2026), the task-to-workflow mapping (ADR-015, October 27, 2026), how traces older than LangSmith accepts are exported (ADR-017, October 29, 2026), and the LangSmith instrumentation point (ADR-016, October 31, 2026); nothing here is implemented or tested. “Selected” means selected for the **plan**.
+**Status:** Initial planning decisions and proposed follow-ups as of October 18, 2026, plus the Milestone 1 acceptance (ADR-012, October 26, 2026), the code architecture (ADR-013, October 26, 2026), the baseline model choice (ADR-014, October 27, 2026), the task-to-workflow mapping (ADR-015, October 27, 2026), how traces older than LangSmith accepts are exported (ADR-017, October 29, 2026), and the LangSmith instrumentation point (ADR-016, October 31, 2026); ADR-013's dependency rule, ADR-016's two hooks, and ADR-017 are implemented and tested, and the rest of the plan is not. “Selected” means selected for the **plan**.
 
 **Purpose:** Prevent silent architecture drift. Any material scope, stack, evaluation or autonomy change should be recorded here and reflected in the canonical [development plan](../DEVELOPMENT.md).
 

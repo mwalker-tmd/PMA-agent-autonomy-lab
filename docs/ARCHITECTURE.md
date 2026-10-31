@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Autonomy](AUTONOMY.md) · [Evaluation](EVALUATION.md)
 
-**Status:** Target architecture. The [event and identifier contract](#event-and-identifier-contract) is implemented as schema `trace-event/1` with the `TraceSink` port and its [LangSmith adapter](#langsmith-thread-contract); the τ-bench adapters, gate, and evaluators are not implemented yet. τ-bench is pinned at commit `0c69df4`; its result structures and extension points are recorded in [BASELINE.md](BASELINE.md).
+**Status:** Target architecture. The [event and identifier contract](#event-and-identifier-contract) is implemented as schema `trace-event/1` with the `TraceSink` port and its [LangSmith adapter](#langsmith-thread-contract), and τ-bench runs are traced by [export](#exporting-a-saved-simulation-hook-d) and [live](#tracing-a-live-run-hook-a). The gate, the `ToolExecutor` adapter, and the evaluators are not implemented yet. τ-bench is pinned at commit `0c69df4`; its result structures and extension points are recorded in [BASELINE.md](BASELINE.md).
 
 ## Architectural intent
 
