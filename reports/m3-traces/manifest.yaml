@@ -351,3 +351,59 @@ thread_evaluator_validation:  # M3-09 (#79): docs/ARCHITECTURE.md "Thread evalua
     trajectory: 0.0004396
     total: 0.0015318
   side_effects: Saving each evaluator created an Alignment code rule and a corrections dataset.
+
+hook_comparison:  # M3-10 (#80): evidence for ADR-016; hooks A, D, and E's fault run are in the sections above
+  recorded_on: 2026-10-31
+  traffic_type: synthetic
+  litellm: 1.81.11
+  tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7
+  sent_to_langsmith: nothing
+  provider_calls: none       # replays and a canned judge reply; provider keys replaced by a placeholder
+  command: >-
+    TAU2_DATA_DIR=<absolute path to ../tau2-bench/data>
+    uv run python -m agent_autonomy_lab.entrypoints.hook_probe {plain|c|e}
+    --cassette cassettes/m3-07-task-0.cassette.json
+    --reference ../tau2-bench/data/simulations/m3-07-replay-off/outcome.json
+  method: >-
+    Each mode ran in its own process: one untimed warm-up replay, then 9 timed
+    replays of retail task 0. Times cover the whole task, including building
+    the run and evaluating it. Mode e goes through build_text_orchestrator and
+    run_simulation, not run_single_task, so its shorter time is the shorter
+    path, not a speedup, and is not a measure of the wrapper's cost.
+  cassette_sha256: ed5187636a8d8ba878ade84e90dbad7b172479b32357220d2f74b7a54734095b   # unchanged by the runs
+  outcome_sha256: 55b882c645b6cd2690e088df6bb7098d6e28c2a58111e0bfeaa9b0de615bc8fd    # every replay of every mode; equals the sha256 of m3-07-replay-off's outcome (canonical JSON)
+  elapsed_ms:
+    plain: {median: 676.7, min: 637.4, max: 730.9}
+    hook_c: {median: 670.1, min: 614.1, max: 769.7}
+    hook_e: {median: 580.2, min: 528.5, max: 625.6}
+  hook_c:  # a counting CustomLogger, not LiteLLM's LangSmith integration
+    calls_per_replay: 15               # equals the cassette's responses: 10 agent, 5 simulated user
+    models: [gpt-6-luna]               # the agent and the user are not told apart: same model, no caller name
+    tokens: {prompt: 56016, completion: 1529}   # equal deterministic_replay_task_0's agent + user totals
+    cost_usd: 0.00234481               # equals the traced replay's LangSmith cost: both are LiteLLM's estimate
+    calls_without_cost: 0
+    callback_own_ms_all_replays: 0.08  # 10 replays, 150 calls
+    judge:
+      model: gpt-5.4-mini-2026-03-17   # τ-bench's NL judge, called through NLAssertionsEvaluator
+      callback_calls: 1
+      usage: {prompt: 100, completion: 20}   # the canned reply's numbers, illustrative
+      cost_usd: 0.000165                     # LiteLLM's price for the canned usage, not a real cost
+      note: A real judge call has not been observed by the callback.
+  hook_e:  # a pass-through wrapper on the live get_response, same mechanism as OneShotToolFault
+    tool_calls: {count: 6, errors: 0, slowest_ms: 0.318, fastest_ms: 0.047}   # last replay
+    wrapper_own_ms_per_replay: 0.0038
+  hook_d:
+    dry_run_command: >-
+      TAU2_DATA_DIR=<absolute path to ../tau2-bench/data>
+      uv run python -m agent_autonomy_lab.entrypoints.export_simulation
+      m2-baseline-2026-10-27-r3 --source-tz America/Denver
+      --experiment-class official_upstream_baseline --dry-run
+    dry_run_process_seconds: [0.24, 0.17, 0.17]   # three runs; 5 simulations, 128 runs built and checked, nothing sent
+    send_time: not recorded                       # the M3-04 export did not time its sends
+  unchanged_files:  # sha256 after the probe; equal tool_failure_task_0.unchanged_files
+    reports/m2-baseline/conversation-task-0.md: 4f400bfe6b77f54d79ebc7829195bc6af6619ce3554c7034615b30778562f68d
+    reports/m2-baseline/manifest.yaml: a82a19d8b2feb53010f0c8ea5bc6a14d41513b9c9c6d14a5296b1ab01ed6cc97
+    ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3/results.json: fb2c574071b75a0004f281c8d5c0a3f82d853adb3815fd3767da99aced0c1252
+  litellm_callback_traps:
+    - A second CustomLogger of the same class is dropped without a message; an earlier version of the probe that made a new one for each replay counted 0 calls and raised nothing.
+    - An exception or wrong signature in a callback is logged at debug level only; the run continues and the callback sees nothing.
