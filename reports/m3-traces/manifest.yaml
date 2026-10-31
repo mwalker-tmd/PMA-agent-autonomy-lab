@@ -281,3 +281,73 @@ tool_failure_task_0:  # M3-08 (#78): tool-failure observability, docs/ARCHITECTU
     nothing to LangSmith; whether that call was billed is not known. The
     recorded run is the second attempt, with the same command, started at
     17:28:48.
+
+thread_evaluator_validation:  # M3-09 (#79): docs/ARCHITECTURE.md "Thread evaluator validation"
+  recorded_on: 2026-10-30             # America/Denver; 2026-10-31 UTC
+  traffic_type: synthetic
+  experiment_class: custom_lab_experiment
+  autonomy_level: "n/a"
+  langsmith_project: agent-autonomy-lab-synthetic
+  account: {organization: Personal, region: GCP US, tier: developer_10_2026, project_trace_tier: shortlived}
+  evaluators:
+    question: Did the assistant address the customer's request by the end?
+    judge_model: claude-haiku-5-5        # a different provider from the agent (gpt-6-luna)
+    settings: {source: threads, sampling_rate: 1.0, response: boolean, reasoning: true, extend_trace_retention: false, spend_limit_usd_per_week: 5.0}
+    thread_resolved_all_messages: {rule_id: a3653f1f-55ee-4958-8f34-7c1a9b9074af, variable: all_messages, group_by: thread_id}
+    thread_resolved_trajectory: {rule_id: bfaa3629-e602-40e7-a0e8-977e2b00c0f7, variable: trajectory, group_by: trajectory_id}
+  first_attempt:  # both prompts held only a System message; both rules fired and neither judged
+    outcome: error
+    error: "Anthropic 400: messages: at least one message is required"
+    marker_thread_id: ef6b4c68-93fc-5a58-976d-b7a95c72a56c
+    replay_thread_id: e4afe454-182f-540c-a140-174beced6f73
+    fix: changed the message role from System to Human in both evaluators
+  threads:
+    sent_at_utc: 2026-10-31T05:20:43Z
+    feedback_written_at_utc: {all_messages: 2026-10-31T05:23:30Z, trajectory: 2026-10-31T05:23:45Z}
+    replay:
+      command: >-
+        uv run --env-file .env python -m agent_autonomy_lab.entrypoints.trace_live_run
+        --replay cassettes/m3-07-task-0.cassette.json --save-to m3-09-replay-2
+      simulation_id: d0422c82-8cc8-44b0-b528-8af05d8f803e
+      thread_id: 7678bfb7-8066-528c-b1df-ffeed3c09b03
+      root_run_id: 01a19067-3ad1-7585-989d-2d609e3e9b20
+      cassette: {sha256: ed5187636a8d8ba878ade84e90dbad7b172479b32357220d2f74b7a54734095b, responses_served: 15}   # sha256 unchanged by the run
+      transcript: {messages: 22, tool_calls: 6, tool_results: 6}
+      reward: 1.0
+    marker:
+      command: uv run --env-file .env python -m agent_autonomy_lab.entrypoints.thread_probe
+      simulation_id: thread-probe-01a19067-2f66-7366-9b19-fc978ce434ed
+      thread_id: de74e990-2763-59b3-8aab-934e1e928b55
+      root_run_id: 01a19067-2f66-7443-af49-b5634b3ed6b5
+  results:
+    all_messages:
+      replay:
+        score: 1.0
+        feedback_id: 2febee4b-a942-4e29-81e5-694b669f91ca
+        judge_run_id: 01a19069-b2bd-7992-aa84-dc20c75e6a5a
+        judge_input: {messages: 22, roles_equal_transcript: true, content_equal_transcript: 22, tool_calls: 6, tool_results: 6}
+      marker:
+        score: 0.0    # correct for this thread: the tool result is only a marker, so the reply is unsupported
+        feedback_id: 3b0b7b27-6f25-43d7-9795-9056cab2ef79
+        judge_run_id: 01a19069-b2bd-7992-aa84-dc306209b8b1
+        markers_received: {PROBE-ROOT-MESSAGE: true, PROBE-CHILD-MODEL: false, PROBE-CHILD-TOOL: false}
+    trajectory:
+      replay:
+        score: 1.0
+        feedback_id: f629015e-aace-4daf-be28-2c25620d768f
+        judge_run_id: 01a19069-ee6f-7633-a96f-916fcb858e54
+        judge_input: {entries: 8, customer_messages: 4, agent_turns: 4, tool_results: 0, tool_calls: [find_user_id_by_name_zip, get_product_details, exchange_delivered_order_items]}
+        kept_agent_turns: [2, 4, 12, 18]        # each answers a customer message
+        dropped_agent_turns: [6, 8, 10, 14, 16, 20]   # each answers a tool result; turn 20 is the final reply
+      marker:
+        score: 0.0
+        feedback_id: ac8ba1ac-9c78-47b6-b48a-3cb05e2d1ac5
+        judge_run_id: 01a19069-ee6f-7633-a96f-91743df5f93e
+        markers_received: {PROBE-ROOT-MESSAGE: false, PROBE-CHILD-MODEL: true, PROBE-CHILD-TOOL: false}
+    answer_key_in_judge_inputs: none    # evaluation_criteria, user_scenario, nl_assertions, action_checks, reward searched for
+    schema_errors: none                 # all four judge runs status success
+  cost_usd:  # spend_usd read from the rules after the second attempt; the first attempt made no billable judgment
+    all_messages: 0.0010922
+    trajectory: 0.0004396
+    total: 0.0015318
+  side_effects: Saving each evaluator created an Alignment code rule and a corrections dataset.

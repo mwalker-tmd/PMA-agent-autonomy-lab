@@ -222,7 +222,7 @@ Example gate event (`to_dict()`, `null` fields and content omitted; illustrative
 
 ## LangSmith thread contract
 
-[Current multi-turn evaluator documentation](https://docs.langchain.com/langsmith/online-evaluations-multi-turn) specifies that thread-level evaluators require supported **top-level `messages` inputs and outputs** and correlated threads. Model and tool calls can be traced as child runs, but child spans alone are not necessarily present in the assembled `all_messages` view. If the account supports it, a **trajectory** view can provide ordered tool-call evidence; availability varies by region/deployment.
+[Current multi-turn evaluator documentation](https://docs.langchain.com/langsmith/online-evaluations-multi-turn) specifies that thread-level evaluators require supported **top-level `messages` inputs and outputs** and correlated threads. Model and tool calls are traced as child runs, and the assembled `all_messages` view does not read them: tool calls appear there only because the lab's root messages hold them. The **trajectory** view is available on this account but is incomplete on the lab's traces, so nothing depends on it. See [Thread evaluator validation](#thread-evaluator-validation).
 
 ### LangSmith run mapping
 
@@ -354,6 +354,38 @@ uv run --env-file .env --env-file ../tau2-bench/.env \
 
 **In the trace.** The failed call is a `tool_call` span with `outcome: error`, `error_class: injected_fault`, and the arguments as inputs, under the conversation root like any tool span. Every span of the run has `fault_injected: true`, so these runs can be filtered out. The next agent turn's `model_call` holds the failure in its inputs. The failed call's tool span ID, `fault.tool_run_id` in `summary.json`, serves as the injection ID that [`SIMULATION.md`](SIMULATION.md#safe-failure-injection-optional-after-baseline) asks for. What one run showed is in [`reports/m3-traces/tool-failure-observation.md`](../reports/m3-traces/tool-failure-observation.md).
 
+### Thread evaluator validation
+
+Checked on October 30, 2026 (America/Denver) with two LLM-as-a-judge thread evaluators on the project (Personal organization, GCP US, Developer plan), both using `claude-haiku-5-5`, a different provider from the agent. They ask the same question, "Did the assistant address the customer's request by the end?", and differ only in the view they receive. IDs and costs are in [`manifest.yaml`](../reports/m3-traces/manifest.yaml) (`thread_evaluator_validation`).
+
+Two threads were judged by both evaluators:
+
+- **A real conversation:** a [replay](#deterministic-replay-behavioral-equivalence) of task `0`, sent through the normal traced path.
+- **A marker thread:** [`thread_probe`](../src/agent_autonomy_lab/entrypoints/thread_probe.py) sends a small synthetic thread. A real root already holds its tool calls, so it cannot show whether a view reads child spans. The marker thread keeps `PROBE-ROOT-MESSAGE` in the root's messages, and `PROBE-CHILD-MODEL` and `PROBE-CHILD-TOOL` only in child spans.
+
+| View | Task `0` replay (22 messages, 6 tool calls, 6 tool results) | Markers received | Score on the replay |
+| --- | --- | --- | --- |
+| `all_messages` | All 22 messages, in order, with equal content, including the 6 tool calls and 6 tool results | Root only | 1.0 |
+| `trajectory` | 8 entries: 4 customer messages, 4 agent turns, 3 of the 6 tool calls, none of the tool results, and no final reply to the customer | `PROBE-CHILD-MODEL` only | 1.0 |
+
+Both evaluators ran without a schema error. Screenshots: [`all_messages`](../reports/m3-traces/screenshots/m3-09-all-messages.png), [`trajectory`](../reports/m3-traces/screenshots/m3-09-trajectory.png), and [the marker thread's `trajectory`](../reports/m3-traces/screenshots/m3-09-probe-trajectory.png).
+
+- **Child tool spans do not appear in `all_messages`.** Its tool calls and results come from the root's messages, as the [multi-turn docs](https://docs.langchain.com/langsmith/online-evaluations-multi-turn) describe. A tool call that reached only a child span would be invisible to this view, so a thread judge sees what the root holds.
+- **`trajectory` is available here, but incomplete on the lab's traces.** The docs limit it to GCP US on LangSmith Cloud, and it saved and ran on this account; the docs name no plan limit. They also say it keeps tool calls and results, which is not what these traces produced. In the replay, it kept exactly the agent turns that answered a customer message, and it dropped every turn that answered a tool result. The lab's agent spans hold only the messages that turn answered, and its tool spans carry no `tool_call_id`, which may be the reason; this was not tested.
+- **A partial view can still score 1.0.** The trajectory judge wrote that the trajectory "ends at the tool call with no returned result or final message to the customer shown", and it passed the conversation anyway. Equal scores here do not mean the views are equivalent.
+- **The judge's input held no answer key.** `evaluation_criteria`, `user_scenario`, `nl_assertions`, `action_checks`, and `reward` do not appear in any of the four judge inputs.
+
+**Fallback.** Thread judges use `all_messages`. Checks that need tool calls, arguments, or results read the tool spans or the root's messages directly, in deterministic evaluators, and do not use `trajectory`. Using `trajectory` later would first need the lab's span shape tested against it.
+
+Setup points that will catch the next person:
+
+- **Anthropic judges need a Human message.** A prompt with only a System message fails with `400 messages: at least one message is required`, and the error is stored as feedback with no score. The first attempt, with System-only prompts, failed this way on both threads.
+- **Thread evaluators see only later threads.** A failed run needs a new thread, because a `trajectory` evaluator cannot backfill. A cassette replay gives one with no agent or simulated-user model calls.
+- **Timing.** With the project's idle time set to the 2-minute minimum, feedback arrived about 3 minutes after the threads were sent.
+- **Saving a rule adds to the workspace.** Each evaluator also created an `Alignment` code rule and a corrections dataset.
+- **Retention stays on the 14-day tier only if you opt out.** Both evaluators have 180-day retention off, and the project remains `shortlived`.
+- **Evaluators judge every new thread.** Sampling and filters limit this, and a spend limit caps it ($5 a week here). The two evaluators were disabled after this check, so later runs are not judged by accident.
+
 ### Rechecking LangSmith behavior on upgrade
 
 The adapter relies on behavior we observed against the live service and SDK, not only on our own code. The tests run the real `langsmith.Client` with a fake HTTP session, so they catch a change in what the SDK sends, but not in how the service answers. Recheck these after upgrading `langsmith` or when LangSmith announces API changes:
@@ -365,7 +397,8 @@ The adapter relies on behavior we observed against the live service and SDK, not
 | Known feedback ID | replaced (`200`) | Re-exports could duplicate feedback |
 | Background batching | with `auto_batch_tracing` on, rejected runs are only logged | The export may stop needing a synchronous client |
 | Stored-run lookup | `client.runs.query_v2` (async on the sync client) by `trace_id` returns a trace's runs with no time window | Retries of shifted traces lose their anchor |
-| Thread messages | thread evaluators read top-level `messages` in OpenAI chat format ([multi-turn docs](https://docs.langchain.com/langsmith/online-evaluations-multi-turn)); this rule is the lab's own check, LangSmith accepts any JSON | Update `message_errors()` |
+| Thread messages | thread evaluators read top-level `messages` in OpenAI chat format ([multi-turn docs](https://docs.langchain.com/langsmith/online-evaluations-multi-turn)), and `all_messages` holds root messages only ([validated](#thread-evaluator-validation)); this rule is the lab's own check, LangSmith accepts any JSON | Update `message_errors()` |
+| Trajectory view | runs on this account; on lab traces it omits tool results and most agent turns ([validated](#thread-evaluator-validation)) | Rerun `thread_probe` and a replay before relying on it |
 
 To recheck, export the Milestone 2 baseline to a scratch project (set `LANGSMITH_PROJECT`), export it again, and confirm with the API that the project holds five threads, one root each, the same run counts as the first export, and three feedback items per root.
 
