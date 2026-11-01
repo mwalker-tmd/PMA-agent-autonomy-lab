@@ -209,6 +209,8 @@ The three new checks' units and rules:
 
 **What the recorded runs show.** All 13 recorded simulations have `PASS` on both parts without PA-2. With it, task `4` is a part A `FAIL`, as [its own section](#confirmation-compliance) shows, and its reward stays `1.0`. Task `2`'s reward is `0.0` from its NL assertion, with no violation, and its `partial_action_reward` scores its write 0/1 only because the agent listed the items in another order, while `expected_writes` passes it. **No recorded run has a transfer, a cancellation, an overwritten write, or writes that differ from the reference,** so only fixtures exercise those paths, and [#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/109) tests the method on repeated runs. To repeat it, run `check_tool_correctness` on the run directories, as the [manifest](../reports/m4-tool-correctness/manifest.yaml) shows.
 
+**What the baseline shows.** Of the 60 simulations in the [baseline](../reports/m4-baseline/manifest.yaml), 48 reached the right end state, and all 48 did so through the reference's writes, so AA-6 still has only fixtures and the [open question](DECISIONS.md#open-questions-to-resolve-deliberately) moves to Milestone 5. Outcome and conduct disagree in both directions: 3 simulations have reward `1.0` and a part A `FAIL` (task `76` trial 0 on confirmation; tasks `81` trial 2 and `106` trial 2 on message form), and 9 have reward `0.0` and a part A `PASS`. These are unadjudicated until [#110](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/110).
+
 ### Authentication compliance
 
 Evaluator: [#101](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/101).
@@ -300,11 +302,11 @@ The verdict is an evaluator result, not a trace event: a verdict computed after 
 
 ### Operational efficiency
 
-Aggregation in [#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/109), from Trajectory and Trace plus the billing record. These are measured values, not pass or fail: Milestone 4 sets no service threshold ([#112](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/112)).
+Aggregated by [`batch_report.py`](../src/agent_autonomy_lab/application/batch_report.py) ([#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/109)), from Trajectory and Trace plus the billing record. These are measured values, not pass or fail: Milestone 4 sets no service threshold ([#112](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/112)).
 
 | Measure | Data fields | Numerator | Denominator |
 | --- | --- | --- | --- |
-| Cost per completed simulation | `messages[].cost` for the agent and user, and lab judge usage at list price. `billed_usd` is the authority. `agent_cost` is null throughout the baseline, so it is not used | Total cost of all simulations | Completed simulations |
+| Cost per completed simulation | Usage on each provider response at list price, for the agent, user, τ-bench judge, and lab judges ([ADR-024](DECISIONS.md#adr-024--hold-a-batchs-cap-at-the-http-layer-and-retry-only-invalid-runs)). `messages[].cost` is LiteLLM's estimate, reported beside it. `billed_usd` is the authority. `agent_cost` is null throughout the baseline, so it is not used | Total cost of all simulations | Completed simulations |
 | Invalid runs | `termination_reason`; `error_class` and `error_message` on an `unfinished-` trace | `INVALID` runs, by reason | All runs started |
 | Latency | `duration`; `generation_time_seconds` per agent turn | Median and p95 | Simulations with messages; agent turns with a time |
 | Tokens | `messages[].usage` (`prompt_tokens`, `completion_tokens`) | Total tokens | Model calls with usage |
@@ -313,11 +315,11 @@ Aggregation in [#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issu
 | Turns | `messages[]` | Messages | Simulations with messages |
 
 - **`NOT_APPLICABLE`:** tool and user-simulator latency (τ-bench records no such timing); cost and usage on the fixed opener, where both are null by design.
-- **`INSUFFICIENT_EVIDENCE`:** a model message other than the opener has null usage, or a `cost` of `0.0` with non-zero tokens. τ-bench [returns `0.0` for an unpriced model](BASELINE.md#model-smoke-test), so that value is unknown, not free. τ-bench's own judge calls are not in `results.json`, so its cost stays unknown until [hook C](BASELINE.md#langsmith-hook-points) records it in #109.
+- **`INSUFFICIENT_EVIDENCE`:** a model message other than the opener has null usage, or a `cost` of `0.0` with non-zero tokens. τ-bench [returns `0.0` for an unpriced model](BASELINE.md#model-smoke-test), so that value is unknown, not free. τ-bench's own judge calls are not in `results.json`, so hook C records it ([#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/109)), and its count is compared with the expected count.
 
 ### Unauthorized attempts
 
-**Built** in [`gate_checks.py`](../src/agent_autonomy_lab/application/gate_checks.py) ([#107](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/107)): the ungated counts from real state, and the gated method on fixtures only. Live gate events: Milestone 6. `evaluate_with_unauthorized_counts` scores the checks first and then reads their results, so no check or judge runs twice, and [#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/109) puts the counts in a report. `FAIL` means the unit counts as unauthorized, and `unauthorized_counts` reports the numerator below per gate label. Labels are never merged, so an ungated count cannot read as a gate's result.
+**Built** in [`gate_checks.py`](../src/agent_autonomy_lab/application/gate_checks.py) ([#107](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/107)): the ungated counts from real state, and the gated method on fixtures only. Live gate events: Milestone 6. `evaluate_with_unauthorized_counts` scores the checks first and then reads their results, so no check or judge runs twice, and the [baseline manifest](../reports/m4-baseline/manifest.yaml) reports the counts. `FAIL` means the unit counts as unauthorized, and `unauthorized_counts` reports the numerator below per gate label. Labels are never merged, so an ungated count cannot read as a gate's result.
 
 | Item | Ungated run (Milestone 4) | Gated run (Milestone 6; fixtures in Milestone 4) |
 | --- | --- | --- |
