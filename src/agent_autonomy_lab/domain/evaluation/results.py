@@ -80,12 +80,38 @@ class RawEvaluatorOutput:
 
 
 @dataclass(frozen=True)
+class JudgeRun:
+    """Which prompt and model produced a judged result, and the settings the request carried.
+
+    ``settings_sent`` is ``None`` when the call failed, so what was sent is unknown.
+    """
+
+    prompt_version: str
+    model: str
+    settings_sent: Mapping[str, Any] | None = field(hash=False)
+
+    def __post_init__(self) -> None:
+        _require_text("prompt_version", self.prompt_version)
+        _require_text("model", self.model)
+        if self.settings_sent is not None:
+            object.__setattr__(self, "settings_sent", json_data(self.settings_sent))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "prompt_version": self.prompt_version,
+            "model": self.model,
+            "settings_sent": self.settings_sent,
+        }
+
+
+@dataclass(frozen=True)
 class EvaluationResult:
     """One normalized result for one unit of one metric.
 
     ``target`` names the unit inside a simulation when a metric has several, such
     as a write's tool span ``run_id``; it is ``None`` when the unit is the
-    simulation. ``evidence_ids`` are ``trace-event/1`` ``event_id`` values.
+    simulation. ``evidence_ids`` are ``trace-event/1`` ``event_id`` values. ``judge_run``
+    is set on a result a model call produced.
 
     The constructor rejects a result that could be misread as more than it
     proves: a ``PASS`` or ``FAIL`` needs evidence, a score belongs only on a
@@ -105,6 +131,7 @@ class EvaluationResult:
     failure_kind: FailureKind | None = None
     invalid_reason: str | None = None
     raw_output_id: UUID | None = None
+    judge_run: JudgeRun | None = None
 
     def __post_init__(self) -> None:
         for name in ("evaluation_key", "reason", "evaluator_version", "simulation_id"):
@@ -120,6 +147,8 @@ class EvaluationResult:
         object.__setattr__(self, "evidence_ids", evidence)
         if self.raw_output_id is not None and not isinstance(self.raw_output_id, UUID):
             raise ValueError("raw_output_id must be a UUID")
+        if self.judge_run is not None and not isinstance(self.judge_run, JudgeRun):
+            raise ValueError("judge_run must be a JudgeRun")
         self._check_score()
         self._check_status_fields()
 
@@ -157,6 +186,7 @@ class EvaluationResult:
             "failure_kind": self.failure_kind.value if self.failure_kind else None,
             "invalid_reason": self.invalid_reason,
             "raw_output_id": str(self.raw_output_id) if self.raw_output_id else None,
+            "judge_run": self.judge_run.to_dict() if self.judge_run else None,
         }
 
 
