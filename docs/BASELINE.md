@@ -596,13 +596,15 @@ Principle: tool correctness is judged on the **writes** and on **prohibited acti
 
 `partial_action_reward` stays a reported diagnostic only. Where it disagrees with these rules, the rules decide.
 
+**Decided on October 31, 2026** in [ADR-019](DECISIONS.md#adr-019--judge-tool-correctness-by-writes-and-prohibited-actions), which also settles what PA-6's state part means, since state alone cannot tell a wrong write from a change of mind: task `22`'s reference writes the user's address and restores it because the user asks. The rules above stay as drafted, and [EVALUATION.md](EVALUATION.md#tool-correctness) has the built checks.
+
 ### Why this is re-targeted to Milestone 4
 
 The inspection answered how reference actions are scored and found the patterns above, but it cannot settle the method yet:
 
 - Five single-trial runs gave few divergent paths, all of them reads or argument order. No run reached a correct end state through a different set of writes, so AA-5 and AA-6 are untested against real agent behavior.
 - The rules are implemented and validated as evaluators in Milestone 4, against repeated runs that include divergent and failing paths.
-- Milestone 4 also has to decide what to do with the defect tasks (`20`, `21`, `36`, `37`, `100`, `64`, `105`): exclude them, label them, or score them with the normalized write check alongside the DB check.
+- Milestone 4 also has to decide what to do with the defect tasks (`20`, `21`, `36`, `37`, `100`, `64`, `105`): exclude them, label them, or score them with the normalized write check alongside the DB check. [Decided](DECISIONS.md#adr-019--judge-tool-correctness-by-writes-and-prohibited-actions) on October 31, 2026 for [#103](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/103): they are excluded from the Milestone 4 task sets.
 
 ## Policy-check classification
 
@@ -699,7 +701,7 @@ The classification answers which checks can be deterministic; it cannot finish t
 
 - **Milestone 3 supplied the identifiers and the tool timeline, not the decisions.** [Its events](#lab-rules-beyond-the-retail-policy) cover the run, thread, and event IDs. Gate events and the autonomy level need the Milestone 6 gate, and the confirmation-bound-to-action event needs the Milestone 4 judge.
 - **Fixtures and unit tests are Milestone 4 work.** State checks become evaluators with positive, negative, and ambiguous fixtures ([deterministic evaluator design](EVALUATION.md#deterministic-evaluator-design)), and the Judge parts become rubrics calibrated against human labels. Checks over gate events can run only on fixtures until the gate exists, so Milestone 4 resolves the question or re-targets those checks to Milestone 6.
-- **Milestone 4 decisions left open here:** whether catalog reads before authentication count against line 12, since [decided](EVALUATION.md#authentication-compliance) on October 31, 2026 for [#101](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/101): they do not, and the disclosure part stays with review; whether to cross-check the agent's latest status read against a replayed state (with a re-read required after every write, the two agree unless something other than the agent changes the order), since [decided](EVALUATION.md#point-in-time-state) on October 31, 2026 for [#100](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/100): yes, as a check on the replay and not as a conduct rule; and how the defect tasks from [Tool correctness](#why-this-is-re-targeted-to-milestone-4) are scored.
+- **Milestone 4 decisions left open here:** whether catalog reads before authentication count against line 12, since [decided](EVALUATION.md#authentication-compliance) on October 31, 2026 for [#101](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/101): they do not, and the disclosure part stays with review; whether to cross-check the agent's latest status read against a replayed state (with a re-read required after every write, the two agree unless something other than the agent changes the order), since [decided](EVALUATION.md#point-in-time-state) on October 31, 2026 for [#100](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/100): yes, as a check on the replay and not as a conduct rule; and how the defect tasks from [Tool correctness](#why-this-is-re-targeted-to-milestone-4) are scored, since [decided](DECISIONS.md#adr-019--judge-tool-correctness-by-writes-and-prohibited-actions) on October 31, 2026 for [#103](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/103): they are excluded from the Milestone 4 task sets.
 
 ## Findings
 
