@@ -1,0 +1,44 @@
+# Judge runtime manifest (M4-06, #104).
+# Values are recorded from the command below, never estimated. Synthetic prompt;
+# nothing was sent to LangSmith. See docs/DECISIONS.md ADR-020.
+
+recorded_on: 2026-11-01
+command: >-
+  uv run --env-file .env --env-file ../tau2-bench/.env
+  python -m agent_autonomy_lab.entrypoints.judge_probe
+  --recording tests/fixtures/judge-probe/claude-haiku-5-5.json   # exit 0
+traffic_type: synthetic
+litellm_version: 1.81.11
+declared_call:
+  requested_model: claude-haiku-5-5
+  reported_model: claude-haiku-5-5
+  declared_settings:
+    max_tokens: 2048
+    output_config: {effort: low}
+  effective_settings:  # read from the request sent
+    max_tokens: 2048
+    output_config: {effort: low}
+  reply: '{"score": 2}'
+  finish_reason: stop
+  input_tokens: 106
+  output_tokens: 9
+  litellm_cost_usd: 0.0000151
+  list_price_cost_usd: 0.0000151  # usage at $0.10 input and $0.50 output per 1M tokens
+  recording_sha256: 09473dff280e0f93aad86a61deaaee64ebcfa25aaadfc51a293978c9006148db
+undeclared_calls:  # both refused by the provider, so neither produced a reply
+  reasoning_effort:
+    settings: {max_tokens: 2048, reasoning_effort: low}
+    result: failed
+    error: >-
+      BadRequestError: "thinking.type.enabled" is not supported for this model.
+      Use "thinking.type.adaptive" and "output_config.effort" to control thinking behavior.
+    request_id: req_011CgbjfAMjuW7k5t3Pewq8S
+  temperature:
+    settings: {max_tokens: 2048, temperature: 0}
+    result: failed
+    error: 'BadRequestError: `temperature` is deprecated for this model.'
+    request_id: req_011CgbjfB8sEvzQwMPumDbyn
+limits: >-
+  One call on a trivial prompt shows the route works and the settings arrive. It
+  does not show that effort low judges well; #110 (adjudication and self-agreement)
+  tests that. The spend is too small to read on a bill, so billed_usd is not recorded.
