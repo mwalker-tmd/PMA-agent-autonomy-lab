@@ -8,8 +8,9 @@ Run with (live; costs far less than a cent):
 
 It sends one synthetic request with the declared judge settings, recording it,
 and then two requests with settings the judge does not declare, to show what the
-provider does with them. The recording is written once and never overwritten,
-and ``tests/test_model_client.py`` replays it. The command prints a JSON report
+provider does with them. The recording is written once and never overwritten:
+an existing path is refused before any model call, so remove the old recording
+to record again. ``tests/test_model_client.py`` replays it. The command prints a JSON report
 for ``reports/m4-judge-runtime/manifest.yaml`` and exits 1 unless the declared
 call works and LiteLLM prices it at the list price (docs/DECISIONS.md, ADR-020).
 """
@@ -89,6 +90,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--recording", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.recording.exists():
+        parser.error(f"{args.recording} exists; remove it to record again")
 
     declared = declared_call(args.recording)
     report = {
