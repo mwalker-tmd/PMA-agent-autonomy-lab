@@ -1,0 +1,142 @@
+# Rubric judge manifest (M4-07, #105).
+# Values are recorded from the command below, never estimated. These are real
+# calls on the recorded runs, to check that the judges work end to end. They are
+# not a baseline or a calibration. See docs/EVALUATION.md "LLM-as-a-judge design"
+# and docs/DECISIONS.md ADR-021.
+
+recorded_on: 2026-11-01
+tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7  # pinned git dependency, unmodified
+litellm_version: 1.81.11
+command: >-
+  uv run --env-file ../tau2-bench/.env python -m
+  agent_autonomy_lab.entrypoints.judge_rubrics RUN_DIRECTORY...
+  # under ../tau2-bench/data/simulations; exit 0
+judges:
+  clarity_customer_effort: clarity-v1
+  conversation_efficiency: efficiency-v1
+  escalation_correctness: escalation-v1
+model: claude-haiku-5-5
+declared_settings: {max_tokens: 2048, output_config: {effort: low}}
+effective_settings: {max_tokens: 2048, output_config: {effort: low}}  # read from each request sent
+limits: >-
+  One run of each judge on 13 simulations, 9 of them task 0, says nothing about how far the scores can be trusted; #110 (M4-12) tests
+  that against human labels. No recorded run has a transfer, so the escalation rubric
+  never scored a transfer here, and the state check and every transfer path are
+  exercised only by the fixtures in tests/test_rubric_judges.py. All 13
+  NOT_APPLICABLE results rest on the judge's own report, which #110 also checks.
+wrapper_check: >-
+  The Milestone 2 run's unwrapped replies sum to 14, matching the 14 of 16 in
+  docs/BASELINE.md. One of them, in task 1, holds a raw newline inside the wrapper,
+  which strict JSON refuses, so unwrapping parses with strict=False.
+cost_note: >-
+  cost_usd is LiteLLM's figure, which ADR-020 found equal to usage at the list price.
+  This spend is too small to read on a bill. billed_usd stays the authority.
+recording:
+  path: tests/fixtures/rubric-judges/m2-task-0.json
+  source: tests/fixtures/m2-task-0/simulation.json
+  sha256: 785c81d2591ff3afcac2551d16b3f63cb7ff9ea52fc2e918ab2a47289d50bdd4
+  calls: 3
+totals:
+  simulations: 13
+  m2_baseline_simulations: 5
+  m2_unwrapped_replies: 14
+  judge_calls: 39
+  input_tokens: 301867
+  output_tokens: 6881
+  cost_usd: 0.0336272
+  results_by_judge:
+    clarity_customer_effort: {FAIL: 1, PASS: 12}
+    conversation_efficiency: {FAIL: 2, PASS: 11}
+    escalation_correctness: {NOT_APPLICABLE: 13}
+simulations:
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 8be368a8-4ab9-4a5d-ba7d-9ca0b83587bc
+    task_id: '0'
+    unwrapped_replies: 1
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 2039e531-8f4e-4344-8664-6012099796f9
+    task_id: '1'
+    unwrapped_replies: 4
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 524e2e82-2b21-4c9d-a286-b9c91e31ee45
+    task_id: '2'
+    unwrapped_replies: 3
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: FAIL, score: 1, failure_kind: outcome}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: b1a35955-60f4-4865-9e44-37a1e62560eb
+    task_id: '3'
+    unwrapped_replies: 3
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: dfc6e9c7-0f28-4072-b224-2bf94d5a8ddd
+    task_id: '4'
+    unwrapped_replies: 3
+    clarity_customer_effort: {status: FAIL, score: 1, failure_kind: outcome}
+    conversation_efficiency: {status: FAIL, score: 1, failure_kind: outcome}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m3-05-live-task-0
+    simulation_id: a428164f-fdfc-4245-b30b-f871b8d62e7f
+    task_id: '0'
+    unwrapped_replies: 4
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m3-07-record
+    simulation_id: c66860b3-9a38-4e33-8048-a5308519edde
+    task_id: '0'
+    unwrapped_replies: 4
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m3-07-replay-off
+    simulation_id: a80c0b3e-2429-41bf-af65-5a251b159c38
+    task_id: '0'
+    unwrapped_replies: 4
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m3-07-replay-off-recheck
+    simulation_id: e3ecd6f6-5aad-4866-b998-e4ff8444f453
+    task_id: '0'
+    unwrapped_replies: 4
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m3-07-replay-on
+    simulation_id: 2aeb4ee0-01db-4c46-a5ca-afe17bd80dee
+    task_id: '0'
+    unwrapped_replies: 4
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m3-08-fault-task-0
+    simulation_id: 8b6d0988-d32e-4cab-9241-118dbe0a59cb
+    task_id: '0'
+    unwrapped_replies: 3
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m3-09-replay
+    simulation_id: 7e7dbafc-910c-4fff-8d86-97359d816507
+    task_id: '0'
+    unwrapped_replies: 4
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}
+  - run: m3-09-replay-2
+    simulation_id: d0422c82-8cc8-44b0-b528-8af05d8f803e
+    task_id: '0'
+    unwrapped_replies: 4
+    clarity_customer_effort: {status: PASS, score: 2}
+    conversation_efficiency: {status: PASS, score: 2}
+    escalation_correctness: {status: NOT_APPLICABLE}

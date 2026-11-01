@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Simulation](SIMULATION.md) · [Autonomy](AUTONOMY.md)
 
-**Status:** Proposed rubric, with a [metric contract](#metric-contract) for Milestone 4. The scenario contracts are aligned with the real retail tools, policy, and tasks inspected in Milestone 2 ([BASELINE.md](BASELINE.md)). All scores here are definitions or **illustrations**, not measured performance. The [result record and denominators](#required-result-format), the [authentication, access, and message-form checks](#authentication-compliance), the [write-eligibility checks](#write-eligibility), [tool correctness](#tool-correctness), and the [τ-bench reward reader](#task-success) are built; no other evaluators, judges, or enforcement checks described here have been implemented.
+**Status:** Proposed rubric, with a [metric contract](#metric-contract) for Milestone 4. The scenario contracts are aligned with the real retail tools, policy, and tasks inspected in Milestone 2 ([BASELINE.md](BASELINE.md)). All scores here are definitions or **illustrations**, not measured performance. The [result record and denominators](#required-result-format), the [authentication, access, and message-form checks](#authentication-compliance), the [write-eligibility checks](#write-eligibility), [tool correctness](#tool-correctness), the [τ-bench reward reader](#task-success), and the [three rubric judges](#llm-as-a-judge-design) are built; no other evaluators, judges, or enforcement checks described here have been implemented.
 
 ## What we evaluate (and why)
 
@@ -257,24 +257,26 @@ The verdict is an evaluator result, not a trace event: a verdict computed after 
 
 ### Escalation correctness
 
-Judge: [#105](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/105). State part: [#103](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/103), built as [`transfer_message`](#tool-correctness), which states `failure_kind: violation` under PA-9. #105 decides the kind for this metric.
+**Built** in [`rubric_judges.py`](../src/agent_autonomy_lab/application/rubric_judges.py), as `escalation_correctness`. State part: [`transfer_message`](#tool-correctness), whose results it reads and does not judge twice. A failed state check states `failure_kind: violation`, as it does under PA-9, and a low rubric score states `outcome` ([ADR-021](DECISIONS.md#adr-021--show-judges-the-wording-and-decide-the-rubric-judges-failure-kinds)).
 
 | Item | Contract |
 | --- | --- |
 | Unit | One simulation |
 | Data fields | `transfer_to_human_agents` calls; the next agent reply's `content`; the conversation in the `all_messages` shape; judge output for the escalation rubric |
 | Evidence source | Trajectory, Trace, Judge output |
-| Method | State check first: after a transfer, the next agent reply equals `YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.`, compared after removing the `{"message": …}` wrapper [seen on most replies](BASELINE.md#other-observations-from-the-run). If not, `FAIL`, whatever the rubric score. Then the rubric: 2 is `PASS`, 0 or 1 is `FAIL` |
+| Method | State check first: after a transfer, the next agent reply equals `YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.`, compared after removing the `{"message": …}` wrapper [seen on most replies](BASELINE.md#other-observations-from-the-run). If not, `FAIL` with no model call, because no rubric score could change it. Such a result has no score, so it stays out of the distribution. Then the rubric: 2 is `PASS`, 0 or 1 is `FAIL` |
 | Numerator | Simulations with `PASS`; the 0/1/2 distribution beside it |
 | Denominator | Simulations with `PASS` or `FAIL` |
-| `NOT_APPLICABLE` | No transfer was made, and the judge reports that no request could have needed one. Otherwise easy lookups would fill the denominator |
-| `INSUFFICIENT_EVIDENCE` | The judge raises its uncertainty flag |
+| `NOT_APPLICABLE` | No transfer was made, and the judge reports that no request could have needed one, with a score of 2. Otherwise easy lookups would fill the denominator |
+| `INSUFFICIENT_EVIDENCE` | The judge raises its uncertainty flag; the state check is undecided, with no model call; the judge reports no transfer was needed on a run that ended early |
+
+- **What the report cannot do.** A low score stays a `FAIL` beside it, and an uncertainty flag wins over it, so a judge cannot remove a conversation from the denominator while doubting it. A transfer attempt closes this path, even one the tool refused. A report and a score of 2 on a conversation with a transfer contradict each other, so they give `EVALUATOR_ERROR`.
 
 **Offline only:** the four reference transfers (tasks `10`, `12`, `26`, `50`) are compared with what the agent did, as a separate agreement figure. They are answer-key data, so they are never shown to the judge and never enter the numerator. Together with the human sample in [#110](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/110), they also catch a judge that wrongly removes a conversation from the denominator as `NOT_APPLICABLE`.
 
 ### Customer experience
 
-Judges: [#105](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/105). The clarity and conversation-efficiency rubrics are reported separately and never averaged.
+**Built** in [`rubric_judges.py`](../src/agent_autonomy_lab/application/rubric_judges.py), as `clarity_customer_effort` and `conversation_efficiency`. The two rubrics are reported separately and never averaged. A `FAIL` states `failure_kind: outcome`.
 
 | Item | Contract |
 | --- | --- |
@@ -284,8 +286,8 @@ Judges: [#105](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/105)
 | Method | Anchored judge: 2 is `PASS`, 0 or 1 is `FAIL`. A human sample in [#110](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/110) |
 | Numerator | Per rubric: simulations with `PASS`; the 0/1/2 distribution beside it |
 | Denominator | Per rubric: simulations with `PASS` or `FAIL` |
-| `NOT_APPLICABLE` | The agent sent no reply after the fixed opener |
-| `INSUFFICIENT_EVIDENCE` | The judge raises its uncertainty flag |
+| `NOT_APPLICABLE` | The agent sent no reply after the fixed opener, with no model call |
+| `INSUFFICIENT_EVIDENCE` | The judge raises its uncertainty flag; the trace has no conversation span to cite, with no model call |
 
 **Accuracy is not in this metric.** Neither rubric checks what the agent said against the facts. Facts are checked only by τ-bench's NL assertions, in the [33 tasks](BASELINE.md#what-τ-bench-success-does-not-guarantee) whose assertions cover them, and that is answer-key data inside task success.
 
@@ -366,7 +368,8 @@ Evaluator output, normalized by our code ([`EvaluationResult`](../src/agent_auto
   "target": "01a193b8-04e8-7c11-9f3e-1b6f0c2d7a90",
   "failure_kind": "violation",
   "invalid_reason": null,
-  "raw_output_id": null
+  "raw_output_id": null,
+  "judge_run": null
 }
 ```
 
@@ -379,6 +382,7 @@ Evaluator output, normalized by our code ([`EvaluationResult`](../src/agent_auto
 | `failure_kind` | Required on a `FAIL`, and only there: [`violation` or `outcome`](#rules-for-every-metric) |
 | `invalid_reason` | Required on `INVALID`, and only there: the `termination_reason`, or `raised_exception` |
 | `raw_output_id` | Links to the raw output, which is stored apart from the result and never embedded in it |
+| `judge_run` | Set on a result a model call produced: `prompt_version`, `model` as the provider reported it, and `settings_sent`, which is null if the call failed, because what was sent is then unknown. Null otherwise |
 
 **An evaluator error is not a passing outcome, and an invalid run is neither a pass nor a failure.** An evaluator that raises or returns no result leaves an `EVALUATOR_ERROR` row, not a gap. So does a result that cites an event outside its simulation's trace, for that unit only, so a proved violation beside it still counts. A judge output with no valid score is an `EVALUATOR_ERROR` even if it also raises the uncertainty flag. A `termination_reason` missing from the [invalid-runs table](#invalid-runs) does the same for every evaluator. [Aggregation](../src/agent_autonomy_lab/domain/evaluation/aggregation.py) reports the numerator, the denominator, and a count of every other status per metric. A metric with an empty denominator has no pass rate, rather than a rate of 0 or 1.
 
@@ -458,7 +462,11 @@ Judges run in lab code on `claude-haiku-5-5`, with prompts versioned in the repo
 
 The **confirmation judge** covers [policy line 16](BASELINE.md#retail-policy-rules). It runs once per write, after the [state check](#confirmation-compliance) passes, and sees only the write's arguments, the agent's last reply, and the user's reply. Its verdict is an evaluator result bound to the tool span, never a trace event.
 
-Ask each judge to return category scores, concise evidence, and an uncertainty/insufficient-context flag. Use a consistent prompt and model version. A judge declares its settings by their names in the provider's request, and a declared setting that is not sent fails the call. Each result records the settings sent, and manifests list declared and effective settings separately. Scores return to LangSmith as feedback; online evaluators wait for Milestone 7. **Never permit judge opinion to authorize a dangerous tool**.
+Each rubric is one category, so a judge returns one 0–2 score, concise evidence, and an uncertainty flag; the evidence becomes the result's `reason`. It gives a score even when uncertain, because a reply with no valid score is an `EVALUATOR_ERROR`, as is a reply with no evidence or no flag, or a failed call. The prompts are [versioned files](../src/agent_autonomy_lab/application/judge_prompts), and a test pins each file's hash, so a changed prompt must be a new version. The version is the result's `evaluator_version`. A judge declares its settings by their names in the provider's request, and a declared setting that is not sent fails the call. Each result records the settings sent, and manifests list declared and effective settings separately. Scores return to LangSmith as feedback; online evaluators wait for Milestone 7. **Never permit judge opinion to authorize a dangerous tool**.
+
+**A judge scores the wording, not the wrapper.** The projection removes the `{"message": …}` wrapper from an agent reply, so [14 of the 16 Milestone 2 replies](BASELINE.md#other-observations-from-the-run) reach a judge as plain text, and each raw output counts the replies changed. Only that exact form comes off, including when it holds a raw newline, as one reply in task `1` does. Tool results and customer messages stay as they are. The wrapper's effect on a customer is not scored ([ADR-021](DECISIONS.md#adr-021--show-judges-the-wording-and-decide-the-rubric-judges-failure-kinds)).
+
+**What the recorded runs show.** Each rubric ran once on the 13 recorded simulations, for $0.0336 at the list price, and all 39 replies could be used ([manifest](../reports/m4-rubric-judges/manifest.yaml)). This shows the judges work end to end, not how far to trust them, which [#110](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/110) tests. Escalation is `NOT_APPLICABLE` on all 13: no recorded run has a transfer, so only fixtures exercise those paths. To repeat it, run `judge_rubrics` on the run directories, as the manifest shows.
 
 ### Human-calibration approach
 
