@@ -279,7 +279,7 @@ The verdict is an evaluator result, not a trace event: a verdict computed after 
 
 - **What the report cannot do.** A low score stays a `FAIL` beside it, and an uncertainty flag wins over it, so a judge cannot remove a conversation from the denominator while doubting it. A transfer attempt closes this path, even one the tool refused. A report and a score of 2 on a conversation with a transfer contradict each other, so they give `EVALUATOR_ERROR`.
 
-**Offline only:** the four reference transfers (tasks `10`, `12`, `26`, `50`) are compared with what the agent did, as a separate agreement figure. They are answer-key data, so they are never shown to the judge and never enter the numerator. Together with the human sample in [#110](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/110), they also catch a judge that wrongly removes a conversation from the denominator as `NOT_APPLICABLE`.
+**Offline only:** the four reference transfers (tasks `10`, `12`, `26`, `50`) are compared with what the agent did, as a separate agreement figure. The Milestone 4 baseline runs only `10` and `50` ([task sets](#task-sets)), so its figure has those two. They are answer-key data, so they are never shown to the judge and never enter the numerator. Together with the human sample in [#110](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/110), they also catch a judge that wrongly removes a conversation from the denominator as `NOT_APPLICABLE`.
 
 ### Customer experience
 
@@ -504,6 +504,51 @@ Manually annotate a stratified set of successful, failed, ambiguous, and policy-
 - **Repeated trials / held-out cases**: show variability and reduce overfitting to known prompts.
 
 Do not treat small samples as validating rare-event safety or very high reliability. Report numerator/denominator by subgroup, confidence intervals where useful, variance over trials, and severity of observed failures. A zero observed critical failure count is not proof of zero real-world risk.
+
+### Task sets
+
+Recorded on November 1, 2026 for [#108](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/108) (plan step 4.6). [`datasets/m4-task-sets-v1.json`](../datasets/m4-task-sets-v1.json) defines both sets at τ-bench `0c69df4` and gives the reason for each baseline task. [`tests/test_task_sets.py`](../tests/test_task_sets.py) checks every ID and rule below against the real `tasks.json`, `split_tasks.json`, and `db.json` at that commit. A changed set gets a new file version, not an edit.
+
+**Baseline: 20 tasks, 19 scenarios, 17 users.** `0`, `4`, `10`, `13`, `22`, `24`, `43`, `50`, `57`, `59`, `67`, `68`, `73`, `76`, `80`, `81`, `84`, `88`, `106`, `113`. Tasks `67` and `68` count as one scenario. No user has more than two tasks, with no exceptions; `yusuf_rossi_9620`, `mia_garcia_4516`, and `noah_ito_3850` have two each. At three trials this is 60 simulations. Results may be inspected and tuned against.
+
+| Workflow | Tasks | Count |
+| --- | --- | --- |
+| Order detail lookup | `24`, `43`, `57`, `67`, `68` | 5 (4 scenarios) |
+| Pending cancellation | `59`, `76`, `81`, `88`, `113` | 5 |
+| Return/exchange | `0`, `13`, `73`, `80`, `84`, `106` | 6 |
+| Modification, outside the three workflows | `4`, `22` | 2 |
+| Hand-off to a human | `10`, `50` | 2 |
+
+| Category ([taxonomy](SIMULATION.md#initial-scenario-taxonomy)) | Tasks | Count |
+| --- | --- | --- |
+| Straightforward | `0`, `73` | 2 |
+| Multi-step | `4`, `43`, `59`, `76` | 4 |
+| Ambiguous | `81`, `106`, `113` | 3 |
+| Difficult/contradictory | `22`, `24`, `80`, `84`, `88` | 5 |
+| Policy-sensitive | `10`, `13`, `50`, `57`, `67`, `68` | 6 (5 scenarios) |
+| Tool exception | None: it comes from fault injection, not from a τ-bench task | 0 |
+
+| Risk case (a task can have several) | Tasks | Count |
+| --- | --- | --- |
+| The policy must refuse part of the request | `10`, `13`, `50`, `57`, `76`, `81` | 6 |
+| A hand-off is the right ending | `10`, `50` | 2 |
+| The user's answer at the confirmation step matters | `4`, `24`, `84` | 3 |
+| Wrong identity details come first | `67`, `68` | 2 |
+| An ineligible order sits beside the eligible ones | `22`, `81` | 2 |
+| A later write overwrites an earlier one | `22` | 1 |
+| The user withholds a required detail until asked | `88`, `113` | 2 |
+
+Nine tasks have NL assertions, so for the other eleven the reward says nothing about what the user was told. Task `57` is the plainest refusal: its reference has no actions at all, so the right end state is no change.
+
+**Held-out: 31 tasks.** The `test` split's 40 tasks, minus `68`; minus the defect tasks `36`, `64`, and `100` ([ADR-019](DECISIONS.md#adr-019--judge-tool-correctness-by-writes-and-prohibited-actions), which excludes them from every Milestone 4 task set); and minus `12`, `56`, `70`, `101`, and `102`, which share a user with the baseline. The IDs are in the definition file. The set is not run or inspected in this milestone. Choosing `24` and `57` cost two of those five, `56` and `70`. That was accepted because the lookup workflow and the refusal case need tasks with no write, and besides `67` the train split has only `24`, `25`, and `57`, whose users all have tasks in the `test` split.
+
+**How clean the held-out set is.** None of its tasks has been run: every recorded run is on tasks `0`–`4`, and no fixture, evaluator, or test names one. The baseline was chosen by reading only the train split and `68`; the held-out set was derived by a script that uses each task's user. It is not pristine, for three reasons:
+
+- [Milestone 2's analysis](BASELINE.md#task-to-workflow-mapping) classified all 114 reference trajectories, so `BASELINE.md` names many held-out IDs in its inventories, and a few facts about them.
+- This document names `26` as a reference transfer and `33` as `DB`-only.
+- `tests/test_reference_writes.py` gold-replays all 114 references to check the defect list. That calls no agent or model.
+
+Treat it as unseen by any agent and by judge tuning, not as unknown to the authors.
 
 ## Comparison protocol
 
