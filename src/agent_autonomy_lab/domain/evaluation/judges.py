@@ -58,9 +58,9 @@ def judge_reply(text: str) -> dict[str, Any]:
     reports as ``EVALUATOR_ERROR``. Whether the score is valid is left to it.
     """
     try:
-        parsed = json.loads(text)
-    except json.JSONDecodeError:
-        return {"problem": "it is not JSON", "reply": text}
+        parsed = json_data(json.loads(text))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {"problem": "it is not strict JSON", "reply": text}
     if not isinstance(parsed, dict):
         return {"problem": "it is not a JSON object", "reply": text}
     if not isinstance(parsed.get("evidence"), str) or not parsed["evidence"].strip():

@@ -5,8 +5,11 @@ import httpx
 import pytest
 
 from agent_autonomy_lab.adapters.litellm import Cassette, RecordingTransport
+from agent_autonomy_lab.domain.model_calls import ModelCallError, ModelResponse
 from agent_autonomy_lab.entrypoints import judge_rubrics
+from agent_autonomy_lab.ports.model_client import ScriptedModelClient
 
+REPLY = '{"score": 2, "evidence": "Clear.", "uncertain": false}'
 TASK_0 = str(Path(__file__).parent / "fixtures" / "m2-task-0" / "simulation.json")
 
 
@@ -58,6 +61,25 @@ def test_the_command_reports_results_usage_and_a_recording(recording_to, tmp_pat
     assert row["results"][0]["judge_run"]["prompt_version"] == "clarity-v1"
     assert len(Cassette.load(recording).interactions) == 3
     assert report["recording_sha256"]
+
+
+def test_the_total_cost_is_unknown_if_any_call_cost_is_unknown():
+    priced = ModelResponse(REPLY, "m", 100, 20, 0.5, "end_turn", {})
+    unpriced = ModelResponse(REPLY, "m", 100, 20, None, "end_turn", {})
+
+    all_priced = judge_rubrics.report([TASK_0], ScriptedModelClient([priced] * 3))["totals"]
+    assert all_priced["cost_usd"] == pytest.approx(1.5)
+    assert all_priced["calls_of_unknown_cost"] == 0
+
+    one_unpriced = judge_rubrics.report([TASK_0], ScriptedModelClient([priced, unpriced, priced]))[
+        "totals"
+    ]
+    assert (one_unpriced["cost_usd"], one_unpriced["calls_of_unknown_cost"]) == (None, 1)
+
+    one_failed = judge_rubrics.report(
+        [TASK_0], ScriptedModelClient([priced, ModelCallError("no"), priced])
+    )["totals"]
+    assert (one_failed["cost_usd"], one_failed["calls_of_unknown_cost"]) == (None, 1)
 
 
 def test_the_command_exits_1_on_an_evaluator_error(recording_to, tmp_path, capsys):

@@ -9,7 +9,8 @@ simulation at the list price). Give it save directories, or ``results.json`` or
         ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3
 
 It prints a JSON report for ``reports/m4-rubric-judges/manifest.yaml``: each simulation's
-results, the replies whose wrapper was removed, and the usage and cost of every call. It
+results, the replies whose wrapper was removed, and the total usage and cost, which is
+null if any call's cost is unknown, as for one the adapter cannot price or one that failed. It
 exits 1 if a judge gave ``EVALUATOR_ERROR``. A low score does not change the exit code.
 ``--recording`` saves the calls for replay, and an existing path is refused before any
 model call. ``tests/test_rubric_judges.py`` replays the committed one.
@@ -35,7 +36,8 @@ from agent_autonomy_lab.ports.model_client import ModelClient
 def report(runs: Sequence[str], client: ModelClient) -> dict:
     judges = rubric_judges(client)
     rows = []
-    totals = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+    totals = {"calls": 0, "calls_of_unknown_cost": 0, "input_tokens": 0, "output_tokens": 0}
+    known_cost = 0.0
     statuses: dict[str, Counter] = {}
     for run_name, subject in saved_subjects(runs):
         output = evaluate_simulation(subject, judges)
@@ -44,7 +46,10 @@ def report(runs: Sequence[str], client: ModelClient) -> dict:
             totals["calls"] += 1
             totals["input_tokens"] += call.get("input_tokens", 0)
             totals["output_tokens"] += call.get("output_tokens", 0)
-            totals["cost_usd"] += call.get("cost_usd") or 0.0
+            if call.get("cost_usd") is None:
+                totals["calls_of_unknown_cost"] += 1
+            else:
+                known_cost += call["cost_usd"]
         for result in output.results:
             statuses.setdefault(result.evaluation_key, Counter())[result.status.value] += 1
         rows.append(
@@ -70,6 +75,7 @@ def report(runs: Sequence[str], client: ModelClient) -> dict:
         "totals": {
             "simulations": len(rows),
             **totals,
+            "cost_usd": None if totals["calls_of_unknown_cost"] else known_cost,
             "results_by_judge": {key: dict(sorted(statuses[key].items())) for key in statuses},
         },
         "simulations": rows,
