@@ -7,7 +7,7 @@ from uuid import uuid4
 import litellm
 import pytest
 
-from agent_autonomy_lab.adapters.litellm import RecordingTransport
+from agent_autonomy_lab.adapters.litellm import RecordingTransport, usage
 from agent_autonomy_lab.adapters.tau2 import live_run
 from agent_autonomy_lab.entrypoints import cassette_run, hook_probe
 from tests.fake_provider import ScriptedProvider, task_0_outputs
@@ -87,14 +87,14 @@ def test_an_outcome_other_than_the_reference_fails(recorded, capsys):
 
 
 def test_a_missed_model_call_fails(recorded, capsys, monkeypatch):
-    monkeypatch.setattr(hook_probe, "CALLBACK_WAIT_SECONDS", 0.0)
+    monkeypatch.setattr(usage, "CALLBACK_WAIT_SECONDS", 0.0)
     monkeypatch.setattr(hook_probe.CallCounter, "log_success_event", lambda *args: None)
 
     assert hook_probe.main(["c", "--cassette", CASSETTE, "--repeats", "1"]) == 1
 
 
 def test_a_missed_judge_call_fails(recorded, capsys, monkeypatch):
-    monkeypatch.setattr(hook_probe, "CALLBACK_WAIT_SECONDS", 0.5)
+    monkeypatch.setattr(usage, "CALLBACK_WAIT_SECONDS", 0.5)
     counted = hook_probe.CallCounter.log_success_event
 
     def skip_the_judge(self, kwargs, response_obj, start_time, end_time):

@@ -12,6 +12,7 @@ dependencies = [
     "langsmith",
     # tau2 allows litellm>=1.80.15,<1.82.7; pin the Milestone 2 baseline's version.
     "litellm==1.81.11",
+    "pyyaml>=6.0.3",
     "tau2",
 ]
 

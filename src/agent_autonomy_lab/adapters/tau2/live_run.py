@@ -213,11 +213,15 @@ def _execute(config: TextRunConfig, task: Any, seed: int, fault: OneShotToolFaul
 
 
 def run_traced_task(
-    settings: LiveRunSettings, factory: TracedAgentFactory, fault: OneShotToolFault | None = None
+    settings: LiveRunSettings,
+    factory: TracedAgentFactory,
+    fault: OneShotToolFault | None = None,
+    trial: int = 0,
 ) -> LiveRun:
     """Run ``settings.task_id`` once through the agent ``factory`` was registered as.
 
-    ``fault``, if given, fails one read tool's first call in this run only.
+    ``fault``, if given, fails one read tool's first call in this run only. ``trial``
+    picks the seed ``tau2 run`` would give that trial of a run seeded with ``settings.seed``.
 
     τ-bench's runner does not catch an exception from the agent, the
     simulated user, or the model provider; it propagates with no
@@ -226,7 +230,7 @@ def run_traced_task(
     """
     config = settings.config(factory.agent_version)
     (task,) = get_tasks(settings.domain, task_ids=[settings.task_id])
-    seed = trial_seed(settings.seed)
+    seed = trial_seed(settings.seed, trial)
     expected, policy = reference(settings, task, seed)
     built = len(factory.recorders)
     try:

@@ -39,14 +39,18 @@ from uuid import uuid4
 
 import httpx
 import litellm
-from litellm.integrations.custom_logger import CustomLogger
 from tau2.config import DEFAULT_LLM_NL_ASSERTIONS
 from tau2.data_model.message import AssistantMessage, ToolCall, ToolMessage, UserMessage
 from tau2.environment.environment import Environment
 from tau2.evaluator.evaluator_nl_assertions import NLAssertionsEvaluator
 from tau2.runner import build_text_orchestrator, get_tasks, run_simulation
 
-from agent_autonomy_lab.adapters.litellm import Cassette, litellm_transport, replaying
+from agent_autonomy_lab.adapters.litellm import (
+    CallCounter,
+    Cassette,
+    litellm_transport,
+    replaying,
+)
 from agent_autonomy_lab.adapters.tau2.live_run import (
     LiveRunSettings,
     register_untraced_agent,
@@ -60,37 +64,7 @@ from agent_autonomy_lab.domain.events import canonical_json
 from agent_autonomy_lab.entrypoints.run_options import uncovered_models
 
 MODES = ("plain", "c", "e")
-CALLBACK_WAIT_SECONDS = 5.0
 CANNED_JUDGE_TOKENS = {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120}
-
-
-class CallCounter(CustomLogger):
-    """Hook C: what a LiteLLM success callback receives for each model call."""
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, Any]] = []
-        self.own_ms = 0.0
-
-    def log_success_event(
-        self, kwargs: dict, response_obj: Any, start_time: Any, end_time: Any
-    ) -> None:
-        began = time.perf_counter()
-        usage = getattr(response_obj, "usage", None)
-        self.calls.append(
-            {
-                "model": kwargs.get("model"),
-                "cost": kwargs.get("response_cost"),
-                "prompt": getattr(usage, "prompt_tokens", 0),
-                "completion": getattr(usage, "completion_tokens", 0),
-            }
-        )
-        self.own_ms += (time.perf_counter() - began) * 1000
-
-    def wait_for(self, count: int) -> None:
-        """LiteLLM calls back on a background thread; give it time to reach ``count``."""
-        deadline = time.monotonic() + CALLBACK_WAIT_SECONDS
-        while len(self.calls) < count and time.monotonic() < deadline:
-            time.sleep(0.01)
 
 
 COUNTER = CallCounter()
