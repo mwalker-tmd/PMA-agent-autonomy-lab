@@ -94,6 +94,11 @@ def _hook_c(row: SimulationRow, judge_model: str) -> dict[str, Any]:
         "all_calls": {
             "callback_calls": len(seen),
             "provider_successes": sum(call.succeeded for call in sent),
+            # By model, so a disagreement can be traced to the calls that caused it.
+            "callback_by_model": dict(sorted(Counter(str(c.get("model")) for c in seen).items())),
+            "provider_by_model": dict(
+                sorted(Counter(call.model for call in sent if call.succeeded).items())
+            ),
         },
     }
 
@@ -235,12 +240,23 @@ def _metric_table(results: Sequence[EvaluationResult]) -> dict[str, Any]:
 
 
 def _task_success_components(rows: Sequence[SimulationRow]) -> dict[str, dict[str, int]]:
-    """The reward's components apart, on the runs that still count (docs/EVALUATION.md)."""
+    """The reward's components apart, on the runs that still count (docs/EVALUATION.md).
+
+    τ-bench gives ``NL_ASSERTION: 1.0`` to a task with no assertions, which checked nothing,
+    so a component enters its denominator only when the run shows that check was made.
+    """
     components: dict[str, dict[str, int]] = {}
     for row in rows:
-        if row.is_invalid or not row.attempt.simulation or not row.attempt.simulation.reward:
+        reward = row.attempt.simulation.reward if row.attempt.simulation else None
+        if row.is_invalid or reward is None:
             continue
-        for name, score in row.attempt.simulation.reward.breakdown.items():
+        checked = {
+            "DB": reward.db_match is not None,
+            "NL_ASSERTION": reward.details.get("nl_assertions"),
+        }
+        for name, score in reward.breakdown.items():
+            if not checked.get(name, True):
+                continue
             part = components.setdefault(name, {"numerator": 0, "denominator": 0})
             part["denominator"] += 1
             part["numerator"] += score == 1.0

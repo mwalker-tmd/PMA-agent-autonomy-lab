@@ -459,6 +459,33 @@ def test_hook_c_failing_silently_is_reported():
     assert check["callback_calls"] == 0 and check["expected_calls"] == 1
     (mismatch,) = check["mismatched_simulations"]
     assert mismatch["task_id"] == "0"
+    assert mismatch["all_calls"]["provider_by_model"] == {JUDGE: 1}
+    assert mismatch["all_calls"]["callback_by_model"] == {}
+
+
+def test_a_component_that_checked_nothing_stays_out_of_its_denominator():
+    checked = Reward(
+        0.0,
+        {"DB": 1.0, "NL_ASSERTION": 0.0},
+        ("DB", "NL_ASSERTION"),
+        {
+            "db_check": {"db_match": True},
+            "nl_assertions": [{"met": False}],
+        },
+    )
+    unchecked = Reward(
+        1.0,
+        {"DB": 1.0, "NL_ASSERTION": 1.0},
+        ("DB", "NL_ASSERTION"),
+        {
+            "db_check": {"db_match": True},
+        },
+    )
+    outcome, _, _ = execute([finished("0", reward=checked), finished("4", reward=unchecked)])
+    assert batch_figures(outcome, CannedReferenceWrites(), JUDGE)["task_success_components"] == {
+        "DB": {"numerator": 2, "denominator": 2},
+        "NL_ASSERTION": {"numerator": 0, "denominator": 1},
+    }
 
 
 def test_a_record_holds_no_conversation():
@@ -609,6 +636,7 @@ def test_an_offline_run_saves_every_artifact_and_a_template_manifest(offline, ca
         "run.cassette.json",
         "judges.cassette.json",
         "trace_events.jsonl",
+        "raw_outputs.jsonl",
         "attempt.json",
     ):
         assert (saved / name).is_file(), name
@@ -623,6 +651,7 @@ def test_an_offline_run_saves_every_artifact_and_a_template_manifest(offline, ca
     )
     assert set(template.split()) <= set(data)
     assert data["experiment_class"] == "custom_lab_experiment"
+    assert data["lab_commit"] != "unknown"
     assert data["scenario_manifest_version"] == "m4-task-sets-v1"
     assert data["fingerprint_mismatched_attempts"] == 0
     assert data["completed"] == 1 and data["failed_to_run"] == 0
@@ -670,6 +699,22 @@ def test_every_evaluator_scores_the_offline_run_and_cites_the_trace(offline, cap
         r for r in record["results"] if r["evaluation_key"] == "authentication_order"
     )
     assert authentication["status"] != "INSUFFICIENT_EVIDENCE"
+
+
+def test_each_raw_output_id_a_result_gives_can_be_followed(offline, capsys):
+    assert _main(offline) == 0
+
+    (record,) = [
+        json.loads(line)
+        for line in (offline / "report" / "simulations.jsonl").read_text().splitlines()
+    ]
+    saved = offline / "simulations" / "smoke" / "task-0-trial-0-attempt-0" / "raw_outputs.jsonl"
+    raw = {
+        json.loads(line)["output_id"]: json.loads(line) for line in saved.read_text().splitlines()
+    }
+    linked = [r for r in record["results"] if r["raw_output_id"]]
+    assert linked and all(r["raw_output_id"] in raw for r in linked)
+    assert "call" in raw[linked[0]["raw_output_id"]]["payload"]
 
 
 def test_a_run_never_overwrites_a_saved_one(offline, capsys):
