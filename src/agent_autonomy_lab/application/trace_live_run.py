@@ -175,7 +175,7 @@ def record_live_run(
         thread_id=events[0].context.thread_id,
         root_run_id=events[0].run_id,
         spans=len(events),
-        feedback=len(feedback),
+        feedback=len(feedback) + len(extra_feedback),
         build_ms=(built - start) * 1000,
         flush_ms=(flushed - built) * 1000,
         fault_run_id=_classified_tool_span(events),
