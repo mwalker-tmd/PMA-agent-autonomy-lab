@@ -47,8 +47,8 @@ def _events(run_name: str, simulation: SavedSimulation) -> tuple[TraceEvent, ...
 
 def checked_simulations(
     runs: Sequence[str], evaluators: Sequence[Evaluator]
-) -> Iterator[tuple[dict, tuple[EvaluationResult, ...]]]:
-    """Each saved simulation's report row and results under ``evaluators``."""
+) -> Iterator[tuple[dict, tuple[EvaluationResult, ...], SavedSimulation]]:
+    """Each saved simulation's report row, results under ``evaluators``, and record."""
     for run in runs:
         directory, simulations = saved_simulations(run)
         for simulation in simulations:
@@ -73,7 +73,7 @@ def checked_simulations(
                     if r.status not in _NOT_A_CONCERN
                 ],
             }
-            yield row, results
+            yield row, results, simulation
 
 
 def report(runs: Sequence[str], source: RetailStateSource) -> list[dict]:
@@ -89,7 +89,7 @@ def report(runs: Sequence[str], source: RetailStateSource) -> list[dict]:
                 row["simulation_id"]
             ].value,
         }
-        for row, results in checked_simulations(runs, evaluators)
+        for row, results, _ in checked_simulations(runs, evaluators)
     ]
 
 

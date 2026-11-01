@@ -26,7 +26,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("runs", nargs="+", help="save directories or result files")
     args = parser.parse_args(argv)
     evaluators = write_eligibility_evaluators(ReplayedRetailState())
-    rows = [row for row, _ in checked_simulations(args.runs, evaluators)]
+    rows = [row for row, *_ in checked_simulations(args.runs, evaluators)]
     print(json.dumps(rows, indent=2))
     return 1 if any(row["concerns"] for row in rows) else 0
 
