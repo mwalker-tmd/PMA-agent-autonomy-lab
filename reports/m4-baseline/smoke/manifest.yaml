@@ -1,0 +1,488 @@
+# Smoke run before the baseline (M4-11, #109), written by run_batch; edits listed under post_run_edits.
+
+experiment_id: m4-baseline-smoke
+started_at_utc: '2026-11-01T18:41:43+00:00'
+finished_at_utc: '2026-11-01T18:42:48+00:00'
+traffic_type: synthetic
+experiment_class: custom_lab_experiment
+lab_commit: 9e91214edfd19cd3c586150399d6802d3e0e2705
+tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7
+tau_bench_task_split: base
+selected_task_ids:
+- '4'
+scenario_manifest_version: m4-task-sets-v1
+scenario_manifest_set: baseline
+scenario_manifest_sha256: 3541ea0494592a973578018c081430ed583fcd4b00aecbf05aa26b974705b044
+model_id: openai/responses/gpt-6-luna
+user_model_id: openai/responses/gpt-6-luna
+judge_model:
+  lab_judges: claude-haiku-5-5
+  tau_bench_nl_assertions: gpt-5.4-mini-2026-03-17
+declared_settings:
+  agent:
+    reasoning_effort: medium
+  user:
+    reasoning_effort: medium
+  lab_judges:
+    max_tokens: 2048
+    output_config:
+      effort: low
+effective_settings:
+  user:
+  - sent: {}
+    reported_effort: medium
+  agent:
+  - sent:
+      tool_choice: auto
+    reported_effort: medium
+  benchmark_judge:
+  - sent:
+      reasoning:
+        effort: low
+    reported_effort: low
+  judges:
+  - max_tokens: 2048
+    output_config:
+      effort: low
+agent_version: lab_traced_llm_agent
+prompt_version: prompt-a0211039d555
+policy_version: policy-2c9652afbce5
+upstream_fingerprint:
+- model_id: openai/responses/gpt-6-luna
+  prompt_version: prompt-a0211039d555
+  tool_schema_version: tools-7d24cf1501c1
+  model_args_version: args-474d78942283
+fingerprint_mismatched_attempts: 0
+seed: 42
+trial_seeds:
+- 670487
+trials_per_task: 1
+concurrency: 1
+attempts: 1
+completed: 1
+failed_to_run: 0
+langsmith_project: agent-autonomy-lab-synthetic
+report_path: reports/m4-baseline/smoke/simulations.jsonl
+command: python -m agent_autonomy_lab.entrypoints.run_batch --only-task 4 --trials 1 --save-to m4-baseline-smoke
+  --report-dir reports/m4-baseline/smoke
+litellm_version: 1.81.11
+notes:
+  purpose: Task 4 has an NL assertion, so hook C sees τ-bench's real judge. This confirms the pipeline
+    before the full run.
+  budget: $0.0165 per simulation, projecting to $0.99 for 60, inside the $0.70-$1.10 budget and under
+    the $5 cap.
+  alignment_rules: Five minutes after the run, the trace had no alignment feedback, and both corrections
+    datasets had 0 examples and 0 experiments.
+  earlier_dry_run: One --dry-run of the same task spent $0.0182 at list price and sent no trace. It is
+    not part of these figures.
+budget:
+  expected_total_usd:
+  - 0.7
+  - 1.1
+  expected_per_simulation_usd:
+  - 0.0117
+  - 0.0183
+  list_price_per_attempt_usd: 0.016474
+  projected_60_simulations_usd: 0.9885
+  within_expected_total: true
+  under_cap_when_projected: true
+runs:
+  units_planned: 1
+  attempts: 1
+  completed: 1
+  application_failure: 0
+  invalid:
+    count: 0
+    reasons: {}
+    causes: {}
+  no_known_standing: 0
+  not_scored: []
+  runner_retries: []
+  not_run: []
+  stop_reason: null
+metrics:
+  authentication_order:
+    numerator: 8
+    denominator: 8
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - authentication-order-v1
+  autonomy_level:
+    numerator: 0
+    denominator: 0
+    pass_rate: null
+    not_applicable: 1
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - autonomy-level-v1
+  cancellation_reason:
+    numerator: 0
+    denominator: 0
+    pass_rate: null
+    not_applicable: 1
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - cancellation-reason-v1
+  clarity_customer_effort:
+    numerator: 1
+    denominator: 1
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - clarity-v1
+    score_distribution:
+      '2': 1
+  conversation_efficiency:
+    numerator: 1
+    denominator: 1
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - efficiency-v1
+    score_distribution:
+      '2': 1
+  escalation_correctness:
+    numerator: 0
+    denominator: 0
+    pass_rate: null
+    not_applicable: 1
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - escalation-v1
+  expected_writes:
+    numerator: 1
+    denominator: 1
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - expected-writes-v1
+  gift_card_balance:
+    numerator: 0
+    denominator: 0
+    pass_rate: null
+    not_applicable: 1
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - gift-card-balance-v1
+  item_change_once:
+    numerator: 2
+    denominator: 2
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - item-change-once-v1
+  item_variant:
+    numerator: 2
+    denominator: 2
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - item-variant-v1
+  message_form:
+    numerator: 11
+    denominator: 11
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - message-form-v1
+  method_owner:
+    numerator: 2
+    denominator: 2
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - method-owner-v1
+  order_status:
+    numerator: 2
+    denominator: 2
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - order-status-v1
+  overwritten_write:
+    numerator: 0
+    denominator: 0
+    pass_rate: null
+    not_applicable: 1
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - overwritten-write-v1
+  payment_change:
+    numerator: 0
+    denominator: 0
+    pass_rate: null
+    not_applicable: 1
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - payment-change-v1
+  refund_method:
+    numerator: 0
+    denominator: 0
+    pass_rate: null
+    not_applicable: 1
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - refund-method-v1
+  required_customer_confirmation:
+    numerator: 2
+    denominator: 2
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - confirmation-v1
+    score_distribution:
+      '2': 2
+  status_read:
+    numerator: 2
+    denominator: 2
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - status-read-v1
+  task_success:
+    numerator: 1
+    denominator: 1
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - task-success-v1
+  transfer_message:
+    numerator: 0
+    denominator: 0
+    pass_rate: null
+    not_applicable: 1
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - transfer-message-v1
+  unauthorized_attempts:
+    numerator: 2
+    denominator: 2
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - unauthorized-attempts-v1
+  unauthorized_executions:
+    numerator: 2
+    denominator: 2
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - unauthorized-executions-v1
+  user_access:
+    numerator: 8
+    denominator: 8
+    pass_rate: 1.0
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+    invalid_reasons: {}
+    evaluator_versions:
+    - user-access-v1
+simulation_roll_ups:
+  authentication_compliance:
+    numerator: 1
+    denominator: 1
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+  confirmation_compliance:
+    numerator: 1
+    denominator: 1
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+  policy_compliance:
+    numerator: 1
+    denominator: 1
+    not_applicable: 0
+    insufficient_evidence: 0
+    evaluator_error: 0
+    invalid: 0
+task_success_components:
+  DB:
+    numerator: 1
+    denominator: 1
+  NL_ASSERTION:
+    numerator: 1
+    denominator: 1
+unauthorized_counts:
+- evaluation_key: unauthorized_attempts
+  label: no gate active
+  count: 0
+  denominator: 2
+  not_applicable: 0
+  insufficient_evidence: 0
+  evaluator_error: 0
+  invalid: 0
+- evaluation_key: unauthorized_executions
+  label: no gate active
+  count: 0
+  denominator: 2
+  not_applicable: 0
+  insufficient_evidence: 0
+  evaluator_error: 0
+  invalid: 0
+tool_correctness_question:
+  correct_end_states_compared: 1
+  reached_through_different_writes: 0
+  simulations: []
+by_task:
+  '4':
+  - trial: 0
+    attempt: 0
+    run_class: completed
+    reward: 1.0
+    db_match: true
+    policy_compliance: PASS
+operational:
+  cost_per_completed_simulation_usd: 0.016474
+  latency_seconds:
+    simulation:
+      n: 1
+      median: 40.431
+      p95: 40.431
+    agent_turn:
+      n: 14
+      median: 1.662
+      p95: 8.734
+  tokens:
+    prompt: 82800
+    completion: 1658
+    model_calls_with_usage: 18
+  failed_tools:
+    numerator: 0
+    denominator: 11
+  tool_retries:
+    numerator: 0
+    denominator: 0
+  turns:
+    numerator: 30
+    denominator: 1
+hook_c:
+  benchmark_judge_model: gpt-5.4-mini-2026-03-17
+  expected_calls: 1
+  callback_calls: 1
+  provider_calls: 1
+  prompt_tokens: 4314
+  completion_tokens: 85
+  litellm_cost_usd: 0.003618
+  all_calls_callback: 24
+  all_calls_provider_successes: 24
+  mismatched_simulations: []
+cost:
+  list_price_usd: 0.016474
+  cap_usd: 5.0
+  by_model:
+    claude-haiku-5-5:
+      calls: 5
+      failed_calls: 0
+      input_tokens: 31427
+      output_tokens: 1209
+      usd: 0.003747
+    gpt-5.4-mini-2026-03-17:
+      calls: 1
+      failed_calls: 0
+      input_tokens: 4314
+      output_tokens: 85
+      usd: 0.003618
+    gpt-6-luna:
+      calls: 18
+      failed_calls: 0
+      input_tokens: 82800
+      output_tokens: 1658
+      usd: 0.009109
+  unpriced_calls: 0
+  litellm_estimate:
+    agent_and_user_usd: 0.002312
+    lab_judges_usd: 0.003747
+    benchmark_judge_usd: 0.003618
+  billed_usd: null
+traces:
+  sent: 1
+  not_sent: []
+post_run_edits:
+- lab_commit and notes added.
