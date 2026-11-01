@@ -782,7 +782,7 @@ Not tested. Each is an idea prompted by a finding above, with the milestone wher
 | --- | --- | --- |
 | Run each selected task several times and report `pass^k` before comparing any variants | Limitations 1–3 | Milestones 4–5 |
 | Choose tasks by ID (`--task-ids`) instead of taking the first five | Limitation 3 | Milestone 5 |
-| A judge for PA-2 (explicit "yes" to the listed details) would flag task `4`'s first write | Task `4` | Milestone 4 |
+| A judge for PA-2 (explicit "yes" to the listed details) would flag task `4`'s first write. **It does:** [#106](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/106) fails that write and passes the other five ([manifest](../reports/m4-confirmation-judge/manifest.yaml)) | Task `4` | Milestone 4 |
 | An execution-time authorization gate that requires a bound confirmation event would have denied task `4`'s first write instead of only reporting it | Task `4` | Milestone 6 |
 | Have the agent count with `calculate`, or cross-check numbers it quotes against tool results (line 18) | Task `2` | Milestone 4 (check), later milestones (agent change) |
 | Record judge calls and the final database through the lab's own adapters | Cost; limitation 5 | Milestone 3 |
