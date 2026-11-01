@@ -7,7 +7,7 @@ The two parts are reported separately:
 
 - **Part A, prohibited actions:** one simulation's roll-up of the PA checks, which
   policy compliance reports alone. This module adds the state parts of PA-6 and PA-9;
-  PA-7's are in ``write_eligibility``.
+  PA-7's are in ``write_eligibility``, and PA-10 is in ``gate_checks``.
 - **Part B, expected writes:** executed writes against the reference writes that
   succeed on gold replay, as multisets (AA-4, AA-5), with the DB check deciding
   whenever a run has one (AA-6).
@@ -34,6 +34,7 @@ from agent_autonomy_lab.application.check_results import (
     unit_target,
 )
 from agent_autonomy_lab.application.confirmation_judge import CONFIRMATION_KEY
+from agent_autonomy_lab.application.gate_checks import AUTONOMY_LEVEL_KEY, AutonomyLevelEvaluator
 from agent_autonomy_lab.application.write_eligibility import (
     CANCELLATION_REASON_KEY,
     GIFT_CARD_BALANCE_KEY,
@@ -91,9 +92,9 @@ TRANSFER_TOOL = "transfer_to_human_agents"
 # or exchange leaves a status no later write accepts.
 _ADDRESS_WRITES = {"modify_pending_order_address": "order_id", "modify_user_address": "user_id"}
 
-# Every check the PA rules have. The gate fixtures (PA-10, #107) join when they exist; until
-# then Part A says nothing about them. PA-2's is a judge, so a run that leaves it out says
-# nothing about confirmation either, and check_tool_correctness reports whether it ran.
+# Every check the PA rules have. PA-2's is a judge, so a run that leaves it out says nothing
+# about confirmation, and check_tool_correctness reports whether it ran. PA-10 reads gate
+# events, so it is NOT_APPLICABLE on an ungated run, and says nothing there either.
 PROHIBITED_ACTION_KEYS = frozenset(
     {
         AUTHENTICATION_ORDER_KEY,  # PA-1
@@ -110,6 +111,7 @@ PROHIBITED_ACTION_KEYS = frozenset(
         GIFT_CARD_BALANCE_KEY,  # line 22: a write the policy forbids
         MESSAGE_FORM_KEY,  # PA-8
         TRANSFER_MESSAGE_KEY,  # PA-9
+        AUTONOMY_LEVEL_KEY,  # PA-10
         STATUS_READ_KEY,  # PA-11
     }
 )
@@ -370,12 +372,13 @@ class ExpectedWritesEvaluator:
 def prohibited_action_evaluators(
     state_source: RetailStateSource, reference_source: ReferenceWriteSource
 ) -> tuple:
-    """The state parts this ticket adds for PA-6, PA-7, and PA-9."""
+    """The state parts of PA-6, PA-7, and PA-9, and PA-10's gate-event check."""
     return (
         OverwrittenWriteEvaluator(reference_source),
         CancellationReasonEvaluator(),
         MethodOwnerEvaluator(state_source),
         TransferMessageEvaluator(),
+        AutonomyLevelEvaluator(),
     )
 
 
