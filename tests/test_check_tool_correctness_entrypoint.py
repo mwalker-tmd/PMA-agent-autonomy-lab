@@ -38,7 +38,11 @@ def test_the_benchmark_and_the_lab_checks_are_reported_apart(capsys):
         "concerns",
     }
     assert "task_success" not in row["checks"]
-    assert row["tool_correctness"] == {"prohibited_actions": "PASS", "expected_writes": "PASS"}
+    assert row["tool_correctness"] == {
+        "prohibited_actions": "PASS",
+        "expected_writes": "PASS",
+        "confirmation_judged": False,
+    }
     assert row["concerns"] == []
 
 
