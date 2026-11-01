@@ -125,6 +125,16 @@ def _normalized(record: ToolCallRecord) -> str:
     return normalized_write(record.call.name, record.call.arguments)
 
 
+def writes_match_reference(messages: Sequence[Message], reference: ReferenceWrites) -> bool:
+    """Whether the writes that succeeded are the reference's, as multisets (AA-4, AA-5)."""
+    executed = (
+        record
+        for record in tool_timeline(messages)
+        if record.call.name in WRITE_TOOLS and record.succeeded
+    )
+    return Counter(_normalized(record) for record in executed) == reference.multiset
+
+
 class OverwrittenWriteEvaluator:
     """A write a later write overwrote was not one the user asked for (PA-6's state part).
 

@@ -25,7 +25,7 @@ can never collide with an export of the same simulation.
 """
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -155,13 +155,17 @@ def record_live_run(
     policy_version: str | None = None,
     timer: Callable[[], float] = time.perf_counter,
     fault: InjectedFault | None = None,
+    extra_feedback: Sequence[Feedback] = (),
 ) -> LiveTrace:
-    """Record the live trace in ``sink`` and flush it, timing both steps."""
+    """Record the live trace in ``sink`` and flush it, timing both steps.
+
+    ``extra_feedback`` goes with the reward, such as evaluator results on these spans.
+    """
     start = timer()
     events, feedback = live_trace(recording, simulation, user_model_id, policy_version, fault=fault)
     for event in events:
         sink.record(event)
-    for item in feedback:
+    for item in (*feedback, *extra_feedback):
         sink.record_feedback(item)
     built = timer()
     sink.flush()
