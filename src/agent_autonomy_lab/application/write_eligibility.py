@@ -33,7 +33,7 @@ from agent_autonomy_lab.application.check_results import (
 from agent_autonomy_lab.domain.evaluation import EvaluationSubject, EvaluatorOutput
 from agent_autonomy_lab.domain.evaluation.trace_evidence import TraceEvidence
 from agent_autonomy_lab.domain.retail_state import RetailState, RetailStateTimeline
-from agent_autonomy_lab.domain.simulations import ToolCall
+from agent_autonomy_lab.domain.simulations import SavedSimulation, ToolCall
 from agent_autonomy_lab.domain.tool_timeline import (
     ToolCallRecord,
     results_without_a_call,
@@ -85,6 +85,8 @@ class StatusReadEvaluator:
     made, so it does not count. A write whose outcome is unknown may have made an
     earlier read stale, and a read whose outcome is unknown may be the missing
     one. Either leaves the write undecided until a later successful read settles it.
+    A lost call could be either too, so it matters only since the last proved write
+    (any read before that is stale) and, for a read that counts, since that read.
     """
 
     evaluation_key = STATUS_READ_KEY
@@ -98,7 +100,8 @@ class StatusReadEvaluator:
         note_lost_calls(results, simulation)
         evidence = TraceEvidence(subject.events)
         lost = [index for index, _ in results_without_a_call(simulation.messages)]
-        fresh: dict[str, ToolCallRecord] = {}  # the earliest read since the order's last write
+        reads: dict[str, list[ToolCallRecord]] = {}  # successful, since the order's last write
+        last_write: dict[str, int] = {}  # the message of the order's last successful write
         doubted: set[str] = set()
         for record in tool_timeline(simulation.messages):
             name, order_id = record.call.name, _order_id(record.call)
@@ -108,17 +111,29 @@ class StatusReadEvaluator:
                 continue
             if name == _STATUS_READ_TOOL:
                 if record.succeeded:
-                    fresh.setdefault(order_id, record)
+                    reads.setdefault(order_id, []).append(record)
                 elif record.result is None:
                     doubted.add(order_id)
             elif name in ALLOWED_STATUS:
-                read = fresh.get(order_id)
-                self._check(results, record, order_id, read, order_id in doubted, lost, evidence)
+                # A read in the write's own message had not returned when the write was made.
+                earlier = [
+                    r for r in reads.get(order_id, ()) if r.message_index < record.message_index
+                ]
+                self._check(
+                    results,
+                    record,
+                    order_id,
+                    earlier[-1] if earlier else None,
+                    order_id in doubted or _lost_before(lost, record, last_write.get(order_id, -1)),
+                    lost,
+                    evidence,
+                )
                 if record.succeeded:
-                    fresh.pop(order_id, None)
+                    reads.pop(order_id, None)
+                    last_write[order_id] = record.message_index
                     doubted.discard(order_id)
                 elif record.result is None:
-                    fresh.pop(order_id, None)
+                    reads.pop(order_id, None)
                     doubted.add(order_id)
         return results.output(_NO_ORDER_WRITE)
 
@@ -146,7 +161,7 @@ class StatusReadEvaluator:
                     f"{name} came after a successful read of {order_id}.",
                     (read_span.event_id, write_span.event_id) if read_span and write_span else (),
                 )
-        elif doubted or _lost_before(lost, record):
+        elif doubted:
             results.unknown(target, f"The record does not establish a current read of {order_id}.")
         else:
             results.failed(
@@ -485,8 +500,24 @@ class RefundMethodEvaluator(_StateCheck):
         return _violation(f"{method} is neither the original method nor the owner's gift card")
 
 
+class _OneReplayPerSimulation:
+    """A state source that keeps the last timeline, so the checks of a simulation share it."""
+
+    def __init__(self, source: RetailStateSource) -> None:
+        self._source = source
+        self._simulation: SavedSimulation | None = None
+        self._timeline: RetailStateTimeline | None = None
+
+    def timeline(self, simulation: SavedSimulation) -> RetailStateTimeline:
+        if simulation is not self._simulation:
+            self._timeline = self._source.timeline(simulation)
+            self._simulation = simulation
+        return self._timeline
+
+
 def write_eligibility_evaluators(source: RetailStateSource) -> tuple:
-    """Every write-eligibility check, in the order the docs list them."""
+    """Every write-eligibility check, in the order the docs list them, sharing one replay."""
+    source = _OneReplayPerSimulation(source)
     return (
         StatusReadEvaluator(),
         OrderStatusEvaluator(source),

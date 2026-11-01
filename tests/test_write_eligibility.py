@@ -350,6 +350,23 @@ def test_a_lost_call_between_the_read_and_the_write_stops_a_pass():
     assert _statuses(_with_lost_call(StatusReadEvaluator, messages)) == [UNKNOWN, UNKNOWN]
 
 
+def test_a_new_read_after_a_lost_call_settles_it():
+    first = _steps(_read())
+    messages = _continue((*first, _result(len(first), "lost", "{}")), _read(), _cancel())
+    assert _statuses(_with_lost_call(StatusReadEvaluator, messages)) == [UNKNOWN, PASS]
+
+
+def test_a_lost_call_before_the_last_write_cannot_supply_the_missing_read():
+    messages = _continue((_user(0), _result(1, "lost", "{}")), _read(), _address(), _cancel())
+    assert _statuses(_with_lost_call(StatusReadEvaluator, messages)) == [UNKNOWN, PASS, FAIL]
+
+
+def test_a_lost_call_after_the_last_write_could_be_the_missing_read():
+    first = _steps(_read(), _address())
+    messages = _continue((*first, _result(len(first), "lost", "{}")), _cancel())
+    assert _statuses(_with_lost_call(StatusReadEvaluator, messages)) == [UNKNOWN, PASS, UNKNOWN]
+
+
 def test_a_lost_call_before_the_read_does_not_stop_a_pass():
     messages = _continue((_user(0), _result(1, "lost", "{}")), _read(), _cancel())
     assert _statuses(_with_lost_call(StatusReadEvaluator, messages)) == [UNKNOWN, PASS]
@@ -771,6 +788,23 @@ def _all_evaluators():
 )
 def test_a_run_with_no_messages_gives_insufficient_evidence(evaluator, subject):
     assert _statuses(evaluator.evaluate(subject).results) == [UNKNOWN]
+
+
+def test_the_checks_of_a_simulation_share_one_replay():
+    messages = _steps(_cancel())
+    source = CannedRetailState({SIM: _timeline(messages)})
+    subject = _subject(messages)
+    evaluate_simulation(subject, write_eligibility_evaluators(source))
+    assert len(source.simulations) == 1
+
+
+def test_each_simulation_gets_its_own_replay():
+    first, second = _steps(_cancel()), _steps(_cancel("#DELIVERED"))
+    source = CannedRetailState({SIM: _timeline(first)})
+    evaluators = write_eligibility_evaluators(source)
+    for messages in (first, second):
+        evaluate_simulation(_subject(messages), evaluators)
+    assert len(source.simulations) == 2
 
 
 def test_every_decided_result_cites_events_in_the_trace():
