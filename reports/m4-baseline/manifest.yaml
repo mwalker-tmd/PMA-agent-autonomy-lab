@@ -112,13 +112,21 @@ notes:
   hook_c: The callback saw 1137 events against 1134 successful exchanges, one extra in each of 3 simulations,
     and the τ-bench judge counts agree at 27 of 27. Each cassette holds every call the messages and judge
     results show, so none was missed. What the extra events are is unknown, because this commit did not
-    keep per-model counts. Later runs do.
+    keep per-model counts. Later runs do. The OpenAI reconciliation shows the extra events were not unmetered
+    OpenAI calls; Anthropic's dashboard cannot show the same.
   sleep: The machine slept on and off, so the run took 109 minutes by the clock and 57 awake. The longest
     simulation was 81 seconds.
   trial_order: 'Whole trials first: trial 0 of all 20 tasks, then 1, then 2.'
   limits: 'Twenty tasks, three trials, synthetic traffic, one model in both roles. Judge prompts have
     no calibration yet, so read escalation_correctness at 3 of 16, among other judged figures, as unverified
     until #110.'
+  billing: 'OpenAI''s requests and input tokens equal the three runs'' recorded usage exactly, so no OpenAI
+    call escaped the meter. Its bill is about 42% of list price, because list price counts every token
+    at the full rate, and it agrees with LiteLLM''s $0.1894 once the τ-bench judge is included, unlike
+    the Milestone 2 gap. The cap therefore erred high, which is the safe direction. Anthropic''s chart
+    cannot isolate this run: its Haiku figure, read by eye, is an upper bound on these 238 calls, and
+    $0.1409 is their measured cost. No lab code calls Sonnet, so that $0.17 is not from this run and its
+    source is unknown.'
 budget:
   expected_total_usd:
   - 0.7
@@ -940,7 +948,28 @@ cost:
     agent_and_user_usd: 0.10478
     lab_judges_usd: null
     benchmark_judge_usd: 0.071646
-  billed_usd: null
+  billed_usd:
+    read_on: 2026-11-01, from the maintainer's screenshots; authoritative
+    openai:
+      usd: 0.19
+      scope: 'November to date on the lab key: this run, the smoke, and one dry run, which the dashboard
+        cannot separate'
+      requests: 946
+      input_tokens: 3354274
+      recorded_usage_of_the_three_runs:
+        requests: 946
+        input_tokens: 3354274
+        list_price_usd: 0.450355
+        litellm_estimate_usd: 0.189359
+    anthropic:
+      total_usd: 0.43
+      scope: 'November to date on the lab key, data as of 22:34 UTC, a day that also holds the earlier
+        judge work on #104, #105, and #106'
+      claude_haiku_5_5_usd_read_from_chart: 0.26
+      claude_sonnet_5_5_usd_read_from_chart: 0.17
+      recorded_haiku_of_the_three_runs:
+        calls: 238
+        list_price_usd: 0.140901
 traces:
   sent: 60
   not_sent: []
@@ -948,3 +977,4 @@ post_run_edits:
 - lab_commit and notes added.
 - 'task_success_components corrected from NL_ASSERTION 54/60: τ-bench gives 1.0 to a task with no assertions,
   and run_batch now leaves those out.'
+- cost.billed_usd and notes.billing added from the maintainer's dashboard readings.

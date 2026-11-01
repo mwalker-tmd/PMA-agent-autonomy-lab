@@ -480,9 +480,11 @@ cost:
     agent_and_user_usd: 0.002312
     lab_judges_usd: 0.003747
     benchmark_judge_usd: 0.003618
-  billed_usd: null
+  billed_usd: 'Not separable: see cost.billed_usd in ../manifest.yaml, whose OpenAI figure includes this
+    run.'
 traces:
   sent: 1
   not_sent: []
 post_run_edits:
 - lab_commit and notes added.
+- cost.billed_usd points to the baseline's reading.
