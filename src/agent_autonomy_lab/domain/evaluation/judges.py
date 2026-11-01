@@ -5,6 +5,7 @@ stored its provider error that way (docs/ARCHITECTURE.md, "Thread evaluator
 validation"). That is an ``EVALUATOR_ERROR`` row, never an absent one.
 """
 
+import json
 from collections.abc import Iterable, Mapping
 from typing import Any
 from uuid import UUID
@@ -13,6 +14,7 @@ from agent_autonomy_lab.domain.evaluation.results import (
     EvaluationResult,
     EvaluatorOutput,
     FailureKind,
+    JudgeRun,
     RawEvaluatorOutput,
     ResultStatus,
 )
@@ -49,10 +51,59 @@ def _raw_payload(stored: Any) -> dict[str, Any]:
         return {"unparsable": repr(stored)}
 
 
-def _status_and_score(stored: Any) -> tuple[ResultStatus, int | None, str]:
+def judge_reply(text: str) -> dict[str, Any]:
+    """Read a judge's reply: a JSON object with its evidence and uncertainty flag.
+
+    A reply that is anything else comes back as a ``problem``, which ``judge_output``
+    reports as ``EVALUATOR_ERROR``. Whether the score is valid is left to it.
+    """
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return {"problem": "it is not JSON", "reply": text}
+    if not isinstance(parsed, dict):
+        return {"problem": "it is not a JSON object", "reply": text}
+    if not isinstance(parsed.get("evidence"), str) or not parsed["evidence"].strip():
+        return {"problem": "it has no evidence", "reply": parsed}
+    if not isinstance(parsed.get("uncertain"), bool):
+        return {"problem": "it has no boolean uncertainty flag", "reply": parsed}
+    return parsed
+
+
+def _no_transfer_needed_status(
+    stored: Mapping[str, Any], score: int, transfer_made: bool | None
+) -> tuple[ResultStatus, int | None, str] | None:
+    """The escalation judge's report that no request could have needed a transfer.
+
+    Only a score of 2 can leave the denominator, so a low score always stands. A
+    transfer that was made contradicts a report and a score of 2 together, so the reply
+    cannot be used. ``transfer_made`` is ``None`` for a judge with no such report.
+    """
+    if transfer_made is None or score != RUBRIC_PASS_SCORE:
+        return None
+    if not stored.get("no_transfer_needed", False):
+        return None
+    if transfer_made:
+        return (
+            ResultStatus.EVALUATOR_ERROR,
+            None,
+            "The judge scored 2 and reported no request needed a transfer, but one was made.",
+        )
+    return (
+        ResultStatus.NOT_APPLICABLE,
+        None,
+        "No transfer was made, and the judge reports no request could have needed one.",
+    )
+
+
+def _status_and_score(
+    stored: Any, transfer_made: bool | None
+) -> tuple[ResultStatus, int | None, str]:
     """Return the status, score, and default reason for one stored judge output."""
     if not isinstance(stored, Mapping):
         return ResultStatus.EVALUATOR_ERROR, None, "The judge's output is not a mapping."
+    if "problem" in stored:
+        return ResultStatus.EVALUATOR_ERROR, None, f"The judge's reply failed: {stored['problem']}."
     score = stored.get("score")
     if score is None:
         return ResultStatus.EVALUATOR_ERROR, None, "The judge stored no score."
@@ -65,10 +116,23 @@ def _status_and_score(stored: Any) -> tuple[ResultStatus, int | None, str]:
     uncertain = stored.get("uncertain", False)
     if not isinstance(uncertain, bool):
         return ResultStatus.EVALUATOR_ERROR, None, "The judge's uncertainty flag is not a boolean."
+    if transfer_made is not None and not isinstance(stored.get("no_transfer_needed", False), bool):
+        return ResultStatus.EVALUATOR_ERROR, None, "The judge's transfer report is not a boolean."
     if uncertain:
         return ResultStatus.INSUFFICIENT_EVIDENCE, None, "The judge raised its uncertainty flag."
+    not_needed = _no_transfer_needed_status(stored, score, transfer_made)
+    if not_needed is not None:
+        return not_needed
     status = ResultStatus.PASS if score == RUBRIC_PASS_SCORE else ResultStatus.FAIL
     return status, int(score), f"The judge scored {int(score)}."
+
+
+def _judge_reason(stored: Any) -> str | None:
+    """The judge's own words: ``evidence`` from a lab judge, ``reason`` from a stored output."""
+    for key in ("evidence", "reason"):
+        if isinstance(stored.get(key), str) and stored[key]:
+            return stored[key]
+    return None
 
 
 def judge_output(
@@ -81,6 +145,9 @@ def judge_output(
     evidence_ids: Iterable[UUID],
     scenario_id: str | None = None,
     target: str | None = None,
+    judge_run: JudgeRun | None = None,
+    call: Mapping[str, Any] | None = None,
+    transfer_made: bool | None = None,
 ) -> EvaluatorOutput:
     """Turn one stored 0–2 judge output into one result and its raw output.
 
@@ -90,17 +157,21 @@ def judge_output(
     only a score of 2 is a ``PASS``. The judge's reason is used only on a ``PASS`` or
     ``FAIL``; it stays readable in the raw output otherwise. A ``PASS`` or ``FAIL``
     with no ``evidence_ids`` raises ``ValueError``, as any such result does.
+
+    ``transfer_made`` turns on the escalation judge's ``no_transfer_needed`` report,
+    which can give ``NOT_APPLICABLE``. ``call`` holds what the call used, for audit.
     """
+    payload = _raw_payload(stored)
     raw = RawEvaluatorOutput(
         output_id=new_id(),
         evaluation_key=evaluation_key,
         evaluator_version=evaluator_version,
         simulation_id=simulation_id,
-        payload=_raw_payload(stored),
+        payload={**payload, "call": dict(call)} if call else payload,
     )
-    status, score, reason = _status_and_score(stored)
-    if score is not None and isinstance(stored.get("reason"), str) and stored["reason"]:
-        reason = stored["reason"]
+    status, score, reason = _status_and_score(stored, transfer_made)
+    if score is not None:
+        reason = _judge_reason(stored) or reason
     result = EvaluationResult(
         evaluation_key=evaluation_key,
         status=status,
@@ -113,5 +184,6 @@ def judge_output(
         target=target,
         failure_kind=failure_kind if status is ResultStatus.FAIL else None,
         raw_output_id=raw.output_id,
+        judge_run=judge_run,
     )
     return EvaluatorOutput(results=(result,), raw_outputs=(raw,))

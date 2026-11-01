@@ -66,6 +66,7 @@ def test_to_dict_holds_every_field_of_the_required_format_as_json():
         "failure_kind": "violation",
         "invalid_reason": None,
         "raw_output_id": None,
+        "judge_run": None,
     }
 
 

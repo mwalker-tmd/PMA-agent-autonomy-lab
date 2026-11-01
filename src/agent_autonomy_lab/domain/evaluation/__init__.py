@@ -9,6 +9,7 @@ from agent_autonomy_lab.domain.evaluation.judges import (
     JUDGE_MODEL,
     JUDGE_SETTINGS,
     judge_output,
+    judge_reply,
     judge_request,
 )
 from agent_autonomy_lab.domain.evaluation.results import (
@@ -17,6 +18,7 @@ from agent_autonomy_lab.domain.evaluation.results import (
     EvaluationSubject,
     EvaluatorOutput,
     FailureKind,
+    JudgeRun,
     RawEvaluatorOutput,
     ResultStatus,
 )
@@ -37,6 +39,7 @@ __all__ = [
     "EvaluationSubject",
     "EvaluatorOutput",
     "FailureKind",
+    "JudgeRun",
     "MetricAggregate",
     "RawEvaluatorOutput",
     "ResultStatus",
@@ -44,6 +47,7 @@ __all__ = [
     "RunStanding",
     "aggregate",
     "judge_output",
+    "judge_reply",
     "judge_request",
     "roll_up",
     "run_standing",
