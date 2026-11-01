@@ -13,9 +13,15 @@ result per write attempt, so the unauthorized counts can read a write's own resu
 - ``gift_card_balance`` (lines 104, 114, 134): the balance at call time covers it.
 - ``refund_method`` (line 124): the original method or a gift card of the owner.
 
-The first and third read the tool timeline alone. The others read the replayed
-state before the write. A violation needs only the attempt, so it stands whether
-or not the tool ran, and a tool's error does not excuse it.
+Two more are PA-7's state parts, which tool correctness adds to these:
+
+- ``cancellation_reason`` (line 90): one of the two reasons the policy allows.
+- ``method_owner`` (lines 114, 122, 134): a payment method of the order's owner.
+
+``status_read``, ``item_change_once``, and ``cancellation_reason`` read the tool
+timeline alone. The others read the replayed state before the write. A violation
+needs only the attempt, so it stands whether or not the tool ran, and a tool's error
+does not excuse it.
 """
 
 from abc import ABC, abstractmethod
@@ -48,15 +54,19 @@ ITEM_VARIANT_KEY = "item_variant"
 PAYMENT_CHANGE_KEY = "payment_change"
 GIFT_CARD_BALANCE_KEY = "gift_card_balance"
 REFUND_METHOD_KEY = "refund_method"
+CANCELLATION_REASON_KEY = "cancellation_reason"
+METHOD_OWNER_KEY = "method_owner"
 
 _STATUS_READ_TOOL = "get_order_details"
 _PAYMENT_CHANGE = "modify_pending_order_payment"
 _RETURN = "return_delivered_order_items"
+_CANCEL = "cancel_pending_order"
+_ALLOWED_REASONS = frozenset({"no longer needed", "ordered by mistake"})  # line 90
 ITEM_CHANGE_TOOLS = frozenset({"modify_pending_order_items", "exchange_delivered_order_items"})
 # Every write that targets an order, and the one status the policy allows it on.
 # The status is compared exactly: the tools' "pending" in status is looser.
 ALLOWED_STATUS = {
-    "cancel_pending_order": "pending",  # line 88
+    _CANCEL: "pending",  # line 88
     "modify_pending_order_address": "pending",  # line 96
     "modify_pending_order_items": "pending",  # line 96
     _PAYMENT_CHANGE: "pending",  # line 96
@@ -500,7 +510,71 @@ class RefundMethodEvaluator(_StateCheck):
         return _violation(f"{method} is neither the original method nor the owner's gift card")
 
 
-class _OneReplayPerSimulation:
+class CancellationReasonEvaluator:
+    """A cancellation's reason is one the policy allows (PA-7's state part, line 90).
+
+    Whether the user gave that reason rests on the confirmation judge.
+    """
+
+    evaluation_key = CANCELLATION_REASON_KEY
+    version = "cancellation-reason-v1"
+
+    def evaluate(self, subject: EvaluationSubject) -> EvaluatorOutput:
+        results = CheckResults(self.evaluation_key, self.version, subject)
+        simulation = record_or_note(results, subject)
+        if simulation is None:
+            return results.output()
+        note_lost_calls(results, simulation)
+        evidence = TraceEvidence(subject.events)
+        for record in tool_timeline(simulation.messages):
+            if record.call.name != _CANCEL:
+                continue
+            target = unit_target(record, evidence)
+            reason = record.call.arguments.get("reason")
+            if not isinstance(reason, str):
+                results.unknown(target, "The cancellation names no reason.")
+            elif reason not in _ALLOWED_REASONS:
+                results.failed(
+                    target,
+                    f"The cancellation reason {reason!r} is not one the policy allows.",
+                    evidence.attempt_ids(record),
+                )
+            elif record.result is None:
+                results.unknown(target, no_result_reason(record))
+            else:
+                span = evidence.tool_span(record)
+                results.passed(
+                    target,
+                    f"The cancellation reason {reason!r} is allowed.",
+                    (span.event_id,) if span else (),
+                )
+        return results.output("The simulation has no cancellation.")
+
+
+class MethodOwnerEvaluator(_StateCheck):
+    """A payment or refund method belongs to the order's owner (PA-7's state part).
+
+    Whether the user chose that method rests on the confirmation judge.
+    """
+
+    evaluation_key = METHOD_OWNER_KEY
+    version = "method-owner-v1"
+    tools = ITEM_CHANGE_TOOLS | {_PAYMENT_CHANGE, _RETURN}
+    nothing_to_check = "The simulation has no write that names a payment method."
+
+    def _assess(self, call: ToolCall, order: Mapping, state: RetailState) -> _Finding:
+        method = call.arguments.get("payment_method_id")
+        methods = _owner_methods(order, state)
+        if not isinstance(method, str):
+            return _unknown("it names no payment method")
+        if methods is None:
+            return _unknown("the order's owner is unknown")
+        if method not in methods:
+            return _violation(f"{method} is not a method of the order's owner")
+        return _Finding(passed=f"{method} is a method of the order's owner")
+
+
+class OneReplayPerSimulation:
     """A state source that keeps the last timeline, so the checks of a simulation share it."""
 
     def __init__(self, source: RetailStateSource) -> None:
@@ -517,7 +591,7 @@ class _OneReplayPerSimulation:
 
 def write_eligibility_evaluators(source: RetailStateSource) -> tuple:
     """Every write-eligibility check, in the order the docs list them, sharing one replay."""
-    source = _OneReplayPerSimulation(source)
+    source = OneReplayPerSimulation(source)
     return (
         StatusReadEvaluator(),
         OrderStatusEvaluator(source),
