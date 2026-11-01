@@ -17,9 +17,24 @@ from agent_autonomy_lab.domain.evaluation.results import (
     ResultStatus,
 )
 from agent_autonomy_lab.domain.events import json_data, new_id
+from agent_autonomy_lab.domain.model_calls import ModelMessage, ModelRequest
 
 RUBRIC_PASS_SCORE = 2
 RUBRIC_SCORES = (0, 1, RUBRIC_PASS_SCORE)
+
+JUDGE_MODEL = "claude-haiku-5-5"
+JUDGE_SETTINGS: Mapping[str, Any] = {"max_tokens": 2048, "output_config": {"effort": "low"}}
+"""Declared by their names in the provider's request (docs/DECISIONS.md, ADR-020)."""
+
+
+def judge_request(system: str, user: str) -> ModelRequest:
+    """One judge's request: the rubric as the system prompt, the evidence as the Human message."""
+    return ModelRequest(
+        model=JUDGE_MODEL,
+        system=system,
+        messages=(ModelMessage("user", user),),
+        settings=JUDGE_SETTINGS,
+    )
 
 
 def _raw_payload(stored: Any) -> dict[str, Any]:

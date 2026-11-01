@@ -5,7 +5,12 @@ from agent_autonomy_lab.domain.evaluation.aggregation import (
     aggregate,
     roll_up,
 )
-from agent_autonomy_lab.domain.evaluation.judges import judge_output
+from agent_autonomy_lab.domain.evaluation.judges import (
+    JUDGE_MODEL,
+    JUDGE_SETTINGS,
+    judge_output,
+    judge_request,
+)
 from agent_autonomy_lab.domain.evaluation.results import (
     SCORED_STATUSES,
     EvaluationResult,
@@ -24,6 +29,8 @@ from agent_autonomy_lab.domain.evaluation.run_standing import (
 )
 
 __all__ = [
+    "JUDGE_MODEL",
+    "JUDGE_SETTINGS",
     "RAISED_EXCEPTION",
     "SCORED_STATUSES",
     "EvaluationResult",
@@ -37,6 +44,7 @@ __all__ = [
     "RunStanding",
     "aggregate",
     "judge_output",
+    "judge_request",
     "roll_up",
     "run_standing",
     "settle_results",
