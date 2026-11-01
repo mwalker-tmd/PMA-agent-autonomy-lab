@@ -102,6 +102,8 @@ flowchart LR
 | `RetailStateSource` | Give the retail database before each write and at the end of a saved simulation ([point-in-time state](EVALUATION.md#point-in-time-state)) | Offline replay through τ-bench's retail tools (Milestone 4) | Canned timelines |
 | `ReferenceWriteSource` | Give a benchmark task's reference writes, offline only ([tool correctness](EVALUATION.md#tool-correctness)) | τ-bench's retail tasks, filtered by gold replay (Milestone 4) | Canned reference writes |
 | `ModelClient` | Send a lab judge's messages and declared settings to a model and return its response, token usage, cost, and the settings sent ([ADR-020](DECISIONS.md#adr-020--run-judges-in-lab-code-and-keep-the-confirmation-verdict-an-evaluator-result)). The agent and the simulated user do not use it: τ-bench calls their models | LiteLLM, `claude-haiku-5-5` (Milestone 4) | Scripted responses |
+| `SimulationRunner` | Run one trial of one task once, and report what it spent and how it ended ([running a batch](#running-a-batch)) | τ-bench through hook A (Milestone 4) | Scripted attempts |
+| `SimulationScorer` | Score one simulation with every evaluator, and report the model calls that took | The lab's evaluators and judges (Milestone 4) | Scripted scorer |
 
 Ports start minimal and change when their first real adapter is built. The gate's decision logic is domain code; the `AuthorizationGate` port exists so the application layer and the τ-bench adapter depend on an interface, not on one implementation. The `ToolExecutor` port does not enforce authority on its own: Milestone 6 must show that the τ-bench adapter is the **only** route to mutating retail tools and that it runs a call only after the gate allows it.
 
@@ -334,6 +336,18 @@ uv run python -m agent_autonomy_lab.entrypoints.compare_outcomes \
 | `Environment.get_response` | the orchestrator calls it through its environment instance, so an attribute set on that instance replaces it; the evaluator builds its own environments | If calls stop going through the instance, the fault never fires and `--inject-fault` exits 1. If the evaluator starts reusing the run's environment, the wrapper could reach evaluation |
 | `logger_fn`'s `additional_args.complete_input_dict` | LiteLLM passes it the request body it built; [`LiteLLMModelClient`](../src/agent_autonomy_lab/adapters/models/litellm_client.py) reads the settings sent from it ([ADR-020](DECISIONS.md#adr-020--run-judges-in-lab-code-and-keep-the-confirmation-verdict-an-evaluator-result)) | Every judge call fails with `ModelCallError` rather than passing unchecked. `test_the_settings_reported_are_the_ones_in_the_request_sent` compares it with the HTTP body |
 | `Tool._func.__self__` | the agent's tools are bound methods of the live environment's toolkit | The final database hash cannot be read: `live_toolkit()` returns `None`, the untraced run raises, and a traced run writes no `outcome.json` |
+
+### Running a batch
+
+[`run_batch`](../src/agent_autonomy_lab/entrypoints/run_batch.py) takes a versioned task list and a trial count, and runs each simulation through hook A under the `custom_lab_experiment` label ([ADR-024](DECISIONS.md#adr-024--hold-a-batchs-cap-at-the-http-layer-and-retry-only-invalid-runs)). Its docstring gives the commands. For each attempt it:
+
+1. Stops if the list-price spend has reached the cap or a call could not be priced, and records what did not run.
+2. Runs the simulation with every provider exchange recorded, and stops the batch if an agent turn sent anything upstream's `llm_agent` would not.
+3. Scores it with every evaluator and judge, citing the spans about to be sent.
+4. Sends the trace with the results as feedback. A trace backend's failure is reported and does not stop the batch.
+5. Appends the record to `simulations.jsonl`, so a killed run keeps what finished.
+
+An `INVALID` run is retried once, and its row stays. Hook C's counts are compared with the exchanges and with τ-bench's reward, because [it fails silently](DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export). The batch is sequential, because the transport is process-wide. Keep the machine awake during a long run: the [baseline](../reports/m4-baseline/manifest.yaml) took 109 minutes by the clock and 57 awake.
 
 ### Injecting a tool failure
 
