@@ -507,7 +507,7 @@ Do not treat small samples as validating rare-event safety or very high reliabil
 
 ### Task sets
 
-Recorded on November 1, 2026 for [#108](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/108) (plan step 4.6). [`datasets/m4-task-sets-v1.json`](../datasets/m4-task-sets-v1.json) defines both sets at τ-bench `0c69df4` and gives the reason for each baseline task. [`tests/test_task_sets.py`](../tests/test_task_sets.py) checks every ID and rule below against the real `tasks.json`, `split_tasks.json`, and `db.json` at that commit. A changed set gets a new file version, not an edit.
+Recorded on November 1, 2026 for [#108](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/108) (plan step 4.6). [`datasets/m4-task-sets-v1.json`](../datasets/m4-task-sets-v1.json) defines both sets at τ-bench `0c69df4` and gives the reason for each baseline task. [`tests/test_task_sets.py`](../tests/test_task_sets.py) checks every ID and rule below against the real `tasks.json`, `split_tasks.json`, and `db.json`, and compares each file's SHA-256 with the hash recorded from that commit, because τ-bench reads its data from `TAU2_DATA_DIR`, separately from the installed code. A changed set gets a new file version, not an edit.
 
 **Baseline: 20 tasks, 19 scenarios, 17 users.** `0`, `4`, `10`, `13`, `22`, `24`, `43`, `50`, `57`, `59`, `67`, `68`, `73`, `76`, `80`, `81`, `84`, `88`, `106`, `113`. Tasks `67` and `68` count as one scenario. No user has more than two tasks, with no exceptions; `yusuf_rossi_9620`, `mia_garcia_4516`, and `noah_ito_3850` have two each. At three trials this is 60 simulations. Results may be inspected and tuned against.
 

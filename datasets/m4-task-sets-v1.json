@@ -4,6 +4,11 @@
   "issue": "https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/108",
   "tau_bench_commit": "0c69df456a96aa76a1162591574dad9c427a34d7",
   "domain": "retail",
+  "source_sha256": {
+    "tasks.json": "8e03ebce7901bd6218e7a7dc3105faa9324091a68058f7fe61c65262868812e8",
+    "split_tasks.json": "ed0580ec52575b63fbf76568af42490da6ee7783ecb4aa81af46961291358f20",
+    "db.json": "413a65160adbdb5fde0ffc0015c49b6d70250b10c18128de169b597af7766765"
+  },
   "excluded_defect_tasks": ["20", "21", "36", "37", "64", "100", "105"],
   "baseline": {
     "purpose": "Run about 20 tasks x 3 trials in M4-11 (#109). Inspecting and tuning against these is allowed.",

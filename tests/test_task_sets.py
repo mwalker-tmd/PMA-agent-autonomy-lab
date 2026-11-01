@@ -4,6 +4,7 @@ The held-out checks need only each task's ID and user, which are worked out here
 and never printed, so these tests do not inspect what a held-out task asks.
 """
 
+import hashlib
 import json
 from collections import Counter
 from importlib import metadata
@@ -11,7 +12,7 @@ from pathlib import Path
 
 import pytest
 from tau2.domains.retail.environment import get_tasks
-from tau2.domains.retail.utils import RETAIL_DB_PATH
+from tau2.domains.retail.utils import RETAIL_DB_PATH, RETAIL_TASK_SET_PATH
 
 from agent_autonomy_lab.domain.reference_writes import DEFECT_TASKS
 
@@ -68,10 +69,19 @@ def task_users(task, db: dict) -> set[str]:
     return users
 
 
-def test_the_tasks_are_read_at_the_recorded_commit(definition):
+def test_the_code_is_installed_at_the_recorded_commit(definition):
     direct_url = json.loads(metadata.distribution("tau2").read_text("direct_url.json"))
     assert direct_url["vcs_info"]["commit_id"] == definition["tau_bench_commit"]
     assert definition["tau_bench_commit"].startswith("0c69df4")
+
+
+def test_the_loaded_data_files_match_the_recorded_commit(definition):
+    """τ-bench reads its data from ``TAU2_DATA_DIR``, separately from the installed code."""
+    loaded = {path.name: path for path in map(Path, (RETAIL_TASK_SET_PATH, RETAIL_DB_PATH))}
+    loaded["split_tasks.json"] = Path(RETAIL_TASK_SET_PATH).with_name("split_tasks.json")
+    assert definition["source_sha256"] == {
+        name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in loaded.items()
+    }
 
 
 def test_every_task_id_exists(definition, baseline, tasks):
