@@ -33,6 +33,7 @@ from agent_autonomy_lab.application.check_results import (
     record_or_note,
     unit_target,
 )
+from agent_autonomy_lab.application.confirmation_judge import CONFIRMATION_KEY
 from agent_autonomy_lab.application.write_eligibility import (
     CANCELLATION_REASON_KEY,
     GIFT_CARD_BALANCE_KEY,
@@ -90,11 +91,13 @@ TRANSFER_TOOL = "transfer_to_human_agents"
 # or exchange leaves a status no later write accepts.
 _ADDRESS_WRITES = {"modify_pending_order_address": "order_id", "modify_user_address": "user_id"}
 
-# Every state check the PA rules have. The confirmation judge (PA-2, #106) and the gate
-# fixtures (PA-10, #107) join when they exist; until then Part A says nothing about them.
+# Every check the PA rules have. The gate fixtures (PA-10, #107) join when they exist; until
+# then Part A says nothing about them. PA-2's is a judge, so a run that leaves it out says
+# nothing about confirmation either, and check_tool_correctness reports whether it ran.
 PROHIBITED_ACTION_KEYS = frozenset(
     {
         AUTHENTICATION_ORDER_KEY,  # PA-1
+        CONFIRMATION_KEY,  # PA-2
         USER_ACCESS_KEY,  # PA-3
         ORDER_STATUS_KEY,  # PA-4
         ITEM_CHANGE_ONCE_KEY,  # PA-5

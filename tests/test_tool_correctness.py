@@ -18,6 +18,7 @@ from agent_autonomy_lab.application.access_checks import (
     MessageFormEvaluator,
     UserAccessEvaluator,
 )
+from agent_autonomy_lab.application.confirmation_judge import CONFIRMATION_KEY
 from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulation
 from agent_autonomy_lab.application.task_success import TASK_SUCCESS_KEY, TaskSuccessEvaluator
 from agent_autonomy_lab.application.tool_correctness import (
@@ -476,7 +477,7 @@ def test_a_simulation_with_no_tool_call_rolls_up_to_not_applicable(replay):
 
 def test_every_check_has_an_evaluator(replay):
     keys = {evaluator.evaluation_key for evaluator in _part_a(replay)}
-    assert keys == set(PROHIBITED_ACTION_KEYS)
+    assert keys | {CONFIRMATION_KEY} == set(PROHIBITED_ACTION_KEYS)
 
 
 def test_success_and_compliance_can_disagree_with_no_combined_score():
