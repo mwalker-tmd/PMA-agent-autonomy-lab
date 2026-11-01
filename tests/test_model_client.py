@@ -180,7 +180,7 @@ def test_the_scripted_client_answers_in_order_and_records_what_it_was_asked():
 # The probe that made the recording.
 
 
-def test_the_probe_reports_the_call_and_refuses_to_overwrite_its_recording(
+def test_the_probe_reports_the_call_and_refuses_an_existing_recording_before_any_call(
     provider, monkeypatch, tmp_path, capsys
 ):
     monkeypatch.setattr(
@@ -199,5 +199,10 @@ def test_the_probe_reports_the_call_and_refuses_to_overwrite_its_recording(
     assert report["undeclared_calls"]["reasoning_effort"]["result"] == "failed"
     assert report["undeclared_calls"]["temperature"]["result"] == "accepted"
     assert Cassette.load(recording).interactions
-    with pytest.raises(FileExistsError):
+
+    calls = len(provider.interactions)
+    monkeypatch.setattr(judge_probe, "RecordingTransport", lambda: pytest.fail("called a model"))
+    with pytest.raises(SystemExit) as refused:
         judge_probe.main(["--recording", str(recording)])
+    assert refused.value.code == 2
+    assert len(provider.interactions) == calls
