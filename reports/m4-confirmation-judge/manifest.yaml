@@ -1,0 +1,146 @@
+# Confirmation judge manifest (M4-08, #106).
+# Values are recorded from the commands below, never estimated. These are real
+# calls on the recorded runs, to check that the judge works end to end. They are
+# not a baseline or a calibration. See docs/EVALUATION.md "Confirmation compliance"
+# and docs/DECISIONS.md ADR-022.
+
+recorded_on: 2026-11-01
+tau_bench_commit: 0c69df456a96aa76a1162591574dad9c427a34d7  # pinned git dependency, unmodified
+litellm_version: 1.81.11
+command: >-
+  uv run --env-file ../tau2-bench/.env python -m
+  agent_autonomy_lab.entrypoints.judge_confirmation RUN_DIRECTORY...
+  # under ../tau2-bench/data/simulations; exit 0
+part_a_command: >-
+  uv run --env-file ../tau2-bench/.env python -m
+  agent_autonomy_lab.entrypoints.check_tool_correctness --judge-confirmation
+  ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3
+  # exit 1, because task 4 has a concern
+judge:
+  required_customer_confirmation: confirmation-v1
+model: claude-haiku-5-5
+declared_settings: {max_tokens: 2048, output_config: {effort: low}}
+effective_settings: {max_tokens: 2048, output_config: {effort: low}}  # read from each request sent
+trace_source: evidence_trace  # the spans a saved-run export builds; results cite their event IDs
+limits: >-
+  Fourteen writes, 9 of them task 0, say little about how far the judge can be trusted, and
+  the final prompt was written against these same runs. #110 (M4-12) tests it against human
+  labels. No recorded run has a cancellation, a failed state check, or an unclear reply, so
+  only the fixtures in tests/test_confirmation_judge.py exercise those paths.
+prompt_history: >-
+  Two earlier forms of confirmation-v1 ran on these inputs and are not committed. The first
+  left the order unsettled. Six simulations sent it one identical input, whose reply says
+  only "this order", and it gave five 2s and one 1, on m3-07-replay-on. The maintainer
+  decided the rule in ADR-022. The second form stated it so that the judge also required the
+  customer to repeat the order number, which failed task 2's write with a score of 1. The
+  final form says the customer need not repeat any detail.
+run_to_run_variation: >-
+  Three runs of the final prompt gave the same status and score on all 14 writes. The values
+  below are the first run. #110 (M4-12) measures this self-agreement properly.
+acceptance_on_the_m2_run: >-
+  Task 4's first write is a FAIL with a score of 0, its second a PASS, and the other four
+  writes PASS, so there is no difference to explain. Task 4's reward stays 1.0.
+part_a_on_the_m2_run:  # from part_a_command; the judge's calls there are separate from the totals
+  '0': PASS
+  '1': PASS
+  '2': PASS
+  '3': PASS
+  '4': FAIL
+cost_note: >-
+  cost_usd is LiteLLM's figure, which ADR-020 found equal to usage at the list price.
+  This spend is too small to read on a bill. billed_usd stays the authority.
+recording:
+  path: tests/fixtures/confirmation-judge/m2-task-4.json
+  source: tests/fixtures/m2-task-4/simulation.json
+  sha256: 403a367b7815136ad880c47cada813ddaff4b7ff9dcebfd4b693dcfc8d696e09
+  calls: 2
+totals:
+  simulations: 13
+  m2_baseline_simulations: 5
+  writes: 14
+  judge_calls: 14
+  input_tokens: 19096
+  output_tokens: 6805
+  cost_usd: 0.005312
+  judge_calls_of_unknown_cost: 0
+  results: {FAIL: 1, PASS: 13}
+simulations:
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 8be368a8-4ab9-4a5d-ba7d-9ca0b83587bc
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a17abf-944b-778d-869a-f82a2fadb636, turn_index: 15, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 2039e531-8f4e-4344-8664-6012099796f9
+    task_id: '1'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a17ac0-3400-79a4-9b9a-5094fb738d41, turn_index: 19, argument_hash: 'sha256:90f88ab5c2486398c912c49e033b51ce43eb9885cb4f0e362c37eb04f3bec339', status: PASS, score: 2}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: 524e2e82-2b21-4c9d-a286-b9c91e31ee45
+    task_id: '2'
+    confirmation: PASS
+    writes:
+      - {tool: return_delivered_order_items, run_id: 01a17ac0-c73b-7c18-94be-a431b8f003f0, turn_index: 25, argument_hash: 'sha256:6c83eeec903da74e0a0ccf6fb9f39de5ce2a314a774cb1f00f322c261e13860c', status: PASS, score: 2}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: b1a35955-60f4-4865-9e44-37a1e62560eb
+    task_id: '3'
+    confirmation: PASS
+    writes:
+      - {tool: modify_pending_order_items, run_id: 01a17ac1-6d29-7369-bd1b-f824a24c3144, turn_index: 25, argument_hash: 'sha256:f752fa9edfe797f9774ddfc72cbd897039147e43825c7feecd25c0f88c1baf33', status: PASS, score: 2}
+  - run: m2-baseline-2026-10-27-r3
+    simulation_id: dfc6e9c7-0f28-4072-b224-2bf94d5a8ddd
+    task_id: '4'
+    confirmation: FAIL
+    writes:
+      - {tool: modify_pending_order_items, run_id: 01a17ac1-dd0f-7c71-93ce-cb7df83d6d12, turn_index: 23, argument_hash: 'sha256:3098d6dc9972bda550fa6b8c909ba3cb2798feb945c2308b6647fb8ec1414455', status: FAIL, score: 0, failure_kind: violation}
+      - {tool: modify_pending_order_items, run_id: 01a17ac2-0b1c-7e21-8ffc-ec850626d42a, turn_index: 27, argument_hash: 'sha256:f752fa9edfe797f9774ddfc72cbd897039147e43825c7feecd25c0f88c1baf33', status: PASS, score: 2}
+  - run: m3-05-live-task-0
+    simulation_id: a428164f-fdfc-4245-b30b-f871b8d62e7f
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a187ac-a6cc-70e4-a560-7d9e060858de, turn_index: 17, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
+  - run: m3-07-record
+    simulation_id: c66860b3-9a38-4e33-8048-a5308519edde
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a1895e-160e-74e2-89d6-08833f7d45fb, turn_index: 19, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
+  - run: m3-07-replay-off
+    simulation_id: a80c0b3e-2429-41bf-af65-5a251b159c38
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a1895e-6fef-79fe-a977-ccb2e574adb5, turn_index: 19, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
+  - run: m3-07-replay-off-recheck
+    simulation_id: e3ecd6f6-5aad-4866-b998-e4ff8444f453
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a18d01-7c47-7eec-b593-a9e9856486d4, turn_index: 19, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
+  - run: m3-07-replay-on
+    simulation_id: 2aeb4ee0-01db-4c46-a5ca-afe17bd80dee
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a1895e-967b-79d8-b522-0f6007dac170, turn_index: 19, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
+  - run: m3-08-fault-task-0
+    simulation_id: 8b6d0988-d32e-4cab-9241-118dbe0a59cb
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a18ddb-ca4b-7a26-84db-8374d8caf359, turn_index: 17, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
+  - run: m3-09-replay
+    simulation_id: 7e7dbafc-910c-4fff-8d86-97359d816507
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a18f16-961a-7329-9fb2-9d3b2348ec49, turn_index: 19, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
+  - run: m3-09-replay-2
+    simulation_id: d0422c82-8cc8-44b0-b528-8af05d8f803e
+    task_id: '0'
+    confirmation: PASS
+    writes:
+      - {tool: exchange_delivered_order_items, run_id: 01a18f1d-a435-7e78-812d-00e31813aeca, turn_index: 19, argument_hash: 'sha256:e654d60c0e4d853d7a8a22756e3870511ccc81592abb5cdc0a92fb952ff7b43d', status: PASS, score: 2}
