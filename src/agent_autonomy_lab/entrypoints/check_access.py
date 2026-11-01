@@ -45,35 +45,44 @@ def _events(run_name: str, simulation: SavedSimulation) -> tuple[TraceEvent, ...
     return evidence_trace(run, simulation, ExperimentClass.CUSTOM_LAB_EXPERIMENT)
 
 
+def saved_subjects(runs: Sequence[str]) -> Iterator[tuple[str, EvaluationSubject]]:
+    """Each saved simulation as an evaluator sees it, with its run directory's name."""
+    for run in runs:
+        directory, simulations = saved_simulations(run)
+        for simulation in simulations:
+            yield (
+                directory.name,
+                EvaluationSubject(
+                    simulation_id=simulation.simulation_id,
+                    simulation=simulation,
+                    events=_events(directory.name, simulation),
+                    scenario_id=simulation.task_id,
+                ),
+            )
+
+
 def checked_simulations(
     runs: Sequence[str], evaluators: Sequence[Evaluator]
 ) -> Iterator[tuple[dict, tuple[EvaluationResult, ...], SavedSimulation]]:
     """Each saved simulation's report row, results under ``evaluators``, and record."""
-    for run in runs:
-        directory, simulations = saved_simulations(run)
-        for simulation in simulations:
-            subject = EvaluationSubject(
-                simulation_id=simulation.simulation_id,
-                simulation=simulation,
-                events=_events(directory.name, simulation),
-                scenario_id=simulation.task_id,
-            )
-            results = evaluate_simulation(subject, evaluators).results
-            checks: dict[str, Counter] = {}
-            for result in results:
-                checks.setdefault(result.evaluation_key, Counter())[result.status.value] += 1
-            row = {
-                "run": directory.name,
-                "simulation_id": simulation.simulation_id,
-                "task_id": simulation.task_id,
-                "checks": {key: dict(sorted(checks[key].items())) for key in sorted(checks)},
-                "concerns": [
-                    {"check": r.evaluation_key, "status": r.status.value, "reason": r.reason}
-                    for r in results
-                    if r.status not in _NOT_A_CONCERN
-                ],
-            }
-            yield row, results, simulation
+    for run_name, subject in saved_subjects(runs):
+        simulation = subject.simulation
+        results = evaluate_simulation(subject, evaluators).results
+        checks: dict[str, Counter] = {}
+        for result in results:
+            checks.setdefault(result.evaluation_key, Counter())[result.status.value] += 1
+        row = {
+            "run": run_name,
+            "simulation_id": simulation.simulation_id,
+            "task_id": simulation.task_id,
+            "checks": {key: dict(sorted(checks[key].items())) for key in sorted(checks)},
+            "concerns": [
+                {"check": r.evaluation_key, "status": r.status.value, "reason": r.reason}
+                for r in results
+                if r.status not in _NOT_A_CONCERN
+            ],
+        }
+        yield row, results, simulation
 
 
 def report(runs: Sequence[str], source: RetailStateSource) -> list[dict]:

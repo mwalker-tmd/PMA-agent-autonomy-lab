@@ -10,8 +10,8 @@ class ModelClient(Protocol):
     """Sends one request to a model and returns its response.
 
     It raises ``ModelCallError`` when the call fails, or when a declared setting
-    is not in the request sent. ``evaluate_simulation`` turns that into an
-    ``EVALUATOR_ERROR`` result. The agent and the simulated user do not use this
+    is not in the request sent. A judge turns that into an ``EVALUATOR_ERROR``
+    result. The agent and the simulated user do not use this
     port: τ-bench calls their models.
     """
 
