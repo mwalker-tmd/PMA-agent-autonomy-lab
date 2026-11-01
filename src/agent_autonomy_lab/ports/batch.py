@@ -8,11 +8,21 @@ from agent_autonomy_lab.domain.batch import ProviderCall, SimulationAttempt
 from agent_autonomy_lab.domain.evaluation import EvaluationSubject, EvaluatorOutput
 
 
+class StageFailed(Exception):
+    """A run or its scoring raised after model calls that still have to be paid for."""
+
+    def __init__(self, cause: Exception, provider_calls: tuple[ProviderCall, ...]) -> None:
+        super().__init__(str(cause))
+        self.cause = cause
+        self.provider_calls = provider_calls
+
+
 class SimulationRunner(Protocol):
     """Runs one trial of one task once.
 
     A run that raised comes back as an attempt with ``unfinished`` set. Raising here means
-    the runner itself cannot go on, and it stops the batch.
+    the runner itself cannot go on, and it stops the batch. ``StageFailed`` carries any
+    model calls already made, so the spend still counts.
     """
 
     def run(self, task_id: str, trial: int, attempt: int) -> SimulationAttempt: ...
@@ -28,7 +38,10 @@ class ScoredSimulation:
 
 
 class SimulationScorer(Protocol):
-    """Scores one simulation with every evaluator; it never samples."""
+    """Scores one simulation with every evaluator; it never samples.
+
+    Raising stops the batch, and ``StageFailed`` carries any model calls already made.
+    """
 
     def score(self, subject: EvaluationSubject) -> ScoredSimulation: ...
 
