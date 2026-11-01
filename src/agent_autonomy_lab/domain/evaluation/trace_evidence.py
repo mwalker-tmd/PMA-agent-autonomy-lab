@@ -20,7 +20,10 @@ class TraceEvidence:
     def __init__(self, events: Iterable[TraceEvent]) -> None:
         self._spans: dict[tuple[EventType, int], list[TraceEvent]] = {}
         self._roots: list[TraceEvent] = []
+        self._tool_runs: dict[UUID, TraceEvent] = {}
         for event in events:
+            if event.event_type is EventType.TOOL_CALL:
+                self._tool_runs[event.run_id] = event
             if event.event_type is EventType.CONVERSATION:
                 self._roots.append(event)
             if event.turn_index is not None:
@@ -50,6 +53,10 @@ class TraceEvidence:
         ):
             return None
         return span
+
+    def tool_run(self, run_id: UUID) -> TraceEvent | None:
+        """The tool span a gate event annotates, whatever the record says about its call."""
+        return self._tool_runs.get(run_id)
 
     def attempt_ids(self, record: ToolCallRecord) -> tuple[UUID, ...]:
         """Every event that shows this call was attempted: the model call and the tool span."""
