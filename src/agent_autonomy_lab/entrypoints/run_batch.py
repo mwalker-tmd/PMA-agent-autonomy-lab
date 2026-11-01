@@ -16,7 +16,7 @@ then compare its spend with the budget the manifest reports:
 Every run goes through hook A (docs/BASELINE.md) and is labeled ``custom_lab_experiment``.
 Run settings default to the Milestone 2 baseline's. The batch stops if an agent turn sends
 anything upstream's ``llm_agent`` would not. Each attempt saves ``simulation.json``, its
-trace events, and one cassette each for the run and the judges under
+trace events, its evaluators' raw outputs, and a cassette each for the run and the judges under
 ``$TAU2_DATA_DIR/simulations/<save-to>/``, outside the repository. ``--report-dir`` gets
 ``manifest.yaml`` and ``simulations.jsonl``, the latter written as each attempt finishes.
 ``--dry-run`` calls the models but sends no trace.
@@ -30,6 +30,7 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import time
 from collections.abc import Mapping, Sequence
@@ -86,7 +87,12 @@ from agent_autonomy_lab.domain.batch import (
     SimulationAttempt,
     TaskList,
 )
-from agent_autonomy_lab.domain.evaluation import JUDGE_MODEL, JUDGE_SETTINGS, EvaluationSubject
+from agent_autonomy_lab.domain.evaluation import (
+    JUDGE_MODEL,
+    JUDGE_SETTINGS,
+    EvaluationSubject,
+    EvaluatorOutput,
+)
 from agent_autonomy_lab.domain.events import ExperimentClass, TrafficType, new_id
 from agent_autonomy_lab.entrypoints.run_options import (
     BASELINE_ARGS,
@@ -126,6 +132,34 @@ def read_task_list(path: Path, set_name: str, only: Sequence[str] = ()) -> TaskL
         task_ids=tuple(only) if only else tuple(tasks),
         sha256=hashlib.sha256(raw).hexdigest(),
     )
+
+
+def _write_raw_outputs(path: Path, output: EvaluatorOutput) -> None:
+    """What each ``raw_output_id`` names: a judge's reply, or why its call failed."""
+    records = (
+        {
+            "output_id": str(raw.output_id),
+            "evaluation_key": raw.evaluation_key,
+            "evaluator_version": raw.evaluator_version,
+            "simulation_id": raw.simulation_id,
+            "payload": raw.payload,
+        }
+        for raw in output.raw_outputs
+    )
+    lines = [json.dumps(record, ensure_ascii=False) for record in records]
+    path.write_text("".join(line + "\n" for line in lines), encoding="utf-8")
+
+
+def _lab_commit() -> str:
+    """The commit that ran, marked if the tree had changes, since a manifest must name it."""
+    git = ("git", "-C", str(Path(__file__).parent))
+    commit = subprocess.run((*git, "rev-parse", "HEAD"), capture_output=True, text=True)
+    changes = subprocess.run(
+        (*git, "status", "--porcelain", "--", "src"), capture_output=True, text=True
+    )
+    if commit.returncode:
+        return "unknown"
+    return commit.stdout.strip() + ("+changes" if changes.stdout.strip() else "")
 
 
 class LiveSession:
@@ -230,6 +264,7 @@ class LiveSession:
         with litellm_transport(recorder):
             output = evaluate_with_unauthorized_counts(subject, self._evaluators)
         recorder.cassette({"run_batch_judges": True}).save(directory / "judges.cassette.json")
+        _write_raw_outputs(directory / "raw_outputs.jsonl", output)
         calls = provider_calls(recorder.interactions)
         observed = self._observed(before, sum(call.succeeded for call in calls))
         return ScoredSimulation(output, calls, observed)
@@ -311,6 +346,7 @@ def manifest(
         "finished_at_utc": finished_at.isoformat(timespec="seconds"),
         "traffic_type": TrafficType.SYNTHETIC.value,
         "experiment_class": ExperimentClass.CUSTOM_LAB_EXPERIMENT.value,
+        "lab_commit": _lab_commit(),
         "tau_bench_commit": "0c69df456a96aa76a1162591574dad9c427a34d7",
         "tau_bench_task_split": "base",
         "selected_task_ids": list(plan.task_list.task_ids),
