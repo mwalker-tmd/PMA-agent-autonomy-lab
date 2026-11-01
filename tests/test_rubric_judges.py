@@ -11,13 +11,13 @@ from agent_autonomy_lab.adapters.models import LiteLLMModelClient
 from agent_autonomy_lab.adapters.tau2 import read_results
 from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulation
 from agent_autonomy_lab.application.export_simulation import evidence_trace
+from agent_autonomy_lab.application.judge_calls import judge_prompt
 from agent_autonomy_lab.application.rubric_judges import (
     CLARITY_KEY,
     EFFICIENCY_KEY,
     ESCALATION_KEY,
     CustomerExperienceJudge,
     EscalationJudge,
-    judge_prompt,
     judge_view,
     rubric_judges,
 )

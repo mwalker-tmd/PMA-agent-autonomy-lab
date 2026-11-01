@@ -20,7 +20,7 @@ import argparse
 import json
 import sys
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from contextlib import nullcontext
 from pathlib import Path
 
@@ -33,23 +33,45 @@ from agent_autonomy_lab.entrypoints.check_access import saved_subjects
 from agent_autonomy_lab.ports.model_client import ModelClient
 
 
+class CallUsage:
+    """The judge calls of a report: their count, tokens, and cost.
+
+    The cost is null if any call's cost is unknown, so a partial sum cannot pass for a total.
+    """
+
+    def __init__(self) -> None:
+        self._totals = {
+            "calls": 0,
+            "calls_of_unknown_cost": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+        self._known_cost = 0.0
+
+    def add(self, calls: Iterable[Mapping]) -> None:
+        for call in calls:
+            self._totals["calls"] += 1
+            self._totals["input_tokens"] += call.get("input_tokens", 0)
+            self._totals["output_tokens"] += call.get("output_tokens", 0)
+            if call.get("cost_usd") is None:
+                self._totals["calls_of_unknown_cost"] += 1
+            else:
+                self._known_cost += call["cost_usd"]
+
+    def as_dict(self) -> dict:
+        unknown = self._totals["calls_of_unknown_cost"]
+        return {**self._totals, "cost_usd": None if unknown else self._known_cost}
+
+
 def report(runs: Sequence[str], client: ModelClient) -> dict:
     judges = rubric_judges(client)
     rows = []
-    totals = {"calls": 0, "calls_of_unknown_cost": 0, "input_tokens": 0, "output_tokens": 0}
-    known_cost = 0.0
+    usage = CallUsage()
     statuses: dict[str, Counter] = {}
     for run_name, subject in saved_subjects(runs):
         output = evaluate_simulation(subject, judges)
         calls = [raw.payload["call"] for raw in output.raw_outputs if "call" in raw.payload]
-        for call in calls:
-            totals["calls"] += 1
-            totals["input_tokens"] += call.get("input_tokens", 0)
-            totals["output_tokens"] += call.get("output_tokens", 0)
-            if call.get("cost_usd") is None:
-                totals["calls_of_unknown_cost"] += 1
-            else:
-                known_cost += call["cost_usd"]
+        usage.add(calls)
         for result in output.results:
             statuses.setdefault(result.evaluation_key, Counter())[result.status.value] += 1
         rows.append(
@@ -74,8 +96,7 @@ def report(runs: Sequence[str], client: ModelClient) -> dict:
     return {
         "totals": {
             "simulations": len(rows),
-            **totals,
-            "cost_usd": None if totals["calls_of_unknown_cost"] else known_cost,
+            **usage.as_dict(),
             "results_by_judge": {key: dict(sorted(statuses[key].items())) for key in statuses},
         },
         "simulations": rows,
