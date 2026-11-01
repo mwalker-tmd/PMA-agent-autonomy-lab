@@ -12,15 +12,14 @@ a failed transfer message is a ``violation``, the kind PA-9 gives it, and it nee
 model call because no rubric score could change it.
 """
 
-import hashlib
 import json
 from collections.abc import Sequence
 from dataclasses import replace
-from importlib import resources
 from typing import Any
 
 from agent_autonomy_lab.application.check_results import CheckResults, record_or_note
 from agent_autonomy_lab.application.conversation_trace import chat_message
+from agent_autonomy_lab.application.judge_calls import call_judge
 from agent_autonomy_lab.application.tool_correctness import (
     TRANSFER_TOOL,
     TransferMessageEvaluator,
@@ -30,16 +29,11 @@ from agent_autonomy_lab.domain.evaluation import (
     EvaluationSubject,
     EvaluatorOutput,
     FailureKind,
-    JudgeRun,
     ResultStatus,
-    judge_output,
-    judge_reply,
-    judge_request,
 )
 from agent_autonomy_lab.domain.evaluation.run_standing import COMPLETED_REASONS
 from agent_autonomy_lab.domain.evaluation.trace_evidence import TraceEvidence
 from agent_autonomy_lab.domain.events import TraceEvent
-from agent_autonomy_lab.domain.model_calls import ModelCallError
 from agent_autonomy_lab.domain.simulations import Message, Role, SavedSimulation, reply_text
 from agent_autonomy_lab.domain.tool_timeline import tool_timeline
 from agent_autonomy_lab.ports.model_client import ModelClient
@@ -50,12 +44,6 @@ ESCALATION_KEY = "escalation_correctness"
 
 _NO_REPLY = "The agent sent no reply after the fixed opener."
 _NO_ROOT = "The trace has no conversation span to cite for a judged result."
-
-
-def judge_prompt(version: str) -> str:
-    """The system prompt of one judge version, as it is in the repository."""
-    prompts = resources.files("agent_autonomy_lab.application") / "judge_prompts"
-    return (prompts / f"{version}.md").read_text(encoding="utf-8")
 
 
 def _is_wrapped(message: Message) -> bool:
@@ -105,43 +93,21 @@ def _judged(
     version: str,
     transfer_made: bool | None = None,
 ) -> EvaluatorOutput:
-    """Make one judge call and normalize what comes back, including a failed call."""
+    """One judge call on the whole conversation, in the judge's projection."""
     conversation = json.dumps(
         {"messages": judge_view(simulation.messages)}, ensure_ascii=False, indent=None
     )
-    request = judge_request(judge_prompt(version), conversation)
-    call: dict[str, Any] = {
-        "input_sha256": hashlib.sha256(conversation.encode("utf-8")).hexdigest(),
-        "unwrapped_replies": sum(_is_wrapped(message) for message in simulation.messages),
-    }
-    try:
-        response = client.complete(request)
-    except ModelCallError as error:
-        stored = {
-            "problem": "the model call failed",
-            "error_class": type(error).__name__,
-            "error_message": str(error),
-        }
-        judge_run = JudgeRun(version, request.model, None)
-    else:
-        stored = judge_reply(response.text)
-        judge_run = JudgeRun(version, response.model, response.settings_sent)
-        call |= {
-            "finish_reason": response.finish_reason,
-            "input_tokens": response.input_tokens,
-            "output_tokens": response.output_tokens,
-            "cost_usd": response.cost_usd,
-        }
-    return judge_output(
-        stored,
-        evaluation_key=key,
-        evaluator_version=version,
-        simulation_id=subject.simulation_id,
-        scenario_id=subject.scenario_id,
+    return call_judge(
+        client,
+        subject,
+        key=key,
+        version=version,
+        judged_text=conversation,
         failure_kind=FailureKind.OUTCOME,
         evidence_ids=(root.event_id,),
-        judge_run=judge_run,
-        call=call,
+        call_fields={
+            "unwrapped_replies": sum(_is_wrapped(message) for message in simulation.messages)
+        },
         transfer_made=transfer_made,
     )
 
