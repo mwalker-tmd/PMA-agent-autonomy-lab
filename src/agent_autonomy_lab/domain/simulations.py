@@ -7,6 +7,7 @@ payloads such as τ-bench's ``raw_data`` have no place here, so they cannot
 reach an export. Timestamps are timezone-aware UTC.
 """
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -90,6 +91,22 @@ class Message:
     @property
     def is_model_output(self) -> bool:
         return self.role is not Role.TOOL and (self.tokens is not None or self.cost is not None)
+
+
+def reply_text(content: str) -> str:
+    """A reply's words, without the ``{"message": …}`` wrapper most baseline replies have.
+
+    The model writes the wrapper itself, and one Milestone 2 reply holds a raw newline
+    inside it, which strict JSON refuses. Anything else stays as it is.
+    """
+    try:
+        parsed = json.loads(content, strict=False)
+    except json.JSONDecodeError:
+        return content
+    if isinstance(parsed, dict) and set(parsed) == {"message"}:
+        message = parsed["message"]
+        return message if isinstance(message, str) else content
+    return content
 
 
 @dataclass(frozen=True)

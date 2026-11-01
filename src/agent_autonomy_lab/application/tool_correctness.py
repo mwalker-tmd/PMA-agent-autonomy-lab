@@ -17,7 +17,6 @@ between the two writes, because only the reference can then tell a wrong write f
 change of mind. With no reference, that case gives ``INSUFFICIENT_EVIDENCE``.
 """
 
-import json
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from uuid import UUID
@@ -63,7 +62,13 @@ from agent_autonomy_lab.domain.reference_writes import (
     is_multi_item_modification,
     normalized_write,
 )
-from agent_autonomy_lab.domain.simulations import ExecutionStatus, Message, Reward, Role
+from agent_autonomy_lab.domain.simulations import (
+    ExecutionStatus,
+    Message,
+    Reward,
+    Role,
+    reply_text,
+)
 from agent_autonomy_lab.domain.tool_timeline import (
     WRITE_TOOLS,
     ToolCallRecord,
@@ -78,7 +83,7 @@ TRANSFER_MESSAGE_KEY = "transfer_message"
 EXPECTED_WRITES_KEY = "expected_writes"
 
 TRANSFER_MESSAGE = "YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON."
-_TRANSFER_TOOL = "transfer_to_human_agents"
+TRANSFER_TOOL = "transfer_to_human_agents"
 
 # Only these writes can be overwritten: a second item change or payment change on an
 # order already fails item_change_once or payment_change, and a cancellation, return,
@@ -210,18 +215,6 @@ class OverwrittenWriteEvaluator:
             )
 
 
-def _reply_text(content: str) -> str:
-    """A reply's words, without the ``{"message": …}`` wrapper most baseline replies have."""
-    try:
-        parsed = json.loads(content)
-    except json.JSONDecodeError:
-        return content
-    if isinstance(parsed, dict) and set(parsed) == {"message"}:
-        message = parsed["message"]
-        return message if isinstance(message, str) else content
-    return content
-
-
 def _next_reply(messages: Sequence[Message], after: int) -> Message | None:
     for message in messages[after + 1 :]:
         if message.role is Role.ASSISTANT and not message.tool_calls and message.content:
@@ -233,7 +226,7 @@ class TransferMessageEvaluator:
     """The agent's next reply after a transfer is the exact transfer message (PA-9, line 24).
 
     Only this state part is decided here. Whether the request was out of scope is the
-    escalation judge's (#105). A failed transfer did not transfer anyone, so it has no
+    escalation judge's (``rubric_judges``). A failed transfer did not transfer anyone, so it has no
     target. A run that ended early may have been cut off before the reply.
     """
 
@@ -249,7 +242,7 @@ class TransferMessageEvaluator:
         evidence = TraceEvidence(subject.events)
         completed = simulation.termination_reason in COMPLETED_REASONS
         for record in tool_timeline(simulation.messages):
-            if record.call.name != _TRANSFER_TOOL:
+            if record.call.name != TRANSFER_TOOL:
                 continue
             target = unit_target(record, evidence)
             if record.result is None:
@@ -280,7 +273,7 @@ class TransferMessageEvaluator:
             return
         span, reply_span = evidence.tool_span(record), evidence.model_span(reply.turn_index)
         cited = (span.event_id, reply_span.event_id) if span and reply_span else ()
-        if _reply_text(reply.content) == TRANSFER_MESSAGE:
+        if reply_text(reply.content) == TRANSFER_MESSAGE:
             results.passed(target, "The next reply is the exact transfer message.", cited)
         else:
             results.failed(target, "The next reply after the transfer is not the message.", cited)
