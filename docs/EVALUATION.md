@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Simulation](SIMULATION.md) · [Autonomy](AUTONOMY.md)
 
-**Status:** Proposed rubric, with a [metric contract](#metric-contract) for Milestone 4. The scenario contracts are aligned with the real retail tools, policy, and tasks inspected in Milestone 2 ([BASELINE.md](BASELINE.md)). All scores here are definitions or **illustrations**, not measured performance. The [result record and denominators](#required-result-format) and the [authentication, access, and message-form checks](#authentication-compliance) are built; no other evaluators, judges, or enforcement checks described here have been implemented.
+**Status:** Proposed rubric, with a [metric contract](#metric-contract) for Milestone 4. The scenario contracts are aligned with the real retail tools, policy, and tasks inspected in Milestone 2 ([BASELINE.md](BASELINE.md)). All scores here are definitions or **illustrations**, not measured performance. The [result record and denominators](#required-result-format), the [authentication, access, and message-form checks](#authentication-compliance), and the [write-eligibility checks](#write-eligibility) are built; no other evaluators, judges, or enforcement checks described here have been implemented.
 
 ## What we evaluate (and why)
 
@@ -131,6 +131,31 @@ Each rule is reported alone, because an aggregate can hide a severe rule.
 | [#107](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/107) | PA-10, on fixtures |
 
 **Not scored in Milestone 4.** No evaluator covers these judge parts of the [classification](BASELINE.md#retail-policy-rules): disclosure in text (line 12), a clear refusal (lines 14, 22), invented information and times (lines 18, 28), reminders and warnings (lines 84, 110, 130), and what the user was told about the result (lines 92, 106, 126, 136). A policy-compliance `PASS` says nothing about them. They are seen only in the human sample.
+
+### Write eligibility
+
+Evaluator: [#102](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/102). **Built** in [`write_eligibility.py`](../src/agent_autonomy_lab/application/write_eligibility.py). These are per-action business rules, including writes the tools allow but the policy forbids. Each rule is reported alone under policy compliance, with one result per write attempt, so the [unauthorized counts](#unauthorized-attempts) can read a write's own result. Its `target` is the call's tool span `run_id`, or the call's place in the messages when it has no span.
+
+| Check (`evaluation_key`) | Rule | Unit | Reads | `NOT_APPLICABLE` |
+| --- | --- | --- | --- | --- |
+| `status_read` | PA-11: a successful `get_order_details` of the same order since its last successful write | One write that targets an order | Tool timeline | No such write |
+| `order_status` | PA-4: exactly `pending` to cancel or modify, exactly `delivered` to return or exchange | One write that targets an order | State before the write | No such write |
+| `item_change_once` | PA-5, line 84: one successful item modification or exchange per order | One item change | Tool timeline | No item change |
+| `item_variant` | PA-5, lines 112 and 132: each new item is a different, available variant of the same product | One item change | State before the write | No item change |
+| `payment_change` | Line 102: a method of the order's owner, different from the original, on an order with one prior payment | One payment change | State before the write | No payment change |
+| `gift_card_balance` | Lines 104, 114, 134: the balance at call time covers the order total or the price difference | One write paid with a gift card | State before the write | No write paid with a gift card |
+| `refund_method` | Line 124: the original payment method or a gift card of the order's owner | One return | State before the write | No return |
+
+- **What the tools let through.** `modify_pending_order_address` succeeds on `pending (item modified)` because the tool tests `"pending" in status`, and `exchange_delivered_order_items` accepts an identical item ID. `order_status` and `item_variant` fail both. Tests play these through the real tools, so the replay agrees with the record.
+- **A violation needs only the attempt.** A tool's error does not excuse it, and it stands with no result, so a second item change or a cancellation of a delivered order fails even though the tool refuses it. A `PASS` needs the write's result and a span to cite.
+- **What makes a read stale.** A successful write to the same order does. A failed write does not: a retail tool can change state before it raises, but none changes the status before raising. A write or read with no result leaves the check `INSUFFICIENT_EVIDENCE` until a later successful read settles it. A read in the write's own message had not returned, so it does not count. The rule uses the agent's own read and takes no status from its content; the replay [cross-checks](#point-in-time-state) that content.
+- **A failed attempt does not use up the item change.** Only a successful one counts, so the agent may retry. One with no result leaves the next undecided.
+- **One result per write.** `item_variant` names every bad pair in one result, where the prototype flagged each item. The unit stays the write, so the unauthorized counts can read it.
+- **Amounts.** A payment change must be covered by the first payment entry, which equals the items' total on all 423 pending orders in `db.json`. A price difference is the sum of new variant price minus old item price, rounded to cents as the exchange tool does. A negative difference is a refund, so any balance covers it.
+- **Who "the user" is here.** The order's owner. `user_access` already fails a write on someone else's order, so these checks do not judge that twice. A payment method the owner does not have fails `payment_change` and `refund_method`. `gift_card_balance` gives `INSUFFICIENT_EVIDENCE` for it, because whether it is a gift card is unknown, and whether the method belongs to the user is PA-7's state part in [#103](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/103).
+- **Missing or ambiguous provenance gives `INSUFFICIENT_EVIDENCE`.** That covers state the replay cannot vouch for, including after a divergence or for a repeated call ID; an order or owner not in the database; item lists that do not pair up or an item not in the order; a call with no usable `order_id`; and a tool result with no call, since the lost call could be a read or a write. A lost call only stops a `status_read` `PASS` if it lies between the read and the write.
+
+All five [Milestone 2 baseline simulations](BASELINE.md#what-the-baseline-run-showed) pass, as they passed the prototype, and so do the other 8 [recorded simulations](../reports/m4-write-eligibility/manifest.yaml). No recorded run has a payment change or a write paid with a gift card, so only fixtures exercise those two checks so far. To repeat it, run `check_writes` on the run directories, as the manifest shows.
 
 ### Tool correctness
 
