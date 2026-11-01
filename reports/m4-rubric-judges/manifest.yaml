@@ -24,6 +24,12 @@ limits: >-
   never scored a transfer here, and the state check and every transfer path are
   exercised only by the fixtures in tests/test_rubric_judges.py. All 13
   NOT_APPLICABLE results rest on the judge's own report, which #110 also checks.
+run_to_run_variation: >-
+  The same judges ran twice in this ticket's work, with the clarity and efficiency
+  prompts and every input unchanged between the two runs. Task 2's efficiency score went
+  from 1 (FAIL) to 2 (PASS), and the other 12 simulations kept their statuses on all
+  three judges. The values below are the second run, made after the escalation prompt
+  gained the policy's restrictions. #110 (M4-12) measures this self-agreement properly.
 wrapper_check: >-
   The Milestone 2 run's unwrapped replies sum to 14, matching the 14 of 16 in
   docs/BASELINE.md. One of them, in task 1, holds a raw newline inside the wrapper,
@@ -34,19 +40,20 @@ cost_note: >-
 recording:
   path: tests/fixtures/rubric-judges/m2-task-0.json
   source: tests/fixtures/m2-task-0/simulation.json
-  sha256: 785c81d2591ff3afcac2551d16b3f63cb7ff9ea52fc2e918ab2a47289d50bdd4
+  sha256: 6789bafad4d2fec233753c3ae038b194c0762f99243a71b422737dba5d70da93
   calls: 3
 totals:
   simulations: 13
   m2_baseline_simulations: 5
   m2_unwrapped_replies: 14
   judge_calls: 39
-  input_tokens: 301867
-  output_tokens: 6881
-  cost_usd: 0.0336272
+  input_tokens: 305715
+  output_tokens: 7025
+  cost_usd: 0.034084
+  judge_calls_of_unknown_cost: 0
   results_by_judge:
     clarity_customer_effort: {FAIL: 1, PASS: 12}
-    conversation_efficiency: {FAIL: 2, PASS: 11}
+    conversation_efficiency: {FAIL: 1, PASS: 12}
     escalation_correctness: {NOT_APPLICABLE: 13}
 simulations:
   - run: m2-baseline-2026-10-27-r3
@@ -68,7 +75,7 @@ simulations:
     task_id: '2'
     unwrapped_replies: 3
     clarity_customer_effort: {status: PASS, score: 2}
-    conversation_efficiency: {status: FAIL, score: 1, failure_kind: outcome}
+    conversation_efficiency: {status: PASS, score: 2}
     escalation_correctness: {status: NOT_APPLICABLE}
   - run: m2-baseline-2026-10-27-r3
     simulation_id: b1a35955-60f4-4865-9e44-37a1e62560eb

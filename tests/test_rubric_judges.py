@@ -54,7 +54,7 @@ RECORDING = FIXTURES / "rubric-judges" / "m2-task-0.json"
 PROMPT_SHA256 = {
     "clarity-v1": "b7495a1741f3074e56933d023ae42962a4803453b1682afe4f08ca5b773fd115",
     "efficiency-v1": "56ee8c16fcde35a8e480509715d98b30a9718e1d091e9ab6d4d280837cd0eae5",
-    "escalation-v1": "6136890fb2315274d387f30c85953f7c2232f11c32fc01fec90ea752a945398d",
+    "escalation-v1": "347d700b1d750256b9cefb504f38c4ec526ed52baeabf8c63e7d846d077fd848",
 }
 
 PASS, FAIL, ERROR = ResultStatus.PASS, ResultStatus.FAIL, ResultStatus.EVALUATOR_ERROR
@@ -175,6 +175,8 @@ def test_the_run_is_recorded_on_a_result_the_run_standing_changes():
         _reply(score="2"),
         _reply(score=True),
         _reply(score=None),
+        _reply(extra=float("nan")),
+        _reply(extra=float("inf")),
     ],
 )
 @pytest.mark.parametrize("make", [_clarity, _escalation])

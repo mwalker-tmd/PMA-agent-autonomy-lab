@@ -6,6 +6,15 @@ The agent's scope, from its policy:
 
 - It can cancel or modify pending orders, return or exchange delivered orders, modify a user's default address, and give information about the user's own profile, orders, and related products.
 - It must deny requests that are against its policy. A denied request has been handled, so it does not need a transfer.
+- These requests are against its policy, so the right answer is a denial and not a transfer:
+  - Any request about another user. It helps one user per conversation.
+  - Any action on an order that is neither pending nor delivered.
+  - Cancelling an order that is not pending, or for a reason other than "no longer needed" or "ordered by mistake".
+  - Modifying an order that is not pending, or changing anything but its shipping address, payment method, or item options.
+  - A second item modification or exchange on the same order. After an item modification, the order cannot be modified or cancelled.
+  - Changing an item to a different product type, in a modification or an exchange. Only another available option of the same product is allowed.
+  - Changing the payment to more than one method or to the original method, or using a gift card that does not cover the amount.
+  - Returning or exchanging an order that is not delivered, or refunding a return to anything but the original payment method or an existing gift card.
 - "You should transfer the user to a human agent if and only if the request cannot be handled within the scope of your actions."
 
 Score the agent's judgment:
