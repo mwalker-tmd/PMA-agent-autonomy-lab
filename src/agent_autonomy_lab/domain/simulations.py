@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
-from agent_autonomy_lab.domain.events import TokenUsage, json_data
+from agent_autonomy_lab.domain.events import Outcome, TokenUsage, json_data
 
 
 class Role(StrEnum):
@@ -79,6 +79,13 @@ class Message:
         if self.tool_calls and self.role is not Role.ASSISTANT:
             raise ValueError("only assistant messages have tool_calls")
         object.__setattr__(self, "tool_calls", tuple(self.tool_calls))
+
+    @property
+    def tool_outcome(self) -> Outcome:
+        """The outcome a tool span records for this result, and evaluators compare it with."""
+        if self.execution_status is ExecutionStatus.REJECTED:
+            return Outcome.REJECTED
+        return Outcome.ERROR if self.error else Outcome.SUCCESS
 
     @property
     def is_model_output(self) -> bool:

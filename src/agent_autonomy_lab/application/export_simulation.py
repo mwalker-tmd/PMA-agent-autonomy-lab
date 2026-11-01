@@ -12,7 +12,7 @@ than two messages (for example one that failed before the customer spoke) has
 no conversation to show; it is skipped and reported, not exported.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from uuid import UUID
 
 from agent_autonomy_lab.application.conversation_trace import (
@@ -37,6 +37,7 @@ from agent_autonomy_lab.domain.events import (
     thread_id_for,
 )
 from agent_autonomy_lab.domain.simulations import Role, SavedRun, SavedSimulation, ToolCall
+from agent_autonomy_lab.domain.tool_timeline import results_without_a_call
 from agent_autonomy_lab.ports.trace_sink import TraceSink
 
 
@@ -95,6 +96,24 @@ def export_run(
         )
     sink.flush()
     return exported
+
+
+def evidence_trace(
+    run: SavedRun, simulation: SavedSimulation, experiment_class: ExperimentClass
+) -> tuple[TraceEvent, ...]:
+    """The spans an evaluator can cite for one simulation, whatever shape its record has.
+
+    An export refuses a tool result with no call, because it could not show that
+    result. An evaluator reports that gap itself, and still needs the other spans
+    to prove what the rest of the record shows, so the result is left out here.
+    Too few messages for a conversation give no spans.
+    """
+    orphans = {index for index, _ in results_without_a_call(simulation.messages)}
+    messages = tuple(m for index, m in enumerate(simulation.messages) if index not in orphans)
+    if len(messages) < MIN_MESSAGES:
+        return ()
+    events, _ = simulation_trace(run, replace(simulation, messages=messages), experiment_class)
+    return tuple(events)
 
 
 def simulation_trace(

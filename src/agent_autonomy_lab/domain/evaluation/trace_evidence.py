@@ -10,15 +10,8 @@ then has nothing to cite, and it reports ``INSUFFICIENT_EVIDENCE``.
 from collections.abc import Iterable
 from uuid import UUID
 
-from agent_autonomy_lab.domain.events import EventType, Outcome, TraceEvent, argument_hash
-from agent_autonomy_lab.domain.simulations import ExecutionStatus, Message
+from agent_autonomy_lab.domain.events import EventType, TraceEvent, argument_hash
 from agent_autonomy_lab.domain.tool_timeline import ToolCallRecord
-
-
-def _outcome(result: Message) -> Outcome:
-    if result.execution_status is ExecutionStatus.REJECTED:
-        return Outcome.REJECTED
-    return Outcome.ERROR if result.error else Outcome.SUCCESS
 
 
 class TraceEvidence:
@@ -46,7 +39,7 @@ class TraceEvidence:
             span is None
             or span.tool_name != record.call.name
             or span.argument_hash != argument_hash(record.call.arguments)
-            or span.outcome is not _outcome(result)
+            or span.outcome is not result.tool_outcome
         ):
             return None
         return span

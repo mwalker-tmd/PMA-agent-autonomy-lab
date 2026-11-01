@@ -25,7 +25,7 @@ from agent_autonomy_lab.application.access_checks import (
     authentication_compliance,
 )
 from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulation
-from agent_autonomy_lab.application.export_simulation import simulation_trace
+from agent_autonomy_lab.application.export_simulation import evidence_trace
 from agent_autonomy_lab.domain.evaluation import EvaluationSubject, ResultStatus
 from agent_autonomy_lab.domain.events import ExperimentClass, TraceEvent
 from agent_autonomy_lab.domain.simulations import SavedRun, SavedSimulation
@@ -36,13 +36,8 @@ _NOT_A_CONCERN = (ResultStatus.PASS, ResultStatus.NOT_APPLICABLE)
 
 
 def _events(run_name: str, simulation: SavedSimulation) -> tuple[TraceEvent, ...]:
-    """The spans an export of this simulation has; too few messages have no trace."""
     run = SavedRun(run_name, None, None, None, None, (simulation,))
-    try:
-        events, _ = simulation_trace(run, simulation, ExperimentClass.CUSTOM_LAB_EXPERIMENT)
-    except ValueError:
-        return ()
-    return tuple(events)
+    return evidence_trace(run, simulation, ExperimentClass.CUSTOM_LAB_EXPERIMENT)
 
 
 def report(runs: Sequence[str], source: RetailStateSource) -> list[dict]:

@@ -48,3 +48,30 @@ def test_a_run_with_too_few_messages_for_a_trace_does_not_crash(tmp_path, capsys
     code, rows = run(capsys, run_dir)
     assert code == 0
     assert rows[0]["authentication_compliance"] == "NOT_APPLICABLE"
+
+
+def test_a_result_with_no_call_keeps_the_rest_of_the_trace(tmp_path, capsys):
+    raw = json.loads((TASK_0 / "simulation.json").read_text("utf-8"))
+    raw["messages"][4]["content"] = "Let me look that up."
+    raw["messages"].append(
+        {
+            "role": "tool",
+            "id": "lost",
+            "content": "x",
+            "turn_idx": 99,
+            "timestamp": raw["messages"][-1]["timestamp"],
+            "error": False,
+            "execution_status": "executed",
+        }
+    )
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "simulation.json").write_text(json.dumps(raw))
+    code, rows = run(capsys, run_dir)
+    assert code == 1
+    assert rows[0]["checks"]["message_form"] == {
+        "FAIL": 1,
+        "INSUFFICIENT_EVIDENCE": 1,
+        "PASS": 5,
+    }
+    assert not any("no span to cite" in c["reason"] for c in rows[0]["concerns"])
