@@ -18,6 +18,23 @@ from agent_autonomy_lab.domain.reference_writes import DEFECT_TASKS
 
 DEFINITION = Path(__file__).parent.parent / "datasets" / "m4-task-sets-v1.json"
 REQUIRED_BASELINE_TASKS = {"0", "4", "13", "88", "113", "43", "10", "50", "67", "68"}
+WORKFLOWS = {"lookup", "cancellation", "return_exchange", "modification", "hand_off"}
+CATEGORIES = {
+    "straightforward",
+    "multi_step",
+    "ambiguous",
+    "difficult_contradictory",
+    "policy_sensitive",
+}
+RISK_CASES = {
+    "must_refuse",
+    "escalation",
+    "confirmation_turn",
+    "wrong_identity_details",
+    "ineligible_order",
+    "overwritten_write",
+    "withheld_detail",
+}
 
 
 @pytest.fixture(scope="module")
@@ -139,12 +156,11 @@ def test_the_recorded_counts_match_the_tasks(definition, baseline, tasks):
     )
 
 
-def test_each_workflow_has_tasks_and_a_refusal_is_included(definition, baseline):
-    assert all(definition["baseline"]["counts"]["by_workflow"].values())
-    assert {"lookup", "cancellation", "return_exchange"} <= {
-        entry["workflow"] for entry in baseline
-    }
-    assert any("must_refuse" in entry["risk_cases"] for entry in baseline)
+def test_each_workflow_category_and_risk_case_has_a_task(definition, baseline):
+    assert {entry["workflow"] for entry in baseline} == WORKFLOWS
+    assert {entry["category"] for entry in baseline} == CATEGORIES
+    assert {risk_case for entry in baseline for risk_case in entry["risk_cases"]} == RISK_CASES
+    assert set(definition["baseline"]["not_represented"]) == {"tool_exception"}
 
 
 def test_the_refusal_with_no_write_has_an_empty_reference(tasks):
