@@ -25,7 +25,6 @@ from agent_autonomy_lab.domain.events import (
     stable_time_id,
 )
 from agent_autonomy_lab.domain.simulations import (
-    ExecutionStatus,
     Message,
     Reward,
     Role,
@@ -112,10 +111,7 @@ def tool_call_event(
     τ-bench does not classify a failed call; ``error_class`` is for a caller
     that knows why it failed.
     """
-    if message.execution_status is ExecutionStatus.REJECTED:
-        outcome = Outcome.REJECTED
-    else:
-        outcome = Outcome.ERROR if message.error else Outcome.SUCCESS
+    outcome = message.tool_outcome
     sim_id = context.simulation_id
     return TraceEvent(
         event_id=stable_id("event", sim_id, *id_parts, "tool_call", call.call_id),

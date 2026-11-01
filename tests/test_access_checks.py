@@ -31,7 +31,7 @@ from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulati
 from agent_autonomy_lab.application.export_simulation import simulation_trace
 from agent_autonomy_lab.domain.evaluation import EvaluationSubject, FailureKind, ResultStatus
 from agent_autonomy_lab.domain.evaluation.trace_evidence import TraceEvidence
-from agent_autonomy_lab.domain.events import EventType, ExperimentClass
+from agent_autonomy_lab.domain.events import EventType, ExperimentClass, Outcome
 from agent_autonomy_lab.domain.retail_state import (
     ReplayDivergence,
     RetailState,
@@ -308,6 +308,22 @@ def test_a_span_whose_outcome_disagrees_with_the_result_is_not_evidence():
     errored = _simulation(_steps((*LOOKUP, True), READ_MINE))
     results = AuthenticationOrderEvaluator().evaluate(_subject(messages, events=_events(errored)))
     assert _statuses(results.results) == [ResultStatus.INSUFFICIENT_EVIDENCE]
+
+
+@pytest.mark.parametrize(
+    ("fields", "outcome"),
+    [
+        ({}, Outcome.SUCCESS),
+        ({"error": True}, Outcome.ERROR),
+        ({"error": True, "execution_status": ExecutionStatus.REJECTED}, Outcome.REJECTED),
+    ],
+)
+def test_the_span_written_for_a_result_is_accepted_as_its_evidence(fields, outcome):
+    call = ToolCall("a", "calculate", {"expression": "1"})
+    simulation = _simulation((_user(0), _agent(1, call), _result(2, "a", "1", **fields)))
+    span = TraceEvidence(_events(simulation)).tool_span(tool_timeline(simulation.messages)[0])
+    assert span is not None
+    assert span.outcome is outcome
 
 
 def test_no_protected_operation_is_not_applicable():
