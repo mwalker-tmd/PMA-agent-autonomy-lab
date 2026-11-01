@@ -19,13 +19,20 @@ class TraceEvidence:
 
     def __init__(self, events: Iterable[TraceEvent]) -> None:
         self._spans: dict[tuple[EventType, int], list[TraceEvent]] = {}
+        self._roots: list[TraceEvent] = []
         for event in events:
+            if event.event_type is EventType.CONVERSATION:
+                self._roots.append(event)
             if event.turn_index is not None:
                 self._spans.setdefault((event.event_type, event.turn_index), []).append(event)
 
     def _only(self, event_type: EventType, turn_index: int) -> TraceEvent | None:
         spans = self._spans.get((event_type, turn_index), [])
         return spans[0] if len(spans) == 1 else None
+
+    def conversation_span(self) -> TraceEvent | None:
+        """The root span, which a result about the whole simulation cites."""
+        return self._roots[0] if len(self._roots) == 1 else None
 
     def model_span(self, turn_index: int) -> TraceEvent | None:
         """The model call that produced this message; a message with no usage has none."""
