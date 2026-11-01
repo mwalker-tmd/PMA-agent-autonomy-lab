@@ -112,6 +112,34 @@ def _overwritten(messages, source=None, termination="agent_stop", task_id="0"):
     return evaluator.evaluate(subject).results
 
 
+TASK_22_NEW = (
+    "modify_user_address",
+    {
+        "user_id": "ethan_garcia_1261",
+        "address1": "101 Highway",
+        "address2": "",
+        "city": "New York",
+        "state": "NY",
+        "country": "USA",
+        "zip": "10001",
+    },
+    "{}",
+)
+TASK_22_OLD = (
+    "modify_user_address",
+    {
+        "user_id": "ethan_garcia_1261",
+        "address1": "667 Highland Drive",
+        "address2": "Suite 865",
+        "city": "Denver",
+        "state": "CO",
+        "country": "USA",
+        "zip": "80280",
+    },
+    "{}",
+)
+
+
 # PA-6's state part: an overwritten write
 
 
@@ -220,33 +248,7 @@ def test_a_reversed_wrong_write_passes_expected_writes_and_still_fails_pa_6():
 
 def test_task_22s_real_reference_path_passes(reference_writes):
     """Its user regrets the change, so the reference writes the address and restores it."""
-    new = (
-        "modify_user_address",
-        {
-            "user_id": "ethan_garcia_1261",
-            "address1": "101 Highway",
-            "address2": "",
-            "city": "New York",
-            "state": "NY",
-            "country": "USA",
-            "zip": "10001",
-        },
-        "{}",
-    )
-    old = (
-        "modify_user_address",
-        {
-            "user_id": "ethan_garcia_1261",
-            "address1": "667 Highland Drive",
-            "address2": "Suite 865",
-            "city": "Denver",
-            "state": "CO",
-            "country": "USA",
-            "zip": "80280",
-        },
-        "{}",
-    )
-    messages = _with_user_between(new, then=(old,))
+    messages = _with_user_between(TASK_22_NEW, then=(TASK_22_OLD,))
     assert _statuses(_overwritten(messages, reference_writes, task_id="22")) == [PASS, PASS]
 
 
@@ -558,10 +560,56 @@ def test_reads_lookups_and_calculate_do_not_count(extra):
     assert _statuses(_expected(_steps(extra, step, extra), _source(step))) == [PASS]
 
 
-def test_a_failed_write_did_not_execute_so_it_does_not_count():
+def test_a_failed_write_is_not_in_the_match_but_may_have_changed_state():
+    """A tool can change state before it raises, so only the DB check can clear it."""
     step = _cancel()
-    failed = _cancel("#OTHER", True)
-    assert _statuses(_expected(_steps(failed, step), _source(step))) == [PASS]
+    messages = _steps(_cancel("#OTHER", True), step)
+    assert _statuses(_expected(messages, _source(step), MATCHED)) == [PASS]
+    assert _statuses(_expected(messages, _source(step), DIFFERENT)) == [FAIL]
+    assert _statuses(_expected(messages, _source(step))) == [UNKNOWN]
+
+
+def test_a_failed_write_against_a_read_only_reference_cannot_pass_a_failed_db_check():
+    messages = _steps(_payment("paypal", "#A") + (True,))
+    assert _statuses(_expected(messages, _source(), DIFFERENT)) == [FAIL]
+
+
+def test_matching_writes_in_the_wrong_order_fail_on_the_db_check():
+    """Task ``22``'s two address writes, reversed, leave the user at the new address."""
+    new, old = _home("New"), _home("Old")
+    source = _source(new, old)
+    reversed_path = _with_user_between(old, then=(new,))
+    results = _expected(reversed_path, source, DIFFERENT)
+    assert _statuses(results) == [FAIL]
+    assert results[0].failure_kind is FailureKind.OUTCOME
+    assert "writes match" in results[0].reason and "end state differs" in results[0].reason
+    assert _statuses(_expected(reversed_path, source)) == [UNKNOWN]
+    assert _statuses(_expected(_with_user_between(new, then=(old,)), source, MATCHED)) == [PASS]
+
+
+def test_task_22s_reversed_writes_pass_pa_6_and_fail_expected_writes(reference_writes):
+    """The reference has both writes, so only the DB check can see the wrong order."""
+    reversed_path = _with_user_between(TASK_22_OLD, then=(TASK_22_NEW,))
+    subject = _rewarded(reversed_path, DIFFERENT, task_id="22")
+    evaluators = (
+        OverwrittenWriteEvaluator(reference_writes),
+        ExpectedWritesEvaluator(reference_writes),
+    )
+    # The reference's third write, to the order's address, is left out here.
+    results = evaluate_simulation(subject, evaluators).results
+    statuses = {r.evaluation_key: r.status for r in results if r.target is None}
+    assert statuses[EXPECTED_WRITES_KEY] is FAIL
+    assert _statuses([r for r in results if r.evaluation_key == OVERWRITTEN_WRITE_KEY]) == [
+        PASS,
+        PASS,
+    ]
+
+
+def test_several_writes_to_one_order_need_the_db_check_with_no_reward():
+    address, payment = _address("A", "#P"), _payment("paypal", "#P")
+    source = _source(address, payment)
+    assert _statuses(_expected(_steps(payment, address), source)) == [UNKNOWN]
+    assert _statuses(_expected(_steps(payment, address), source, MATCHED)) == [PASS]
 
 
 def test_a_rejected_write_did_not_execute_so_it_does_not_count():
@@ -630,7 +678,12 @@ def test_a_multi_item_modification_must_also_pass_the_db_check():
 
 def test_a_single_item_modification_needs_no_db_check():
     step = _modify("#P", ("1",), ("3",))
-    assert _statuses(_expected(_steps(step), _source(step), DIFFERENT)) == [PASS]
+    assert _statuses(_expected(_steps(step), _source(step))) == [PASS]
+
+
+def test_the_db_check_decides_even_when_independent_writes_match():
+    step = _cancel()
+    assert _statuses(_expected(_steps(step), _source(step), DIFFERENT)) == [FAIL]
 
 
 def test_a_pass_cites_the_root_and_each_written_span():
