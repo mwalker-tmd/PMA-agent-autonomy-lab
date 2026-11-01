@@ -27,7 +27,7 @@ limits: >-
 reward_kept_apart: >-
   The report holds the reward under benchmark and the lab's results under
   tool_correctness and checks. No score combines them.
-totals:
+totals:  # summed from the rows under simulations
   simulations: 13
   m2_baseline_simulations: 5
   concerns: 0
@@ -50,160 +50,804 @@ totals:
     status_read: {PASS: 14}
     transfer_message: {NOT_APPLICABLE: 13}
     user_access: {PASS: 51}
+# Each entry is the command's JSON row, unchanged.
 simulations:
   - run: m2-baseline-2026-10-27-r3
     simulation_id: 8be368a8-4ab9-4a5d-ba7d-9ca0b83587bc
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
   - run: m2-baseline-2026-10-27-r3
     simulation_id: 2039e531-8f4e-4344-8664-6012099796f9
-    task_id: "1"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '1'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
   - run: m2-baseline-2026-10-27-r3
     simulation_id: 524e2e82-2b21-4c9d-a286-b9c91e31ee45
-    task_id: "2"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '2'
     benchmark:
       task_success: FAIL
+      termination_reason: user_stop
       reward: 0.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 0.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 0.0
       db_match: true
-      nl_assertions: {met: 0, total: 1}
-      partial_action_reward_diagnostic: {total: 9/11, write: 0/1}
+      nl_assertions:
+        met: 0
+        total: 1
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 9
+            of: 11
+          read:
+            matched: 9
+            of: 10
+          write:
+            matched: 0
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 7
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        NOT_APPLICABLE: 1
+      item_variant:
+        NOT_APPLICABLE: 1
+      message_form:
+        PASS: 10
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        PASS: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 7
+    concerns: []
   - run: m2-baseline-2026-10-27-r3
     simulation_id: b1a35955-60f4-4865-9e44-37a1e62560eb
-    task_id: "3"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '3'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
-      nl_assertions: {met: 1, total: 1}
-      partial_action_reward_diagnostic: {total: 11/12, write: 1/1}
+      nl_assertions:
+        met: 1
+        total: 1
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 11
+            of: 12
+          read:
+            matched: 10
+            of: 11
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 7
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 10
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 7
+    concerns: []
   - run: m2-baseline-2026-10-27-r3
     simulation_id: dfc6e9c7-0f28-4072-b224-2bf94d5a8ddd
-    task_id: "4"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '4'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
-      nl_assertions: {met: 1, total: 1}
-      partial_action_reward_diagnostic: {total: 12/13, write: 2/2}
+      nl_assertions:
+        met: 1
+        total: 1
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 12
+            of: 13
+          read:
+            matched: 10
+            of: 11
+          write:
+            matched: 2
+            of: 2
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 8
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 2
+      item_variant:
+        PASS: 2
+      message_form:
+        PASS: 11
+      method_owner:
+        PASS: 2
+      order_status:
+        PASS: 2
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 2
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 8
+    concerns: []
   - run: m3-05-live-task-0
     simulation_id: a428164f-fdfc-4245-b30b-f871b8d62e7f
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 2
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 5
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 2
+    concerns: []
   - run: m3-07-record
     simulation_id: c66860b3-9a38-4e33-8048-a5308519edde
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
   - run: m3-07-replay-off
     simulation_id: a80c0b3e-2429-41bf-af65-5a251b159c38
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
   - run: m3-07-replay-off-recheck
     simulation_id: e3ecd6f6-5aad-4866-b998-e4ff8444f453
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
   - run: m3-07-replay-on
     simulation_id: 2aeb4ee0-01db-4c46-a5ca-afe17bd80dee
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
   - run: m3-08-fault-task-0
     simulation_id: 8b6d0988-d32e-4cab-9241-118dbe0a59cb
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
   - run: m3-09-replay
     simulation_id: 7e7dbafc-910c-4fff-8d86-97359d816507
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
   - run: m3-09-replay-2
     simulation_id: d0422c82-8cc8-44b0-b528-8af05d8f803e
-    task_id: "0"
-    prohibited_actions: PASS
-    expected_writes: PASS
+    task_id: '0'
     benchmark:
       task_success: PASS
+      termination_reason: user_stop
       reward: 1.0
-      reward_breakdown: {DB: 1.0, NL_ASSERTION: 1.0}
+      reward_basis:
+      - DB
+      - NL_ASSERTION
+      reward_breakdown:
+        DB: 1.0
+        NL_ASSERTION: 1.0
       db_match: true
       nl_assertions: null
-      partial_action_reward_diagnostic: {total: 5/5, write: 1/1}
+      diagnostics:
+        partial_action_reward:
+          total:
+            matched: 5
+            of: 5
+          read:
+            matched: 4
+            of: 4
+          write:
+            matched: 1
+            of: 1
+    tool_correctness:
+      prohibited_actions: PASS
+      expected_writes: PASS
+    checks:
+      authentication_order:
+        PASS: 3
+      cancellation_reason:
+        NOT_APPLICABLE: 1
+      expected_writes:
+        PASS: 1
+      gift_card_balance:
+        NOT_APPLICABLE: 1
+      item_change_once:
+        PASS: 1
+      item_variant:
+        PASS: 1
+      message_form:
+        PASS: 6
+      method_owner:
+        PASS: 1
+      order_status:
+        PASS: 1
+      overwritten_write:
+        NOT_APPLICABLE: 1
+      payment_change:
+        NOT_APPLICABLE: 1
+      refund_method:
+        NOT_APPLICABLE: 1
+      status_read:
+        PASS: 1
+      transfer_message:
+        NOT_APPLICABLE: 1
+      user_access:
+        PASS: 3
+    concerns: []
