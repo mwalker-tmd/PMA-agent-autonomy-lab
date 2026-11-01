@@ -77,8 +77,8 @@ class CheckResults:
         else:
             self._add(target, status, reason, score=1.0, evidence_ids=evidence_ids)
 
-    def unknown(self, target: str | None, reason: str) -> None:
-        self._add(target, ResultStatus.INSUFFICIENT_EVIDENCE, reason)
+    def unknown(self, target: str | None, reason: str, evidence: Iterable[UUID] = ()) -> None:
+        self._add(target, ResultStatus.INSUFFICIENT_EVIDENCE, reason, evidence_ids=tuple(evidence))
 
     def output(self, nothing_to_check: str | None = None) -> EvaluatorOutput:
         """The results so far; with none, the unit is the simulation and it does not apply."""

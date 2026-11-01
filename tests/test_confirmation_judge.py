@@ -172,9 +172,19 @@ def test_several_user_messages_leave_the_reply_unclear_with_no_model_call():
         _agent(3, _write()),
         _result(4, "c1", "done"),
     )
-    result, client = _only(messages)
+    subject = _subject(messages)
+    judge, client = _judge()
+    (result,) = evaluate_simulation(subject, [judge]).results
     assert result.status is UNKNOWN
     assert client.requests == []
+    spans = {event.event_id: event for event in subject.events}
+    (tool_span,) = [
+        spans[event_id]
+        for event_id in result.evidence_ids
+        if spans[event_id].event_type is EventType.TOOL_CALL
+    ]
+    assert result.target == str(tool_span.run_id)
+    assert tool_span.argument_hash == argument_hash(_ARGUMENTS)
 
 
 def test_a_passed_state_check_is_not_enough():
