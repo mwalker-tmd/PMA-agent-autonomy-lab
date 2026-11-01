@@ -100,7 +100,7 @@ from agent_autonomy_lab.entrypoints.run_options import (
     settings_data,
 )
 from agent_autonomy_lab.entrypoints.settings import langsmith_project
-from agent_autonomy_lab.ports.batch import ScoredSimulation
+from agent_autonomy_lab.ports.batch import ScoredSimulation, StageFailed
 from agent_autonomy_lab.ports.trace_sink import InMemoryTraceSink, TraceSink
 
 DEFAULT_TASK_LIST = Path("datasets/m4-task-sets-v1.json")
@@ -218,6 +218,8 @@ class LiveSession:
                         error_message=str(failure.cause) or None,
                     ),
                 }
+            except Exception as error:
+                raise StageFailed(error, provider_calls(recorder.interactions)) from error
             else:
                 shared = {
                     "trial_seed": live.trial_seed,
@@ -269,7 +271,10 @@ class LiveSession:
         recorder = RecordingTransport()
         before = len(self._counter.calls)
         with litellm_transport(recorder):
-            output = evaluate_with_unauthorized_counts(subject, self._evaluators)
+            try:
+                output = evaluate_with_unauthorized_counts(subject, self._evaluators)
+            except Exception as error:
+                raise StageFailed(error, provider_calls(recorder.interactions)) from error
         recorder.cassette({"run_batch_judges": True}).save(directory / "judges.cassette.json")
         _write_raw_outputs(directory / "raw_outputs.jsonl", output)
         calls = provider_calls(recorder.interactions)
@@ -325,10 +330,14 @@ def _budget(outcome: BatchOutcome) -> dict[str, Any]:
             round(low / BUDGET_SIMULATIONS, 4),
             round(high / BUDGET_SIMULATIONS, 4),
         ],
-        "list_price_per_attempt_usd": round(per_simulation, 6) if per_simulation else None,
+        "list_price_per_attempt_usd": round(per_simulation, 6)
+        if per_simulation is not None
+        else None,
         "projected_60_simulations_usd": round(projected, 4) if projected is not None else None,
         "within_expected_total": low <= projected <= high if projected is not None else None,
-        "under_cap_when_projected": projected < outcome.plan.cap_usd if projected else None,
+        "under_cap_when_projected": projected < outcome.plan.cap_usd
+        if projected is not None
+        else None,
     }
 
 

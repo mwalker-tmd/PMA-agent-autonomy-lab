@@ -329,7 +329,7 @@
   2. **What to retry.** Nothing, any poor result, or only runs an outside cause stopped.
   3. **What a fingerprint difference does.** Report it and go on, or stop.
 - Decision:
-  - **The cap rests on the HTTP exchanges.** Each response's model and usage are priced at list price, in `LIST_PRICES`. A successful response that cannot be priced stops the batch, since the cap can no longer be held. Hook C stays a cross-check, compared with those exchanges and with τ-bench's reward.
+  - **The cap rests on the HTTP exchanges.** Each response's model and usage are priced at list price, in `LIST_PRICES`. A successful response that cannot be priced stops the batch, since the cap can no longer be held. A stage that raises stops the batch too, and any calls it already made still count. Hook C stays a cross-check, compared with those exchanges and with τ-bench's reward.
   - **τ-bench's judge is priced from LiteLLM's map** at the pin, $0.75 input and $4.50 output per 1M tokens, the only source the repository has for `gpt-5.4-mini-2026-03-17`.
   - **The cap is checked before each simulation, before its scoring, and after it,** so a run can pass it by at most one stage, and a stop always says so.
   - **Only an `INVALID` run is retried, once by default,** with the same seed. Its row stays, reported with its reason, and the retry is logged apart. Retrying an application failure or a low score would inflate the pass rate.

@@ -28,7 +28,7 @@ from agent_autonomy_lab.domain.evaluation import (
 )
 from agent_autonomy_lab.domain.evaluation.run_standing import RunClass, RunStanding, run_standing
 from agent_autonomy_lab.domain.events import Feedback, TraceEvent, stable_id
-from agent_autonomy_lab.ports.batch import SimulationRunner, SimulationScorer
+from agent_autonomy_lab.ports.batch import SimulationRunner, SimulationScorer, StageFailed
 from agent_autonomy_lab.ports.trace_sink import TraceSink
 
 
@@ -173,6 +173,14 @@ class _Batch:
     def stop(self, reason: str) -> None:
         self.outcome.stop_reason = self.outcome.stop_reason or reason
 
+    def failure(self, stage: str, error: Exception) -> str:
+        """Say why ``stage`` stopped the batch, and count what it spent before raising."""
+        cause = error
+        if isinstance(error, StageFailed):
+            self.outcome.ledger.add(error.provider_calls)
+            cause = error.cause
+        return f"The {stage} raised {type(cause).__name__}: {cause}"
+
     def check_spend(self) -> None:
         ledger = self.outcome.ledger
         if ledger.total_usd >= self.plan.cap_usd:
@@ -203,7 +211,7 @@ class _Batch:
             try:
                 attempt = self.runner.run(task_id, trial, attempt_number)
             except Exception as error:
-                reason = f"The runner raised {type(error).__name__}: {error}"
+                reason = self.failure("runner", error)
                 self.stop(reason)
                 self.outcome.not_run.append({"task_id": task_id, "trial": trial, "reason": reason})
                 return
@@ -241,7 +249,7 @@ class _Batch:
         try:
             scored = self.scorer.score(_subject(attempt, events))
         except Exception as error:
-            self.stop(f"The scorer raised {type(error).__name__}: {error}")
+            self.stop(self.failure("scorer", error))
             return self._unscored(attempt, standing, events, self.outcome.stop_reason)
         ledger.add(scored.provider_calls)
         self.check_spend()  # The last simulation has no later check, and its results stay.

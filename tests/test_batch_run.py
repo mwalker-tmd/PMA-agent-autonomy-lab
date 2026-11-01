@@ -43,6 +43,7 @@ from agent_autonomy_lab.ports.batch import (
     ScoredSimulation,
     ScriptedSimulationRunner,
     ScriptedSimulationScorer,
+    StageFailed,
 )
 from agent_autonomy_lab.ports.model_client import ScriptedModelClient
 from agent_autonomy_lab.ports.reference_writes import CannedReferenceWrites
@@ -346,6 +347,23 @@ def test_a_scorer_that_raises_stops_the_run_and_keeps_the_simulation():
     outcome, _, _ = execute([finished("0")], score=scorer(fail=RuntimeError("broken")))
     (row,) = outcome.rows
     assert "scorer raised" in row.not_scored
+
+
+def test_spend_before_a_scorer_failure_still_counts():
+    def fails(subject):
+        raise StageFailed(RuntimeError("broken"), (ProviderCall(MODEL, 200, 0, 200_000),))
+
+    outcome, _, _ = execute([finished("0")], score=ScriptedSimulationScorer(fails))
+    assert outcome.ledger.total_usd == pytest.approx(0.10)
+    assert outcome.stop_reason == "The scorer raised RuntimeError: broken"
+    assert outcome.rows[0].not_scored == outcome.stop_reason
+
+
+def test_spend_before_a_runner_failure_still_counts():
+    failed = StageFailed(RuntimeError("broken"), (ProviderCall(MODEL, 200, 0, 200_000),))
+    outcome, _, _ = execute([failed])
+    assert outcome.ledger.total_usd == pytest.approx(0.10)
+    assert outcome.stop_reason == "The runner raised RuntimeError: broken"
 
 
 def test_a_trace_backend_failure_is_reported_and_does_not_stop_the_run():
@@ -653,6 +671,16 @@ def test_the_budget_scales_one_simulation_to_sixty():
     assert budget["within_expected_total"] is True
 
 
+def test_a_batch_that_spent_nothing_keeps_its_budget_figures():
+    outcome, _, _ = execute(
+        [raised()], batch=plan(retries=0, tasks=TaskList("v", "s", ("0",), "a"))
+    )
+    budget = entrypoint._budget(outcome)
+    assert budget["list_price_per_attempt_usd"] == 0.0
+    assert budget["projected_60_simulations_usd"] == 0.0
+    assert budget["under_cap_when_projected"] is True
+
+
 def test_the_exit_code_flags_what_a_reader_must_look_at():
     outcome, _, _ = execute([finished("0")], batch=plan(tasks=TaskList("v", "s", ("0",), "a")))
     figures = batch_figures(outcome, CannedReferenceWrites(), JUDGE)
@@ -827,6 +855,34 @@ def test_the_commit_check_sees_source_changes_from_any_directory(tmp_path):
 
     (nested / "module.py").write_text("a = 2\n")
     assert entrypoint._lab_commit(nested) == f"{clean}+changes"
+
+
+def test_judge_calls_before_a_scoring_failure_reach_the_manifest(offline, capsys, monkeypatch):
+    recorders = []
+    real = entrypoint.RecordingTransport
+
+    def recorder():
+        recorders.append(real())
+        return recorders[-1]
+
+    def fails_after_a_call(subject, evaluators):
+        recorders[-1].interactions.append(
+            Interaction(
+                RecordedRequest("POST", "https://x", {"model": "claude-haiku-5-5"}),
+                RecordedResponse(
+                    200, "application/json", '{"usage":{"input_tokens":1000,"output_tokens":0}}'
+                ),
+            )
+        )
+        raise RuntimeError("broken")
+
+    monkeypatch.setattr(entrypoint, "RecordingTransport", recorder)
+    monkeypatch.setattr(entrypoint, "evaluate_with_unauthorized_counts", fails_after_a_call)
+    assert _main(offline) == 1
+
+    data = yaml.safe_load((offline / "report" / "manifest.yaml").read_text())
+    assert data["cost"]["by_model"]["claude-haiku-5-5"]["calls"] == 1
+    assert data["runs"]["stop_reason"] == "The scorer raised RuntimeError: broken"
 
 
 def test_a_run_never_overwrites_a_saved_one(offline, capsys):
