@@ -105,9 +105,11 @@ def message_from_dict(raw: Mapping[str, Any], source_tz: tzinfo) -> Message:
 def _reward(raw: Mapping[str, Any] | None) -> Reward | None:
     if not raw or raw.get("reward") is None:
         return None
+    info = raw.get("info")
     return Reward(
         reward=float(raw["reward"]),
         breakdown=raw.get("reward_breakdown") or {},
         basis=tuple(raw.get("reward_basis") or ()),
         details={key: raw[key] for key in _REWARD_DETAILS if raw.get(key) is not None},
+        note=info.get("note") if isinstance(info, Mapping) else None,
     )

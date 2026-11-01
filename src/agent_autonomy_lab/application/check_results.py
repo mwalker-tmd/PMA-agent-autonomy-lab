@@ -43,23 +43,29 @@ class CheckResults:
     def passed(self, target: str | None, reason: str, evidence: Iterable[UUID]) -> None:
         self._decided(target, ResultStatus.PASS, reason, evidence)
 
-    def failed(self, target: str | None, reason: str, evidence: Iterable[UUID]) -> None:
-        self._decided(target, ResultStatus.FAIL, reason, evidence)
+    def failed(
+        self,
+        target: str | None,
+        reason: str,
+        evidence: Iterable[UUID],
+        kind: FailureKind = FailureKind.VIOLATION,
+    ) -> None:
+        self._decided(target, ResultStatus.FAIL, reason, evidence, kind)
 
     def _decided(
-        self, target: str | None, status: ResultStatus, reason: str, evidence: Iterable[UUID]
+        self,
+        target: str | None,
+        status: ResultStatus,
+        reason: str,
+        evidence: Iterable[UUID],
+        kind: FailureKind = FailureKind.VIOLATION,
     ) -> None:
         evidence_ids = tuple(evidence)
         if not evidence_ids:
             self.unknown(target, f"The trace has no span to cite for: {reason}")
         elif status is ResultStatus.FAIL:
             self._add(
-                target,
-                status,
-                reason,
-                score=0.0,
-                evidence_ids=evidence_ids,
-                failure_kind=FailureKind.VIOLATION,
+                target, status, reason, score=0.0, evidence_ids=evidence_ids, failure_kind=kind
             )
         else:
             self._add(target, status, reason, score=1.0, evidence_ids=evidence_ids)

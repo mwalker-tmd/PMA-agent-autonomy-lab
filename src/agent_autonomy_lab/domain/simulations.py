@@ -98,18 +98,27 @@ class Reward:
 
     ``details`` holds the checks behind the score (database check, NL
     assertions, action checks) as strict JSON. They include the task's answer
-    key, so they are exported as feedback, never as messages.
+    key, so they are exported as feedback, never as messages. ``note`` is τ-bench's
+    reason when it gave a reward without evaluating, as for a task with no criteria.
     """
 
     reward: float
     breakdown: Mapping[str, float] = field(default_factory=dict)
     basis: tuple[str, ...] = ()
     details: Mapping[str, Any] = field(default_factory=dict, repr=False)
+    note: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "breakdown", json_data(self.breakdown))
         object.__setattr__(self, "basis", tuple(self.basis))
         object.__setattr__(self, "details", json_data(self.details))
+
+    @property
+    def db_match(self) -> bool | None:
+        """Whether the end state equals the reference's, or ``None`` with no DB check."""
+        db_check = self.details.get("db_check")
+        match = db_check.get("db_match") if isinstance(db_check, Mapping) else None
+        return match if isinstance(match, bool) else None
 
 
 @dataclass(frozen=True)
