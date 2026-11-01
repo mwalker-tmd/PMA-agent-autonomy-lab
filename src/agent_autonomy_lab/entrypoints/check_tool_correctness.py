@@ -1,7 +1,7 @@
 """Report tool correctness and τ-bench's reward on saved runs, kept apart.
 
-No model is called and nothing is sent. Give it save directories, or ``results.json``
-or ``simulation.json`` files:
+With no option, no model is called and nothing is sent. Give it save directories, or
+``results.json`` or ``simulation.json`` files:
 
     uv run python -m agent_autonomy_lab.entrypoints.check_tool_correctness \\
         ../tau2-bench/data/simulations/m2-baseline-2026-10-27-r3
@@ -11,6 +11,10 @@ It prints a JSON report. For each simulation, ``benchmark`` holds τ-bench's res
 ``checks`` and ``concerns`` hold the lab's results. No score combines them. It exits 1
 if a lab check did not pass or apply; a reward below ``1.0`` is reported, and does not
 change the exit code.
+
+PA-2 needs a judge, so part A leaves it out unless ``--judge-confirmation`` is given,
+which makes one live model call per write. ``confirmation_judged`` says which it was:
+without it, a part A ``PASS`` says nothing about confirmation.
 """
 
 import argparse
@@ -18,6 +22,7 @@ import json
 import sys
 from collections.abc import Sequence
 
+from agent_autonomy_lab.adapters.models import LiteLLMModelClient
 from agent_autonomy_lab.adapters.tau2.reference_writes import GoldReplayReferenceWrites
 from agent_autonomy_lab.adapters.tau2.retail_state import ReplayedRetailState
 from agent_autonomy_lab.application.access_checks import (
@@ -25,6 +30,7 @@ from agent_autonomy_lab.application.access_checks import (
     MessageFormEvaluator,
     UserAccessEvaluator,
 )
+from agent_autonomy_lab.application.confirmation_judge import ConfirmationEvaluator
 from agent_autonomy_lab.application.task_success import (
     TASK_SUCCESS_KEY,
     TaskSuccessEvaluator,
@@ -42,6 +48,7 @@ from agent_autonomy_lab.application.write_eligibility import (
 )
 from agent_autonomy_lab.domain.evaluation import ResultStatus
 from agent_autonomy_lab.entrypoints.check_access import checked_simulations
+from agent_autonomy_lab.ports.model_client import ModelClient
 from agent_autonomy_lab.ports.reference_writes import ReferenceWriteSource
 from agent_autonomy_lab.ports.retail_state import RetailStateSource
 
@@ -51,7 +58,10 @@ def _status(results, key: str) -> ResultStatus:
 
 
 def report(
-    runs: Sequence[str], state_source: RetailStateSource, reference_source: ReferenceWriteSource
+    runs: Sequence[str],
+    state_source: RetailStateSource,
+    reference_source: ReferenceWriteSource,
+    confirmation_client: ModelClient | None = None,
 ) -> list[dict]:
     state_source = OneReplayPerSimulation(state_source)
     evaluators = (
@@ -62,6 +72,7 @@ def report(
         *prohibited_action_evaluators(state_source, reference_source),
         ExpectedWritesEvaluator(reference_source),
         TaskSuccessEvaluator(),
+        *((ConfirmationEvaluator(confirmation_client),) if confirmation_client else ()),
     )
     rows = []
     for row, results, simulation in checked_simulations(runs, evaluators):
@@ -78,6 +89,7 @@ def report(
                 "tool_correctness": {
                     "prohibited_actions": prohibited_actions(results)[row["simulation_id"]].value,
                     "expected_writes": _status(results, EXPECTED_WRITES_KEY).value,
+                    "confirmation_judged": confirmation_client is not None,
                 },
                 "checks": checks,
                 "concerns": [c for c in row["concerns"] if c["check"] != TASK_SUCCESS_KEY],
@@ -89,8 +101,14 @@ def report(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("runs", nargs="+", help="save directories or result files")
+    parser.add_argument(
+        "--judge-confirmation",
+        action="store_true",
+        help="add PA-2 to part A, with one live model call per write",
+    )
     args = parser.parse_args(argv)
-    rows = report(args.runs, ReplayedRetailState(), GoldReplayReferenceWrites())
+    client = LiteLLMModelClient() if args.judge_confirmation else None
+    rows = report(args.runs, ReplayedRetailState(), GoldReplayReferenceWrites(), client)
     print(json.dumps(rows, indent=2))
     return 1 if any(row["concerns"] for row in rows) else 0
 
