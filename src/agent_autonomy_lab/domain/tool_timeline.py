@@ -57,6 +57,16 @@ class ToolCallRecord:
         """The call's one result, or ``None`` if the record does not establish one."""
         return self.results[0] if len(self.results) == 1 and not self.problem else None
 
+    @property
+    def succeeded(self) -> bool:
+        """Whether the record establishes that the tool ran and returned no error."""
+        result = self.result
+        return (
+            result is not None
+            and not result.error
+            and result.execution_status is ExecutionStatus.EXECUTED
+        )
+
 
 def tool_timeline(messages: Sequence[Message]) -> tuple[ToolCallRecord, ...]:
     """Each tool call in order, with every result in the tool messages right after it.
