@@ -127,6 +127,8 @@ notes:
     cannot isolate this run: its Haiku figure, read by eye, is an upper bound on these 238 calls, and
     $0.1409 is their measured cost. No lab code calls Sonnet, so that $0.17 is not from this run and its
     source is unknown.'
+  lab_commit: 'Merging PR #127 rewrites commit IDs and deletes the branch, so lab_commit stays reachable
+    through refs/pull/127/head, not main: git fetch origin refs/pull/127/head, then check out the ID.'
 budget:
   expected_total_usd:
   - 0.7
@@ -978,3 +980,4 @@ post_run_edits:
 - 'task_success_components corrected from NL_ASSERTION 54/60: τ-bench gives 1.0 to a task with no assertions,
   and run_batch now leaves those out.'
 - cost.billed_usd and notes.billing added from the maintainer's dashboard readings.
+- notes.lab_commit added.
