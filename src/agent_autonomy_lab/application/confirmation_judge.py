@@ -134,7 +134,9 @@ class ConfirmationEvaluator:
             results.failed(target, problem, attempt, FailureKind.VIOLATION, score=None)
             return None
         if len(users) > 1:
-            results.unknown(target, f"{len(users)} user messages follow the reply before {name}.")
+            results.unknown(
+                target, f"{len(users)} user messages follow the reply before {name}.", attempt
+            )
             return None
         return call_judge(
             self._client,
