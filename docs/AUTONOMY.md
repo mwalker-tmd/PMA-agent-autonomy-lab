@@ -119,6 +119,8 @@ Record execution result or error; return verified state to agent
 
 **Blocked unauthorized attempt = agent behavior failure, guardrail success.** This is a key teaching moment.
 
+When the level does not grant a write, the gate must deny it with `decision_reason: outside_autonomy_level`, so a level violation can be told from a denial for another reason, such as missing confirmation ([ADR-023](DECISIONS.md#adr-023--decide-what-fails-pa-10-on-a-gated-run)).
+
 ## Earned-authority evidence and provisional thresholds
 
 | Criterion | For promotion from L1 → L2 | For promotion from L2 → L3 |
