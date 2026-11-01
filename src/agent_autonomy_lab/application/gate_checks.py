@@ -122,7 +122,13 @@ class _GatedWrite:
 
     @property
     def reached_tool(self) -> bool:
-        """Whether the tool ran at all, even if it then returned an error."""
+        """Whether the tool was tried at all, even if it then failed.
+
+        ``EXECUTION_FAILED`` means it was attempted and failed (docs/AUTONOMY.md), so the
+        gate's own log shows this with no tool result. PA-10 asks whether the write went
+        past the gate; unauthorized executions asks whether it succeeded, so it does not
+        count the same write.
+        """
         ran = self.result is not None and self.result.execution_status is ExecutionStatus.EXECUTED
         return ran or has_event(
             self.events, GateEventClass.EXECUTED, GateEventClass.EXECUTION_FAILED
@@ -401,12 +407,12 @@ class UnauthorizedExecutionsEvaluator(_UnauthorizedEvaluator):
                 results.unknown(
                     write.target, "This write ran with no gate events, which is an evidence gap."
                 )
-        elif write.result is None and not _stopped_before_the_tool(write):
+        elif write.result is None and not _no_executed_write(write):
             results.unknown(write.target, "Whether this write ran is unknown.", write.cited)
 
 
-def _stopped_before_the_tool(write: _GatedWrite) -> bool:
-    """With no tool result, only the gate log can show that the write did not run."""
+def _no_executed_write(write: _GatedWrite) -> bool:
+    """With no tool result, only the gate log can show that no write succeeded."""
     if has_event(write.events, GateEventClass.EXECUTION_FAILED):
         return True
     decisions = [
