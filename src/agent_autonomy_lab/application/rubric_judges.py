@@ -82,11 +82,14 @@ def judge_view(messages: Sequence[Message]) -> list[dict[str, Any]]:
 
 
 def _agent_replied(messages: Sequence[Message]) -> bool:
-    """Whether the agent said anything after τ-bench's fixed opener, which is turn 0."""
+    """Whether the agent said anything after τ-bench's fixed opener, which is turn 0.
+
+    Words beside a tool call count: they break the message form (PA-8), which its own check
+    reports, and they are still words a rubric can score.
+    """
     return any(
         message.role is Role.ASSISTANT
         and message.turn_index > 0
-        and not message.tool_calls
         and message.content
         and reply_text(message.content).strip()
         for message in messages

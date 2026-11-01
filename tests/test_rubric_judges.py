@@ -238,6 +238,21 @@ def test_no_reply_after_the_opener_is_not_applicable_with_no_model_call(messages
     assert client.requests == []
 
 
+def test_a_reply_beside_a_tool_call_is_judged_and_keeps_the_conversation_in_the_denominator():
+    call = ToolCall("c1", "get_order_details", {"order_id": "#W1"})
+    messages = (
+        _agent(0, content="Hi! How can I help you today?"),
+        _user(1, "Where is my order?"),
+        _agent(2, call, content='{"message": "Let me check that."}'),
+        _result(3, "c1", "{}"),
+    )
+    judge, client = _clarity([_reply(1)])
+    result, _ = _only(judge, messages)
+    assert (result.status, result.score) == (FAIL, 1)
+    conversation = json.loads(client.requests[0].messages[0].content)["messages"]
+    assert conversation[2]["content"] == "Let me check that."
+
+
 @pytest.mark.parametrize("make", [_clarity, _escalation])
 def test_a_trace_with_no_root_to_cite_is_insufficient_evidence_with_no_model_call(make):
     judge, client = make([])

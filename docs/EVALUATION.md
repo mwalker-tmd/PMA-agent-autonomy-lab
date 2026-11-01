@@ -286,7 +286,7 @@ The verdict is an evaluator result, not a trace event: a verdict computed after 
 | Method | Anchored judge: 2 is `PASS`, 0 or 1 is `FAIL`. A human sample in [#110](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/110) |
 | Numerator | Per rubric: simulations with `PASS`; the 0/1/2 distribution beside it |
 | Denominator | Per rubric: simulations with `PASS` or `FAIL` |
-| `NOT_APPLICABLE` | The agent sent no reply after the fixed opener, with no model call |
+| `NOT_APPLICABLE` | The agent sent no reply after the fixed opener, with no model call. Words beside a tool call count as a reply, and `message_form` reports that form separately |
 | `INSUFFICIENT_EVIDENCE` | The judge raises its uncertainty flag; the trace has no conversation span to cite, with no model call |
 
 **Accuracy is not in this metric.** Neither rubric checks what the agent said against the facts. Facts are checked only by τ-bench's NL assertions, in the [33 tasks](BASELINE.md#what-τ-bench-success-does-not-guarantee) whose assertions cover them, and that is answer-key data inside task success.
