@@ -759,7 +759,7 @@ Per task, from the per-message `cost` LiteLLM stored in `results.json` (USD, rou
 
 #### Other observations from the run
 
-- **Most agent replies were JSON strings.** 14 of the 16 model-generated agent replies (all but two in task `0`) were stored as `{"message": "…"}` rather than plain text, and the simulated user received them that way. [Conversation reconstruction](#what-reconstruction-showed) noted one in task `0`; the pattern is run-wide. Nothing in scoring checks reply format, and the cause was not investigated.
+- **Most agent replies were JSON strings.** 14 of the 16 model-generated agent replies (all but two in task `0`) were stored as `{"message": "…"}` rather than plain text, and the simulated user received them that way. [Conversation reconstruction](#what-reconstruction-showed) noted one in task `0`; the pattern is run-wide. Nothing in scoring checks reply format, and the cause was not investigated. One of them, in task `1`, holds a raw newline, so it is not strict JSON. Judges [see these replies without the wrapper](DECISIONS.md#adr-021--show-judges-the-wording-and-decide-the-rubric-judges-failure-kinds).
 - **No tool errors.** Every one of the 43 agent tool calls executed without error, including all six writes.
 
 ### Limitations of this baseline
