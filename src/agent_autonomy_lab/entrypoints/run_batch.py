@@ -33,7 +33,7 @@ import os
 import subprocess
 import sys
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from importlib import metadata
 from pathlib import Path
@@ -434,15 +434,18 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _sink(dry_run: bool, project: str) -> TraceSink:
+def _new_sink(dry_run: bool, project: str) -> Callable[[], TraceSink]:
+    """What makes each simulation's sink; every sink shares one client."""
     if dry_run:
-        return InMemoryTraceSink()
+        return InMemoryTraceSink
     # Synchronous sends, so a run LangSmith rejects raises instead of only being logged.
-    return LangSmithTraceSink(langsmith_client(auto_batch_tracing=False), project)
+    client = langsmith_client(auto_batch_tracing=False)
+    return lambda: LangSmithTraceSink(client, project)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    parser = _parser()
+    args = parser.parse_args(argv)
     if not args.dry_run and not os.environ.get("LANGSMITH_API_KEY"):
         print("LANGSMITH_API_KEY is not set; copy .env.example to .env.", file=sys.stderr)
         return 1
@@ -452,16 +455,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     out_dir = Path(data_dir) / "simulations" / args.save_to
     results_path = args.report_dir / "simulations.jsonl"
-    for taken in (out_dir, results_path):
+    for taken in (out_dir, results_path, args.report_dir / "manifest.yaml"):
         if taken.exists():
             print(f"{taken} already exists; a run is never overwritten", file=sys.stderr)
             return 1
-    plan = BatchPlan(
-        read_task_list(args.task_list, args.set, args.only_task),
-        args.trials,
-        args.cap_usd,
-        args.max_retries,
-    )
+    try:
+        plan = BatchPlan(
+            read_task_list(args.task_list, args.set, args.only_task),
+            args.trials,
+            args.cap_usd,
+            args.max_retries,
+        )
+    except ValueError as error:
+        parser.error(str(error))
     project = langsmith_project()
     model_args = json.loads(BASELINE_ARGS)
 
@@ -496,7 +502,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         plan,
         session,
         session,
-        _sink(args.dry_run, project),
+        _new_sink(args.dry_run, project),
         BASELINE_MODEL,
         LIST_PRICES,
         write_row,

@@ -157,7 +157,7 @@ class _Batch:
         plan: BatchPlan,
         runner: SimulationRunner,
         scorer: SimulationScorer,
-        sink: TraceSink,
+        new_sink: Callable[[], TraceSink],
         user_model_id: str,
         prices: dict[str, ModelPrice],
         on_row: Callable[[SimulationRow], None],
@@ -165,7 +165,7 @@ class _Batch:
         self.plan = plan
         self.runner = runner
         self.scorer = scorer
-        self.sink = sink
+        self.new_sink = new_sink
         self.user_model_id = user_model_id
         self.on_row = on_row
         self.outcome = BatchOutcome(plan, SpendLedger(prices))
@@ -290,7 +290,7 @@ class _Batch:
             trace = record_live_run(
                 attempt.recording,
                 attempt.simulation or attempt.unfinished,
-                self.sink,
+                self.new_sink(),
                 self.user_model_id,
                 attempt.policy_version,
                 extra_feedback=feedback,
@@ -304,10 +304,15 @@ def run_batch(
     plan: BatchPlan,
     runner: SimulationRunner,
     scorer: SimulationScorer,
-    sink: TraceSink,
+    new_sink: Callable[[], TraceSink],
     user_model_id: str,
     prices: dict[str, ModelPrice],
     on_row: Callable[[SimulationRow], None] = lambda row: None,
 ) -> BatchOutcome:
-    """Run ``plan`` and return every attempt's row; ``on_row`` sees each as it finishes."""
-    return _Batch(plan, runner, scorer, sink, user_model_id, prices, on_row).run_all()
+    """Run ``plan`` and return every attempt's row; ``on_row`` sees each as it finishes.
+
+    Each simulation gets its own sink from ``new_sink``. A sink keeps what it could not
+    deliver, so sharing one would resend a failed trace with every later simulation, let one
+    rejected trace fail them all, and deliver rows the report calls not sent.
+    """
+    return _Batch(plan, runner, scorer, new_sink, user_model_id, prices, on_row).run_all()

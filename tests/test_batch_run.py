@@ -124,7 +124,7 @@ def execute(attempts, batch=None, score=None, sink=None):
         batch or plan(),
         runner,
         score,
-        sink or InMemoryTraceSink(),
+        (lambda: sink) if sink else InMemoryTraceSink,
         "openai/responses/gpt-6-luna",
         PRICES,
     )
@@ -358,6 +358,43 @@ def test_a_trace_backend_failure_is_reported_and_does_not_stop_the_run():
     figures = batch_figures(outcome, CannedReferenceWrites(), JUDGE)
     assert figures["traces"]["sent"] == 0
     assert figures["traces"]["not_sent"][0]["reason"] == "RuntimeError: 503"
+
+
+def test_a_failed_trace_is_not_resent_with_later_simulations():
+    class KeepsWhatFailed(InMemoryTraceSink):
+        """Like the LangSmith sink, which clears its buffer only after it delivers."""
+
+        delivered: list = []
+        failures = 1
+
+        def flush(self):
+            if KeepsWhatFailed.failures:
+                KeepsWhatFailed.failures -= 1
+                raise RuntimeError("503")
+            KeepsWhatFailed.delivered.append({e.context.simulation_id for e in self.events})
+
+    first, second = finished("0", sim_id="sim-1"), finished("4", sim_id="sim-2")
+    outcome = run_batch(
+        plan(),
+        ScriptedSimulationRunner([first, second]),
+        scorer(),
+        KeepsWhatFailed,
+        "openai/responses/gpt-6-luna",
+        PRICES,
+    )
+
+    assert outcome.rows[0].trace_error == "RuntimeError: 503"
+    assert outcome.rows[1].trace is not None
+    assert KeepsWhatFailed.delivered == [{"sim-2"}]
+
+
+def test_the_trace_counts_the_results_it_carried_as_feedback():
+    outcome, _, _ = execute(
+        [finished("0", reward=_nl_reward())], batch=plan(tasks=TaskList("v", "s", ("0",), "a"))
+    )
+    (row,) = outcome.rows
+    # The reward and its one component, and the scorer's one result.
+    assert row.trace.feedback == 3
 
 
 def test_a_run_that_raised_before_a_conversation_is_still_scored_and_has_no_trace():
@@ -796,6 +833,27 @@ def test_a_run_never_overwrites_a_saved_one(offline, capsys):
     (offline / "simulations" / "smoke").mkdir(parents=True)
     assert _main(offline) == 1
     assert "never overwritten" in capsys.readouterr().err
+
+
+def test_a_run_never_overwrites_a_saved_manifest(offline, capsys):
+    manifest = offline / "report" / "manifest.yaml"
+    manifest.parent.mkdir()
+    manifest.write_text("kept: true\n")
+    assert _main(offline) == 1
+    assert "never overwritten" in capsys.readouterr().err
+    assert manifest.read_text() == "kept: true\n"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [["--cap-usd", "nan"], ["--cap-usd", "inf"], ["--cap-usd", "0"], ["--only-task", "1"]],
+)
+def test_a_bad_option_is_a_usage_error_before_any_model_call(offline, capsys, bad):
+    with pytest.raises(SystemExit) as stop:
+        _main(offline, *bad)
+    assert stop.value.code == 2
+    assert "error:" in capsys.readouterr().err
+    assert not (offline / "simulations").exists()
 
 
 def test_a_live_run_needs_a_trace_key(monkeypatch, capsys):
