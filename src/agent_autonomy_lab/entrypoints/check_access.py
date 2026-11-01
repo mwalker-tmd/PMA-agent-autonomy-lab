@@ -15,7 +15,7 @@ import argparse
 import json
 import sys
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
 from agent_autonomy_lab.adapters.tau2.retail_state import ReplayedRetailState
 from agent_autonomy_lab.application.access_checks import (
@@ -26,10 +26,15 @@ from agent_autonomy_lab.application.access_checks import (
 )
 from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulation
 from agent_autonomy_lab.application.export_simulation import evidence_trace
-from agent_autonomy_lab.domain.evaluation import EvaluationSubject, ResultStatus
+from agent_autonomy_lab.domain.evaluation import (
+    EvaluationResult,
+    EvaluationSubject,
+    ResultStatus,
+)
 from agent_autonomy_lab.domain.events import ExperimentClass, TraceEvent
 from agent_autonomy_lab.domain.simulations import SavedRun, SavedSimulation
 from agent_autonomy_lab.entrypoints.replay_state import saved_simulations
+from agent_autonomy_lab.ports.evaluator import Evaluator
 from agent_autonomy_lab.ports.retail_state import RetailStateSource
 
 _NOT_A_CONCERN = (ResultStatus.PASS, ResultStatus.NOT_APPLICABLE)
@@ -40,13 +45,10 @@ def _events(run_name: str, simulation: SavedSimulation) -> tuple[TraceEvent, ...
     return evidence_trace(run, simulation, ExperimentClass.CUSTOM_LAB_EXPERIMENT)
 
 
-def report(runs: Sequence[str], source: RetailStateSource) -> list[dict]:
-    evaluators = (
-        AuthenticationOrderEvaluator(),
-        UserAccessEvaluator(source),
-        MessageFormEvaluator(),
-    )
-    rows = []
+def checked_simulations(
+    runs: Sequence[str], evaluators: Sequence[Evaluator]
+) -> Iterator[tuple[dict, tuple[EvaluationResult, ...]]]:
+    """Each saved simulation's report row and results under ``evaluators``."""
     for run in runs:
         directory, simulations = saved_simulations(run)
         for simulation in simulations:
@@ -60,23 +62,35 @@ def report(runs: Sequence[str], source: RetailStateSource) -> list[dict]:
             checks: dict[str, Counter] = {}
             for result in results:
                 checks.setdefault(result.evaluation_key, Counter())[result.status.value] += 1
-            rows.append(
-                {
-                    "run": directory.name,
-                    "simulation_id": simulation.simulation_id,
-                    "task_id": simulation.task_id,
-                    "checks": {key: dict(sorted(checks[key].items())) for key in sorted(checks)},
-                    "authentication_compliance": authentication_compliance(results)[
-                        simulation.simulation_id
-                    ].value,
-                    "concerns": [
-                        {"check": r.evaluation_key, "status": r.status.value, "reason": r.reason}
-                        for r in results
-                        if r.status not in _NOT_A_CONCERN
-                    ],
-                }
-            )
-    return rows
+            row = {
+                "run": directory.name,
+                "simulation_id": simulation.simulation_id,
+                "task_id": simulation.task_id,
+                "checks": {key: dict(sorted(checks[key].items())) for key in sorted(checks)},
+                "concerns": [
+                    {"check": r.evaluation_key, "status": r.status.value, "reason": r.reason}
+                    for r in results
+                    if r.status not in _NOT_A_CONCERN
+                ],
+            }
+            yield row, results
+
+
+def report(runs: Sequence[str], source: RetailStateSource) -> list[dict]:
+    evaluators = (
+        AuthenticationOrderEvaluator(),
+        UserAccessEvaluator(source),
+        MessageFormEvaluator(),
+    )
+    return [
+        {
+            **row,
+            "authentication_compliance": authentication_compliance(results)[
+                row["simulation_id"]
+            ].value,
+        }
+        for row, results in checked_simulations(runs, evaluators)
+    ]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
