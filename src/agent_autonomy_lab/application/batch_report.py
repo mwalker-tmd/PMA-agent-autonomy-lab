@@ -86,7 +86,8 @@ def _hook_c(row: SimulationRow, judge_model: str) -> dict[str, Any]:
         "benchmark_judge": {
             "expected_calls": 1 if reward and reward.details.get("nl_assertions") else 0,
             "callback_calls": len(judge_seen),
-            "provider_calls": sum(call.model == judge_model for call in sent),
+            # Hook C sees only successes, so a refused try before a retry is left out here too.
+            "provider_calls": sum(call.model == judge_model and call.succeeded for call in sent),
             "prompt_tokens": sum(call.get("prompt") or 0 for call in judge_seen),
             "completion_tokens": sum(call.get("completion") or 0 for call in judge_seen),
             "litellm_cost_usd": None if None in costs else sum(costs),

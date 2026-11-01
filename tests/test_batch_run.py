@@ -2,6 +2,7 @@
 
 import itertools
 import json
+import subprocess
 from dataclasses import replace
 from uuid import uuid4
 
@@ -143,6 +144,12 @@ def test_a_plan_refuses_limits_that_mean_nothing(bad):
         BatchPlan(**{"task_list": TASKS, "trials": 1, "cap_usd": 1.0, **bad})
 
 
+@pytest.mark.parametrize("cap", [float("nan"), float("inf"), float("-inf")])
+def test_a_cap_no_total_could_reach_is_refused(cap):
+    with pytest.raises(ValueError, match="finite"):
+        BatchPlan(TASKS, 1, cap)
+
+
 def test_a_task_list_refuses_a_repeated_task():
     with pytest.raises(ValueError, match="twice"):
         TaskList("v", "s", ("0", "0"), "abc")
@@ -201,6 +208,29 @@ def test_judge_spend_counts_toward_the_cap():
     )
     assert runner.asked == [("0", 0, 0)]
     assert "cap" in outcome.stop_reason
+
+
+def test_judging_the_last_simulation_past_the_cap_says_so_and_keeps_its_results():
+    outcome, _, _ = execute(
+        [finished("0", usd=0.30)],
+        batch=plan(cap=0.50, tasks=TaskList("v", "s", ("0",), "a")),
+        score=scorer(usd=0.30),
+    )
+    (row,) = outcome.rows
+    assert "cap" in outcome.stop_reason
+    assert row.results and row.not_scored is None
+
+
+def test_a_judge_call_on_the_last_simulation_that_cannot_be_priced_says_so():
+    def score(subject):
+        return ScoredSimulation(_one_result(subject), (ProviderCall("unlisted", 200, 1, 1),))
+
+    outcome, _, _ = execute(
+        [finished("0")],
+        batch=plan(tasks=TaskList("v", "s", ("0",), "a")),
+        score=ScriptedSimulationScorer(score),
+    )
+    assert "could not be priced" in outcome.stop_reason
 
 
 def test_an_application_failure_stays_scored_and_is_not_retried():
@@ -448,6 +478,16 @@ def test_hook_c_agrees_when_the_callback_saw_the_judge():
     check = batch_figures(outcome, CannedReferenceWrites(), JUDGE)["hook_c"]
     assert (check["expected_calls"], check["callback_calls"], check["provider_calls"]) == (1, 1, 1)
     assert check["prompt_tokens"] == 100 and check["litellm_cost_usd"] == 0.0002
+    assert check["mismatched_simulations"] == []
+
+
+def test_a_refused_judge_call_before_a_retry_is_not_a_hook_c_mismatch():
+    calls = (ProviderCall(JUDGE, 429), ProviderCall(JUDGE, 200, 100, 20))
+    seen = ({"model": JUDGE, "cost": 0.0002, "prompt": 100, "completion": 20},)
+    attempt = finished("0", reward=_nl_reward(), provider_calls=calls, callback_calls=seen)
+    outcome, _, _ = execute([attempt], batch=plan(tasks=TaskList("v", "s", ("0",), "a")))
+    check = batch_figures(outcome, CannedReferenceWrites(), JUDGE)["hook_c"]
+    assert (check["expected_calls"], check["callback_calls"], check["provider_calls"]) == (1, 1, 1)
     assert check["mismatched_simulations"] == []
 
 
@@ -725,6 +765,31 @@ def test_each_raw_output_id_a_result_gives_can_be_followed(offline, capsys):
     linked = [r for r in record["results"] if r["raw_output_id"]]
     assert linked and all(r["raw_output_id"] in raw for r in linked)
     assert "call" in raw[linked[0]["raw_output_id"]]["payload"]
+
+
+def test_an_attempt_stopped_before_scoring_still_keeps_its_trace_ids(offline, capsys):
+    assert _main(offline, "--cap-usd", "0.0000001") == 1
+
+    saved = offline / "simulations" / "smoke" / "task-0-trial-0-attempt-0"
+    events = (saved / "trace_events.jsonl").read_text().splitlines()
+    assert events and json.loads(events[0])["event_id"]
+    assert not (saved / "judges.cassette.json").exists()
+
+
+def test_the_commit_check_sees_source_changes_from_any_directory(tmp_path):
+    git = ("git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@example.com")
+    nested = tmp_path / "src" / "pkg" / "entrypoints"
+    nested.mkdir(parents=True)
+    (nested / "module.py").write_text("a = 1\n")
+    subprocess.run(("git", "init", "-q", str(tmp_path)), check=True)
+    subprocess.run((*git, "add", "."), check=True)
+    subprocess.run((*git, "commit", "-qm", "first"), check=True)
+
+    clean = entrypoint._lab_commit(nested)
+    assert len(clean) == 40
+
+    (nested / "module.py").write_text("a = 2\n")
+    assert entrypoint._lab_commit(nested) == f"{clean}+changes"
 
 
 def test_a_run_never_overwrites_a_saved_one(offline, capsys):

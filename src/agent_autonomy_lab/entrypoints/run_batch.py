@@ -151,12 +151,13 @@ def _write_raw_outputs(path: Path, output: EvaluatorOutput) -> None:
     path.write_text("".join(line + "\n" for line in lines), encoding="utf-8")
 
 
-def _lab_commit() -> str:
-    """The commit that ran, marked if the tree had changes, since a manifest must name it."""
-    git = ("git", "-C", str(Path(__file__).parent))
+def _lab_commit(start: Path | None = None) -> str:
+    """The commit that ran, marked if its source had changes, since a manifest must name it."""
+    git = ("git", "-C", str(start or Path(__file__).parent))
     commit = subprocess.run((*git, "rev-parse", "HEAD"), capture_output=True, text=True)
+    # ``:/`` anchors the path at the repository's root, wherever the command runs from.
     changes = subprocess.run(
-        (*git, "status", "--porcelain", "--", "src"), capture_output=True, text=True
+        (*git, "status", "--porcelain", "--", ":/src"), capture_output=True, text=True
     )
     if commit.returncode:
         return "unknown"
@@ -256,10 +257,15 @@ class LiveSession:
         self._directories[result.simulation_id] = directory
         return result
 
+    def save_trace_events(self, row: SimulationRow) -> None:
+        """Keep the sent IDs for every attempt, scored or not, since traces expire."""
+        directory = self._directories[row.attempt.simulation_id]
+        lines = [json.dumps(event.to_dict(), ensure_ascii=False) for event in row.events]
+        path = directory / "trace_events.jsonl"
+        path.write_text("".join(line + "\n" for line in lines), encoding="utf-8")
+
     def score(self, subject: EvaluationSubject) -> ScoredSimulation:
         directory = self._directories[subject.simulation_id]
-        lines = [json.dumps(event.to_dict(), ensure_ascii=False) for event in subject.events]
-        (directory / "trace_events.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
         recorder = RecordingTransport()
         before = len(self._counter.calls)
         with litellm_transport(recorder):
@@ -475,6 +481,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     began = time.perf_counter()
 
     def write_row(row: SimulationRow) -> None:
+        session.save_trace_events(row)
         record = simulation_record(row, session.references, DEFAULT_LLM_NL_ASSERTIONS)
         with results_path.open("a", encoding="utf-8") as file:
             file.write(json.dumps(record, ensure_ascii=False) + "\n")

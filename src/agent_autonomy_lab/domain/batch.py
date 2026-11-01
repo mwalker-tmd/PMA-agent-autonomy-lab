@@ -5,6 +5,7 @@ LiteLLM's estimate was about a third of the Milestone 2 bill. A call that cannot
 is counted rather than treated as free, so a run can stop when it can no longer hold its cap.
 """
 
+import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -47,8 +48,9 @@ class BatchPlan:
     def __post_init__(self) -> None:
         if self.trials < 1:
             raise ValueError("a batch needs at least one trial")
-        if self.cap_usd <= 0:
-            raise ValueError("a batch needs a positive spend cap")
+        # NaN and infinity pass a comparison with zero, and no total would ever reach them.
+        if not math.isfinite(self.cap_usd) or self.cap_usd <= 0:
+            raise ValueError("a batch needs a positive, finite spend cap")
         if self.max_retries < 0:
             raise ValueError("max_retries cannot be negative")
 

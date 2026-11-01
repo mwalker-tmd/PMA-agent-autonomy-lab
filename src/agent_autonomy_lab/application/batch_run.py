@@ -6,10 +6,11 @@ outside cause makes it ``INVALID`` (ADR-018). Only an ``INVALID`` run is retried
 retrying a poor result until it passes would inflate the pass rate; the ``INVALID`` row
 stays, and the retry is logged apart from the results.
 
-The cap is checked before each simulation and before its scoring, so a run can pass it by
-at most one of those stages. The batch also stops when it can no longer trust what it is
-measuring: when an agent turn sent something upstream's agent would not, or a provider call
-cannot be priced, and when the runner or the scorer itself raises.
+The cap is checked before each simulation, before its scoring, and after it, so a run can
+pass it by at most one of those stages and a stop always says so. The batch also stops when
+it can no longer trust what it is measuring: when an agent turn sent something upstream's
+agent would not, or a provider call cannot be priced, and when the runner or the scorer
+itself raises.
 """
 
 from collections.abc import Callable, Iterable, Sequence
@@ -243,6 +244,7 @@ class _Batch:
             self.stop(f"The scorer raised {type(error).__name__}: {error}")
             return self._unscored(attempt, standing, events, self.outcome.stop_reason)
         ledger.add(scored.provider_calls)
+        self.check_spend()  # The last simulation has no later check, and its results stay.
         trace, trace_error = self._send(attempt, scored.output, events)
         return SimulationRow(
             attempt=attempt,
