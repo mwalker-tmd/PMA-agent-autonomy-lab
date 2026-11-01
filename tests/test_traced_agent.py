@@ -248,7 +248,8 @@ def test_stop_is_recorded_once():
 
 def test_local_timestamps_are_read_in_this_machines_zone():
     agent = TracedAgent(StubInner([text_reply()]), TurnRecorder("lab", FakeClock()))
-    local = datetime(2026, 10, 29, 12, 0, 0)
+    # Today, because the agent reads every time in the machine's current UTC offset.
+    local = datetime.now().replace(microsecond=0)
     state = agent.get_init_state([opener()])
     agent.generate_next_message(user(timestamp=local.isoformat()), state)
     (_, message, _) = agent.recorder.recording().transcript
