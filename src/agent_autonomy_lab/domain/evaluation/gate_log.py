@@ -9,6 +9,7 @@ gated path for now.
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
@@ -91,8 +92,13 @@ def has_event(events: Iterable[TraceEvent], *classes: GateEventClass) -> bool:
     return any(event.gate_event in classes for event in events)
 
 
-def approval_stands(events: Sequence[TraceEvent], call_hash: str | None) -> bool | None:
+def approval_stands(
+    events: Sequence[TraceEvent], call_hash: str | None, ran_at: datetime | None = None
+) -> bool | None:
     """Whether an ``APPROVED`` for exactly these arguments still held when the tool ran.
+
+    The tool ran at its execution event or, with none, at ``ran_at``, the time of its
+    result. Nothing recorded after that can have authorized it or taken that back.
 
     A later ``DENIED`` or an approval of other arguments ends it, since changed arguments
     invalidate an approval (docs/AUTONOMY.md, "Required invariants"). With a hash missing
@@ -103,6 +109,8 @@ def approval_stands(events: Sequence[TraceEvent], call_hash: str | None) -> bool
     stands = False
     for event in events:
         if event.gate_event in (GateEventClass.EXECUTED, GateEventClass.EXECUTION_FAILED):
+            break
+        if ran_at is not None and event.timestamp > ran_at:
             break
         if event.gate_event is GateEventClass.DENIED:
             stands = False

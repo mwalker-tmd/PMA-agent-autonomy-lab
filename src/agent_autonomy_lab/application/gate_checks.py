@@ -130,8 +130,11 @@ class _GatedWrite:
 
     @property
     def conflict(self) -> str | None:
-        """How the gate log and the tool result disagree, if they do."""
-        if has_event(self.events, GateEventClass.EXECUTED) and self.result and not self.succeeded:
+        """How the gate log disagrees with the tool result or the call, if it does."""
+        executed = [e for e in self.events if e.gate_event is GateEventClass.EXECUTED]
+        if any(e.argument_hash and e.argument_hash != self.call_hash for e in executed):
+            return "The gate log's execution event names other arguments than the tool call."
+        if executed and self.result and not self.succeeded:
             return "The gate log says this write executed, but its tool result says it did not."
         return None
 
@@ -142,7 +145,8 @@ def _gated_writes(
     """Each write once, matched to its gate events through its span.
 
     A call with no span to bind it, as when it has no result, takes the first unclaimed
-    gate run with its tool and arguments. A gate run no call claims is still a write.
+    gate run whose span has its tool and arguments. A gate run no call claims is still a
+    write, and its arguments are its span's, never what an approval says they were.
     """
     records = [r for r in tool_timeline(simulation.messages) if r.call.name in WRITE_TOOLS]
     spans = {id(record): evidence.tool_span(record) for record in records}
@@ -159,19 +163,20 @@ def _gated_writes(
                     for run, events in log.runs.items()
                     if run not in claimed
                     and events[0].tool_name == record.call.name
-                    and any(event.argument_hash == call_hash for event in events)
+                    and evidence.tool_run(run).argument_hash == call_hash
                 ),
                 None,
             )
             if run_id is not None:
                 claimed.add(run_id)
+                span = evidence.tool_run(run_id)
         target = str(run_id) if run_id else unit_target(record, evidence)
         events = log.runs.get(run_id, ())
         writes.append(_GatedWrite(target, record, span, events, call_hash))
     for run, events in log.runs.items():
         if run not in claimed and events[0].tool_name in WRITE_TOOLS:
-            call_hash = next((e.argument_hash for e in events if e.argument_hash), None)
-            writes.append(_GatedWrite(str(run), None, None, events, call_hash))
+            span = evidence.tool_run(run)
+            writes.append(_GatedWrite(str(run), None, span, events, span.argument_hash))
     return writes
 
 
@@ -199,7 +204,8 @@ def _check_level(results: CheckResults, write: _GatedWrite) -> None:
 
 
 def _check_approval(results: CheckResults, write: _GatedWrite) -> None:
-    stands = approval_stands(write.events, write.call_hash)
+    ran_at = write.result.timestamp if write.result else None
+    stands = approval_stands(write.events, write.call_hash, ran_at)
     if stands is None:
         results.unknown(write.target, "An approval or call has no argument hash.", write.cited)
     elif stands:

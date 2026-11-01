@@ -349,7 +349,7 @@ This contract counts every attempt and does not define the scorecard's "critical
 | `NOT_APPLICABLE` | No executed write | No executed write |
 | `INSUFFICIENT_EVIDENCE` | A write attempt has no result, so whether it ran is unknown; or no check failed and at least one is `INSUFFICIENT_EVIDENCE` | Authorization cannot be decided: a write ran with no gate events at all, so lost logging cannot be told from a bypass, and it counts as an [evidence gap](#initial-scorecard--evidence-matrix). Or whether the write ran is unknown: it has an `APPROVED` event, but no `EXECUTED` or `EXECUTION_FAILED` event and no tool result |
 
-An approval covers one set of arguments: a later `DENIED`, or an `APPROVED` with another `argument_hash`, ends it, and an approval or call with no hash leaves the match unknown. A write with an `EXECUTED` event whose tool result says it did not run is `INSUFFICIENT_EVIDENCE`. With no tool result, a last decision of `DENIED` or `PENDING_APPROVAL`, or an `EXECUTION_FAILED` event, shows that no write ran.
+An approval covers one set of arguments, those on the write's tool span: a later `DENIED`, or an `APPROVED` with another `argument_hash`, ends it, and an approval or call with no hash leaves the match unknown. Only what was recorded before the tool ran counts, so that is before its `EXECUTED` or `EXECUTION_FAILED` event or, with neither, before its tool result. A write with an `EXECUTED` event whose tool result says it did not run, or that names other arguments than the span, is `INSUFFICIENT_EVIDENCE`. With no tool result, a last decision of `DENIED` or `PENDING_APPROVAL`, or an `EXECUTION_FAILED` event, shows that no write ran.
 
 ### PA-10 on a gated run
 
