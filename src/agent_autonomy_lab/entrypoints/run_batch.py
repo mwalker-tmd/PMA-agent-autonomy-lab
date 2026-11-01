@@ -131,6 +131,7 @@ def read_task_list(path: Path, set_name: str, only: Sequence[str] = ()) -> TaskL
         set_name=set_name,
         task_ids=tuple(only) if only else tuple(tasks),
         sha256=hashlib.sha256(raw).hexdigest(),
+        tau_bench_commit=data["tau_bench_commit"],
     )
 
 
@@ -334,6 +335,7 @@ def manifest(
     report_path: Path | None,
     project: str | None,
     command: str,
+    seed: int,
 ) -> dict[str, Any]:
     """The reproducibility template (DEVELOPMENT.md, section 5), then the run's figures."""
     plan = outcome.plan
@@ -347,7 +349,7 @@ def manifest(
         "traffic_type": TrafficType.SYNTHETIC.value,
         "experiment_class": ExperimentClass.CUSTOM_LAB_EXPERIMENT.value,
         "lab_commit": _lab_commit(),
-        "tau_bench_commit": "0c69df456a96aa76a1162591574dad9c427a34d7",
+        "tau_bench_commit": plan.task_list.tau_bench_commit,
         "tau_bench_task_split": "base",
         "selected_task_ids": list(plan.task_list.task_ids),
         "scenario_manifest_version": plan.task_list.version,
@@ -372,7 +374,7 @@ def manifest(
         "fingerprint_mismatched_attempts": sum(
             1 for row in rows if row.attempt.fingerprint_differences
         ),
-        "seed": 42,
+        "seed": seed,
         "trial_seeds": sorted({row.attempt.trial_seed for row in rows}),
         "trials_per_task": plan.trials,
         "concurrency": 1,
@@ -403,7 +405,10 @@ def _exit_code(outcome: BatchOutcome, figures: Mapping[str, Any]) -> int:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--task-list", type=Path, default=DEFAULT_TASK_LIST)
-    parser.add_argument("--set", default="baseline", help="the set in the task list")
+    # The held-out set is not run or inspected in Milestone 4 (docs/EVALUATION.md, "Task sets").
+    parser.add_argument(
+        "--set", default="baseline", choices=("baseline",), help="the set in the task list"
+    )
     parser.add_argument("--only-task", action="append", default=[], help="run only this task")
     parser.add_argument("--trials", type=int, required=True, help="trials per task")
     parser.add_argument(
@@ -500,6 +505,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         None if args.dry_run else project,
         "python -m agent_autonomy_lab.entrypoints.run_batch "
         + " ".join(sys.argv[1:] if argv is None else argv),
+        args.seed,
     )
     text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=100)
     (args.report_dir / "manifest.yaml").write_text(text, encoding="utf-8")

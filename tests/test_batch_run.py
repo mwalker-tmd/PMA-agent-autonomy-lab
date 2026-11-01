@@ -627,8 +627,16 @@ def _main(tmp_path, *extra) -> int:
     )
 
 
+def test_the_held_out_set_cannot_be_run_by_this_entrypoint(capsys):
+    with pytest.raises(SystemExit):
+        entrypoint._parser().parse_args(
+            ["--set", "held_out", "--trials", "1", "--save-to", "x", "--report-dir", "y"]
+        )
+    assert "invalid choice" in capsys.readouterr().err
+
+
 def test_an_offline_run_saves_every_artifact_and_a_template_manifest(offline, capsys):
-    assert _main(offline) == 0
+    assert _main(offline, "--seed", "7") == 0
 
     saved = offline / "simulations" / "smoke" / "task-0-trial-0-attempt-0"
     for name in (
@@ -652,6 +660,8 @@ def test_an_offline_run_saves_every_artifact_and_a_template_manifest(offline, ca
     assert set(template.split()) <= set(data)
     assert data["experiment_class"] == "custom_lab_experiment"
     assert data["lab_commit"] != "unknown"
+    assert data["tau_bench_commit"] == "0c69df456a96aa76a1162591574dad9c427a34d7"
+    assert data["seed"] == 7
     assert data["scenario_manifest_version"] == "m4-task-sets-v1"
     assert data["fingerprint_mismatched_attempts"] == 0
     assert data["completed"] == 1 and data["failed_to_run"] == 0

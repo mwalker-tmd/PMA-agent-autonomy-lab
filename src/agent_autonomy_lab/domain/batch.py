@@ -25,6 +25,7 @@ class TaskList:
     set_name: str
     task_ids: tuple[str, ...]
     sha256: str
+    tau_bench_commit: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "task_ids", tuple(self.task_ids))
