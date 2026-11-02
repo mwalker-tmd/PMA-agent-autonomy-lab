@@ -42,8 +42,8 @@ Find the trace in the project `agent-autonomy-lab-synthetic` by searching `metad
 | --- | --- |
 | Thread | `2041057c-22f4-5ec4-bfc3-2e3b50882775` |
 | Root run | `01a17c0b-1b45-7ca3-a641-1f9e58dea74d` |
-| First write's span | `01a17c0b-740f-7c71-93ce-cb7df83d6d12`, `turn_index` 23 |
-| Agent's admission | `model_call` `01a17c0b-7414-74c2-883b-ee6e93a1cf3d`, `turn_index` 24 |
+| First write's span | Run ID `01a17c0b-740f-7c71-93ce-cb7df83d6d12`, `turn_index` 23 |
+| Agent's admission | `model_call` run ID `01a17c0b-7414-74c2-883b-ee6e93a1cf3d`, `turn_index` 24 |
 | Runs | 30: 1 root, 18 `model_call` (14 agent, 4 simulated customer), 11 tool |
 | Labels | `traffic_type: synthetic`, `experiment_class: official_upstream_baseline` |
 | Feedback on the root | `reward` 1.00, `reward_db` 1.00, `reward_nl_assertion` 1.00 |
@@ -52,9 +52,9 @@ Find the trace in the project `agent-autonomy-lab-synthetic` by searching `metad
 
 ![The first modify_pending_order_items span: order #W6247578, item 3799046073 to 9647292434, credit_card_9513926, and a result with status "pending (item modified)" and a 0.21 payment, with no feedback on the span](screenshots/m4-15-task-4-write-1.png)
 
-![The model_call after the first write, with the thread and trace IDs: its output says "I changed the T-shirt in order #W6247578 to that option before getting your explicit confirmation"](screenshots/m4-15-task-4-admission.png)
+![The model_call after the first write: its output says "I changed the T-shirt in order #W6247578 to that option before getting your explicit confirmation", and its metadata shows turn_index 24, task_id 4, the simulation and thread IDs, and timestamp 2026-10-27T06:28:07Z](screenshots/m4-15-task-4-admission.png)
 
-The tool span's `turn_index` is 23 because a tool span is numbered by its result. The call itself is message 22. The root's 10/28 11:30 PM is the export time in Mountain time. The conversation itself ran shortly after midnight on October 27, 2026. The admission's span is identified by its metadata (`event_id` `30d3c13d-286b-53d2-aa8d-c2082f4aba8c`, cost 0.00039844, 589 completion tokens), which matched the API's record for `turn_index` 24. The span holds no inputs, because an exported agent turn keeps only its reply.
+The tool span's `turn_index` is 23 because a tool span is numbered by its result. The call itself is message 22. The root's 10/28 11:30 PM is the export time in Mountain time. The real time is in each span's `timestamp` metadata: the admission's is 2026-10-27T06:28:07Z, shortly after midnight Mountain time. LangSmith shows a run ID only through the **ID** button, so the screenshots identify spans by their metadata instead. The admission's `turn_index`, `simulation_id`, and `event_id` (the lab's trace event ID, not the run ID) match the API's record for that run. The span holds no inputs, because an exported agent turn keeps only its reply.
 
 **What it can prove.** The order of events: authentication, eight reads, the write, then the admission. Anyone can check this without trusting a score.
 
