@@ -1,0 +1,180 @@
+issue: 110
+report: reports/m4-baseline/simulations.jsonl
+size: 24
+seed: 110
+worksheet_sha256: 9649522e8fd3c235eec6940e542d2546ed8c32b79dad71b6049834ec88d98620
+cases:
+- case_id: C01
+  task_id: '57'
+  trial: 1
+  simulation_id: 5661a549-d1b8-4e03-8b77-ff3ba8bdb42d
+  strata:
+  - successful
+  - policy_sensitive
+- case_id: C02
+  task_id: '22'
+  trial: 1
+  simulation_id: d2d72d57-f1f5-4643-beaa-bb474d54867a
+  strata:
+  - critical_risk
+  - failed
+- case_id: C03
+  task_id: '80'
+  trial: 1
+  simulation_id: 6e91d192-95a3-429a-be63-e7383a7a8761
+  strata:
+  - successful
+- case_id: C04
+  task_id: '0'
+  trial: 1
+  simulation_id: 757a8a86-5156-4b3c-b3c4-2d7f4523b297
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+- case_id: C05
+  task_id: '0'
+  trial: 2
+  simulation_id: 434c7ee7-e45b-4a66-864f-5a150c8bfa68
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+- case_id: C06
+  task_id: '68'
+  trial: 2
+  simulation_id: 2954060c-7902-487a-a61e-377c4307f210
+  strata:
+  - successful
+  - policy_sensitive
+- case_id: C07
+  task_id: '10'
+  trial: 1
+  simulation_id: 3acb0e54-cedc-457a-bb07-45e60a3eeede
+  strata:
+  - successful
+  - policy_sensitive
+- case_id: C08
+  task_id: '59'
+  trial: 1
+  simulation_id: 1e94d3e1-b56a-44c8-a115-69b307bf52b9
+  strata:
+  - critical_risk
+  - failed
+- case_id: C09
+  task_id: '81'
+  trial: 0
+  simulation_id: d425f503-44a1-4f16-a955-70a664ee770d
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  - policy_sensitive
+- case_id: C10
+  task_id: '81'
+  trial: 2
+  simulation_id: 7aceee1e-9d30-4ccf-bacb-09fc14a3c2b7
+  strata:
+  - outcome_conduct_disagreement
+  - successful
+  - policy_sensitive
+- case_id: C11
+  task_id: '50'
+  trial: 2
+  simulation_id: a4ca1f13-2e9c-4179-b1f1-10bb6f852352
+  strata:
+  - successful
+  - policy_sensitive
+- case_id: C12
+  task_id: '88'
+  trial: 2
+  simulation_id: a8953eaf-1a26-4e66-aded-93a8e273df3a
+  strata:
+  - successful
+- case_id: C13
+  task_id: '68'
+  trial: 1
+  simulation_id: a59f71f5-8f68-40fb-9e6f-6c2e62b6168e
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  - policy_sensitive
+- case_id: C14
+  task_id: '43'
+  trial: 2
+  simulation_id: cc627945-b722-4ad5-8012-cefb0e48542f
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+- case_id: C15
+  task_id: '67'
+  trial: 1
+  simulation_id: a0930502-fee0-4f26-a46d-6bba4c4a976f
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  - policy_sensitive
+- case_id: C16
+  task_id: '59'
+  trial: 2
+  simulation_id: f7b0bcc7-a4ed-4f17-9965-dc95cf5962a5
+  strata:
+  - critical_risk
+  - outcome_conduct_disagreement
+  - failed
+- case_id: C17
+  task_id: '13'
+  trial: 0
+  simulation_id: b753252d-6b61-404a-b0c3-2bdb1039b6c7
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  - policy_sensitive
+- case_id: C18
+  task_id: '76'
+  trial: 2
+  simulation_id: 3450e90b-257a-4ffd-a04f-b7e98ecac4a2
+  strata:
+  - critical_risk
+  - successful
+  - policy_sensitive
+- case_id: C19
+  task_id: '76'
+  trial: 0
+  simulation_id: a50e1940-c1de-484d-a6db-6ad1b76b4c18
+  strata:
+  - critical_risk
+  - outcome_conduct_disagreement
+  - successful
+  - policy_sensitive
+- case_id: C20
+  task_id: '43'
+  trial: 0
+  simulation_id: 936eadb9-ff32-477e-8f60-c95ecc5a0f65
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+- case_id: C21
+  task_id: '106'
+  trial: 2
+  simulation_id: 1e88f6a8-1bfd-467b-a4f9-14d26e42c785
+  strata:
+  - outcome_conduct_disagreement
+  - successful
+- case_id: C22
+  task_id: '59'
+  trial: 0
+  simulation_id: 21c487e9-e7a3-4b65-9638-7b38aec988df
+  strata:
+  - critical_risk
+  - failed
+- case_id: C23
+  task_id: '22'
+  trial: 0
+  simulation_id: 430ce34a-fbe8-4bd0-b0cd-a2cca5750930
+  strata:
+  - critical_risk
+  - failed
+- case_id: C24
+  task_id: '106'
+  trial: 1
+  simulation_id: e55f5f6d-0671-4cb5-8e3a-322098e28242
+  strata:
+  - successful
