@@ -119,7 +119,8 @@ Across the sample, the maintainer called 10 of the 13 reward-0 cases handled cor
 ## Reproduce
 
 ```
-# The sample and blind worksheet, with no model call
+# The sample and blind worksheet, with no model call. The recorded hash is the page labeled, at
+# commit d6c8c80. The template's later fixes change the hash of a rebuild, not its cases.
 uv run python -m agent_autonomy_lab.entrypoints.adjudicate sample \
   ../tau2-bench/data/simulations/m4-baseline --sample SAMPLE.yaml --worksheet WORKSHEET.html
 

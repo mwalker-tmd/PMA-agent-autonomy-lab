@@ -348,3 +348,23 @@ def test_metric_counts_leave_other_statuses_out_of_the_denominator():
         "insufficient_evidence": 1,
         "evaluator_error": 1,
     }
+
+
+def test_a_saved_run_that_is_not_the_sampled_simulation_is_refused(tmp_path):
+    directory = tmp_path / "task-4-trial-0-attempt-1"
+    directory.mkdir()
+    (directory / "simulation.json").write_text(TASK_4.read_text("utf-8"), encoding="utf-8")
+    row = {"task_id": "4", "trial": 0, "attempt": 1, "simulation_id": "someone-else"}
+    with pytest.raises(ValueError, match="not someone-else"):
+        adjudicate.sampled_subject(tmp_path, row)
+    _, (simulation,) = saved_simulations(str(TASK_4))
+    row["simulation_id"] = simulation.simulation_id
+    assert adjudicate.sampled_subject(tmp_path, row).simulation_id == simulation.simulation_id
+
+
+def test_the_worksheet_exports_what_compare_reads_and_waits_for_saved_labels():
+    page = adjudicate.render_worksheet([])
+    for field in ("confirmation_by_write:", "note: l.note || null", "{ labels: CASES"):
+        assert field in page
+    assert page.index('$("sheet").inert = true') < page.index("db = api")
+    assert page.index('.collection("labels").get()') < page.index("db = api")

@@ -250,8 +250,24 @@ function renderRubric(host, title, text) {
   host.append(box);
 }
 
+// The shape `adjudicate compare --labels` reads.
+function exportedLabels() {
+  return { labels: CASES.filter((c) => labels[c.id]).map((c) => {
+    const l = labels[c.id];
+    return {
+      case_id: c.id,
+      clarity: l.clarity ?? null,
+      efficiency: l.efficiency ?? null,
+      escalation: l.escalation ?? null,
+      confirmation_by_write: l.writes ?? [],
+      handled_correctly: l.handled_correctly ?? null,
+      note: l.note || null,
+    };
+  }) };
+}
+
 $("copy").onclick = async () => {
-  const text = JSON.stringify(Object.values(labels), null, 2);
+  const text = JSON.stringify(exportedLabels(), null, 2);
   const area = $("fallback");
   area.value = text;
   try { await navigator.clipboard.writeText(text); setStatus("Copied."); }
@@ -267,19 +283,24 @@ let start = 0;
 try { start = Math.min(Number(localStorage.getItem("adjudication-case")) || 0, CASES.length - 1); } catch (e) {}
 show(start);
 setStatus("Connecting to saved labels…");
+$("sheet").inert = true; // No edits until saved labels are in, so a click cannot overwrite one.
 
 (async () => {
   const api = window.claude ? await window.claude.use("db") : null;
-  if (!api) { setStatus("Saving is off here. Use Copy all labels below before leaving.", true); return; }
-  db = api;
+  if (!api) {
+    $("sheet").inert = false;
+    setStatus("Saving is off here. Use Copy all labels below before leaving.", true);
+    return;
+  }
   try {
-    const snapshot = await db.collection("labels").get();
+    const snapshot = await api.collection("labels").get();
     snapshot.docs.forEach((d) => { labels[d.id] = d.data(); });
+    db = api;
     show(current);
+    $("sheet").inert = false;
     setStatus("Labels save as you click.");
   } catch (error) {
     setStatus("Saved labels could not be read. Reload before labeling, so nothing is overwritten.", true);
-    db = null;
   }
 })();
 </script>
