@@ -135,6 +135,8 @@ When the level does not grant a write, the gate must deny it with `decision_reas
 
 **These percentages are classroom placeholders**, not automatically valid business policy. For a real deployment, choose per-action severity thresholds, sample-size requirements, statistical confidence standards, and formal ownership. Zero observed critical failures in 100 conversations is not sufficient evidence for high-risk deployment.
 
+**Teaching arithmetic, not policy.** With no failures in *n* independent writes of one action, the one-sided 95% upper bound on that action's failure rate falls below 10% at 29 writes, 5% at 59, 2% at 149, and 1% at 299. Repeated trials of one task are not independent, so these are floors. The Milestone 4 baseline had 6–17 writes per action, and its measured rates are below every percentage above; see the [sample-size proposal](../reports/m4-baseline/sample-size-proposal.md). Thresholds and per-action minimums are set in Milestone 6 ([ADR-026](DECISIONS.md#adr-026--keep-the-baselines-sample-and-re-target-promotion-thresholds-to-milestone-6)).
+
 ### Promotion review packet
 
 Before granting a new action scope, a designated reviewer receives:
