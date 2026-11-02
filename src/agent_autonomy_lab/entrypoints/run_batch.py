@@ -70,7 +70,7 @@ from agent_autonomy_lab.application.batch_report import batch_figures, simulatio
 from agent_autonomy_lab.application.batch_run import BatchOutcome, SimulationRow, run_batch
 from agent_autonomy_lab.application.confirmation_judge import ConfirmationEvaluator
 from agent_autonomy_lab.application.gate_checks import evaluate_with_unauthorized_counts
-from agent_autonomy_lab.application.rubric_judges import rubric_judges
+from agent_autonomy_lab.application.rubric_judges import RUBRIC_V2, rubric_judges
 from agent_autonomy_lab.application.task_success import TaskSuccessEvaluator
 from agent_autonomy_lab.application.tool_correctness import (
     ExpectedWritesEvaluator,
@@ -101,6 +101,9 @@ from agent_autonomy_lab.entrypoints.run_options import (
 )
 from agent_autonomy_lab.entrypoints.settings import langsmith_project
 from agent_autonomy_lab.ports.batch import ScoredSimulation, StageFailed
+from agent_autonomy_lab.ports.evaluator import Evaluator
+from agent_autonomy_lab.ports.model_client import ModelClient
+from agent_autonomy_lab.ports.reference_writes import ReferenceWriteSource
 from agent_autonomy_lab.ports.trace_sink import InMemoryTraceSink, TraceSink
 
 DEFAULT_TASK_LIST = Path("datasets/m4-task-sets-v1.json")
@@ -164,6 +167,26 @@ def _lab_commit(start: Path | None = None) -> str:
     return commit.stdout.strip() + ("+changes" if changes.stdout.strip() else "")
 
 
+def scoring_evaluators(
+    client: ModelClient,
+    references: ReferenceWriteSource,
+    rubrics: tuple[str, str, str] = RUBRIC_V2,
+) -> tuple[Evaluator, ...]:
+    """Every check and judge a batch runs, in order, so a re-score runs the same ones."""
+    state = OneReplayPerSimulation(ReplayedRetailState())
+    return (
+        AuthenticationOrderEvaluator(),
+        UserAccessEvaluator(state),
+        MessageFormEvaluator(),
+        *write_eligibility_evaluators(state),
+        *prohibited_action_evaluators(state, references),
+        ExpectedWritesEvaluator(references),
+        TaskSuccessEvaluator(),
+        ConfirmationEvaluator(client),
+        *rubric_judges(client, rubrics),
+    )
+
+
 class LiveSession:
     """The real runner and scorer: one process, one registered agent, one saved directory."""
 
@@ -174,19 +197,8 @@ class LiveSession:
         self._counter = CallCounter()
         litellm.callbacks = [self._counter]
         self._client = LiteLLMModelClient()
-        state = OneReplayPerSimulation(ReplayedRetailState())
         self.references = GoldReplayReferenceWrites()
-        self._evaluators = (
-            AuthenticationOrderEvaluator(),
-            UserAccessEvaluator(state),
-            MessageFormEvaluator(),
-            *write_eligibility_evaluators(state),
-            *prohibited_action_evaluators(state, self.references),
-            ExpectedWritesEvaluator(self.references),
-            TaskSuccessEvaluator(),
-            ConfirmationEvaluator(self._client),
-            *rubric_judges(self._client),
-        )
+        self._evaluators = scoring_evaluators(self._client, self.references)
         self._directories: dict[str, Path] = {}
 
     def _observed(self, before: int, expected: int) -> tuple[Mapping[str, Any], ...]:

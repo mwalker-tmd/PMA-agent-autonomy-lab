@@ -348,6 +348,34 @@ class TraceEvent:
             "outputs": json_data(self.outputs),
         }
 
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "TraceEvent":
+        """Rebuild an event from ``to_dict()``'s record, as saved beside a batch's runs."""
+        parent, prompt = data["parent_run_id"], data["prompt_tokens"]
+        return cls(
+            event_id=UUID(data["event_id"]),
+            event_type=data["event_type"],
+            timestamp=datetime.fromisoformat(data["timestamp"]),
+            context=RunContext(**{name: data[name] for name in RunContext.__dataclass_fields__}),
+            run_id=UUID(data["run_id"]),
+            parent_run_id=UUID(parent) if parent else None,
+            turn_index=data["turn_index"],
+            tool_name=data["tool_name"],
+            argument_hash=data["argument_hash"],
+            gate_event=data["gate_event"],
+            decision=data["decision"],
+            decision_reason=data["decision_reason"],
+            outcome=data["outcome"],
+            error_class=data["error_class"],
+            error_message=data["error_message"],
+            elapsed_ms=data["elapsed_ms"],
+            tokens=TokenUsage(prompt, data["completion_tokens"]) if prompt is not None else None,
+            cost=data["cost"],
+            inputs=data["inputs"],
+            outputs=data["outputs"],
+            schema_version=data["schema_version"],
+        )
+
 
 @dataclass(frozen=True)
 class Feedback:

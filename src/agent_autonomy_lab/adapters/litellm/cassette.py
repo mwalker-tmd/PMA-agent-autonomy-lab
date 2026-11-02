@@ -29,6 +29,7 @@ because τ-bench's evaluator catches some judge errors.
 import hashlib
 import json
 import os
+from collections import deque
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -217,6 +218,46 @@ class ReplayTransport(httpx.BaseTransport):
             )
 
 
+class RequestMatchedReplay(httpx.BaseTransport):
+    """Serves each request the response recorded for that same request; nothing leaves.
+
+    ``ReplayTransport`` needs the recording to hold every call in order, so it cannot replay
+    a run in which a call failed before a response existed: the baseline's judge cassettes
+    hold 2 of the 3 calls of task ``43``, trial 0. Here a request with no recording raises,
+    as that call did, and later requests still match. Identical requests are served in the
+    order they were recorded. The caller reads ``unmatched`` and ``unserved``, because a
+    judge turns a failed call into a result.
+    """
+
+    def __init__(self, cassette: Cassette) -> None:
+        self._waiting: dict[tuple[str, str, str], deque[RecordedResponse]] = {}
+        for interaction in cassette.interactions:
+            key = _request_key(interaction.request)
+            self._waiting.setdefault(key, deque()).append(interaction.response)
+        self.served = 0
+        self.unmatched = 0
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        waiting = self._waiting.get(_request_key(_request(request)))
+        if not waiting:
+            self.unmatched += 1
+            raise CassetteMismatch(f"no recording of this request ({request.method} {request.url})")
+        self.served += 1
+        recorded = waiting.popleft()
+        headers = {"content-type": recorded.content_type} if recorded.content_type else {}
+        return httpx.Response(
+            recorded.status, headers=headers, content=recorded.body.encode("utf-8"), request=request
+        )
+
+    @property
+    def unserved(self) -> int:
+        return sum(len(waiting) for waiting in self._waiting.values())
+
+
+def _request_key(request: RecordedRequest) -> tuple[str, str, str]:
+    return request.method, request.url, canonical_json(request.body)
+
+
 def _same(a: Any, b: Any) -> bool:
     """JSON equality that keeps types; Python's ``==`` treats ``true``, ``1``, ``1.0`` as equal."""
     return canonical_json(a) == canonical_json(b)
@@ -272,23 +313,37 @@ _PROVIDER_KEYS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY")
 
 
 @contextmanager
-def replaying(cassette: Cassette) -> Iterator[ReplayTransport]:
-    """Serve every LiteLLM request from ``cassette`` while the block runs.
+def _offline(transport: httpx.BaseTransport) -> Iterator[None]:
+    """Route LiteLLM through ``transport`` with placeholder provider keys.
 
-    Provider API keys are replaced by a placeholder for the duration, so a
-    request that somehow bypassed the transport would be refused by the
-    provider instead of being billed.
+    A request that somehow bypassed the transport would be refused by the provider instead
+    of being billed.
     """
     saved = {name: os.environ.get(name) for name in _PROVIDER_KEYS}
     for name in _PROVIDER_KEYS:
         os.environ[name] = REPLAY_API_KEY
     try:
-        transport = ReplayTransport(cassette)
         with litellm_transport(transport):
-            yield transport
+            yield
     finally:
         for name, value in saved.items():
             if value is None:
                 os.environ.pop(name, None)
             else:
                 os.environ[name] = value
+
+
+@contextmanager
+def replaying(cassette: Cassette) -> Iterator[ReplayTransport]:
+    """Serve every LiteLLM request from ``cassette``, in recorded order, while the block runs."""
+    transport = ReplayTransport(cassette)
+    with _offline(transport):
+        yield transport
+
+
+@contextmanager
+def replaying_by_request(cassette: Cassette) -> Iterator[RequestMatchedReplay]:
+    """Serve every LiteLLM request from ``cassette`` by matching the request itself."""
+    transport = RequestMatchedReplay(cassette)
+    with _offline(transport):
+        yield transport

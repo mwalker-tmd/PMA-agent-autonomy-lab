@@ -1,0 +1,61 @@
+{
+ "schema_version": "trace-event/1",
+ "event_id": "2e0bc09b-ba17-592b-9c1f-bda36b462872",
+ "event_type": "model_call",
+ "timestamp": "2026-11-01T20:21:41.766841+00:00",
+ "simulation_id": "a59f71f5-8f68-40fb-9e6f-6c2e62b6168e",
+ "thread_id": "3713e41d-5449-5664-a31b-4e3b141d9aba",
+ "task_id": "68",
+ "scenario_id": null,
+ "run_id": "01a198c6-6706-748f-932f-97599e9dff37",
+ "parent_run_id": "01a198c6-6141-77a4-b972-4bfa422de82d",
+ "turn_index": 2,
+ "agent_version": "lab_traced_llm_agent",
+ "prompt_version": "prompt-a0211039d555",
+ "model_id": "openai/responses/gpt-6-luna",
+ "user_model_id": "openai/responses/gpt-6-luna",
+ "tool_schema_version": "tools-7d24cf1501c1",
+ "policy_version": "policy-2c9652afbce5",
+ "autonomy_level": "n/a",
+ "traffic_type": "synthetic",
+ "experiment_class": "custom_lab_experiment",
+ "fault_injected": false,
+ "workflow": null,
+ "scenario_category": null,
+ "tool_name": null,
+ "argument_hash": null,
+ "gate_event": null,
+ "decision": null,
+ "decision_reason": null,
+ "outcome": "success",
+ "error_class": null,
+ "error_message": null,
+ "elapsed_ms": 1939.17066603899,
+ "prompt_tokens": 3607,
+ "completion_tokens": 77,
+ "cost": 7.898e-05,
+ "inputs": {
+  "messages": [
+   {
+    "role": "user",
+    "content": "Hi, I’m trying to find out how much I paid for my most recent order. I’m not sure when I placed it."
+   }
+  ],
+  "model": "openai/responses/gpt-6-luna",
+  "model_args": {
+   "reasoning_effort": "medium",
+   "seed": 116739
+  },
+  "prompt_version": "prompt-a0211039d555",
+  "tool_schema_version": "tools-7d24cf1501c1",
+  "model_args_version": "args-2c6f0328d139"
+ },
+ "outputs": {
+  "messages": [
+   {
+    "role": "assistant",
+    "content": "{\"message\":\"I can help look that up. Please provide the email address on your account, or your first and last name plus ZIP code, so I can verify your account.\"}"
+   }
+  ]
+ }
+}

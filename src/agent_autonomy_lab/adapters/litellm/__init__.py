@@ -6,10 +6,12 @@ from agent_autonomy_lab.adapters.litellm.cassette import (
     CassetteMismatch,
     RecordingTransport,
     ReplayTransport,
+    RequestMatchedReplay,
     file_sha256,
     litellm_transport,
     provider_of,
     replaying,
+    replaying_by_request,
 )
 from agent_autonomy_lab.adapters.litellm.usage import (
     CallCounter,
@@ -24,10 +26,12 @@ __all__ = [
     "CassetteMismatch",
     "RecordingTransport",
     "ReplayTransport",
+    "RequestMatchedReplay",
     "effective_settings",
     "file_sha256",
     "litellm_transport",
     "provider_calls",
     "provider_of",
     "replaying",
+    "replaying_by_request",
 ]

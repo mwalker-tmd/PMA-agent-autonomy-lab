@@ -1,0 +1,53 @@
+bundle_files:
+  files: 307
+  missing: []
+  extra: []
+  changed: []
+baseline:
+  deterministic:
+    compared: 1901
+    identical: 1901
+  judged:
+    compared: 256
+    identical: 256
+  differences: []
+  requests_served: 228
+  requests_with_no_recording: 1
+  requests_with_no_recording_in:
+  - task 43 trial 0
+  recordings_unserved: 0
+  evidence:
+    decided: 1457
+    decided_citing_evidence: 1457
+    ids_cited: 2460
+    ids_found: 2460
+rubric_v2:
+  deterministic:
+    compared: 0
+    identical: 0
+  judged:
+    compared: 180
+    identical: 180
+  differences: []
+  requests_served: 178
+  requests_with_no_recording: 0
+  recordings_unserved: 0
+  evidence_in_rebuilt_trace:
+    decided: 135
+    decided_citing_evidence: 135
+    ids_cited: 182
+    ids_found: 182
+repeats:
+  v1:
+    compared: 273
+    replayed: 273
+    identical: 273
+    requests_with_no_recording: 0
+    recordings_unserved: 0
+  v2:
+    compared: 216
+    replayed: 216
+    identical: 216
+    requests_with_no_recording: 0
+    recordings_unserved: 0
+reproduced: true
