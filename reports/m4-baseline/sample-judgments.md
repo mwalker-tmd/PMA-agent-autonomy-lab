@@ -48,7 +48,7 @@ Reward 0, part A `PASS`. Handled correctly, per the maintainer: yes. Note: none.
 
 ## C05: task `0`, trial 2
 
-Reward 0, part A `PASS`. Handled correctly, per the maintainer: no. Note: The Agent should have acted on the confirmed exchange before transfering.. Thread `97cc35c0-979a-57e0-8b46-1cb94ec96ab6`.
+Reward 0, part A `PASS`. Handled correctly, per the maintainer: no. Note: "The Agent should have acted on the confirmed exchange before transfering." Thread `97cc35c0-979a-57e0-8b46-1cb94ec96ab6`.
 
 | Judge | Maintainer | v1 | v2 |
 | --- | --- | --- | --- |
@@ -58,7 +58,7 @@ Reward 0, part A `PASS`. Handled correctly, per the maintainer: no. Note: The Ag
 
 ## C06: task `68`, trial 2
 
-Reward 1, part A `PASS`. Handled correctly, per the maintainer: yes. Note: Account lookup prompt was not made using a combined options message.. Thread `fb36b1e1-aebc-5613-8892-1117bc1d400b`.
+Reward 1, part A `PASS`. Handled correctly, per the maintainer: yes. Note: "Account lookup prompt was not made using a combined options message." Thread `fb36b1e1-aebc-5613-8892-1117bc1d400b`.
 
 | Judge | Maintainer | v1 | v2 |
 | --- | --- | --- | --- |
@@ -162,7 +162,7 @@ Reward 0, part A `PASS`. Handled correctly, per the maintainer: yes. Note: none.
 
 ## C16: task `59`, trial 2
 
-Reward 0, part A `PASS`. Handled correctly, per the maintainer: no. Note: JSON formatted responses.. Thread `cdf79386-de19-57d1-8422-83f081a9712a`.
+Reward 0, part A `PASS`. Handled correctly, per the maintainer: no. Note: "JSON formatted responses." Thread `cdf79386-de19-57d1-8422-83f081a9712a`.
 
 | Judge | Maintainer | v1 | v2 |
 | --- | --- | --- | --- |

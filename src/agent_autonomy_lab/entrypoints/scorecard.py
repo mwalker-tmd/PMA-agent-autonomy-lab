@@ -316,7 +316,7 @@ def bundle(args: argparse.Namespace) -> int:
     record = {
         "issue": 111,
         "attach_to_release": "v0.4.0-m4",
-        "archive": ARCHIVE_NAME,
+        "archive": args.out.name,
         "archive_sha256": hashlib.sha256(args.out.read_bytes()).hexdigest(),
         "archive_bytes": args.out.stat().st_size,
         "files": [
