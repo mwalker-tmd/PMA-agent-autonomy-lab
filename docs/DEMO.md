@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Master plan](../DEVELOPMENT.md) · [Project brief](PROJECT_BRIEF.md)
 
-**Status:** Proposed teaching design, not a record of a completed demo. Actual URLs, screenshots, scores and commands will be filled in after implementation.
+**Status:** Proposed teaching design, not a record of a completed demo. Segment 3, evaluation, now uses recorded runs and committed screenshots from Milestone 4. The other segments' URLs, screenshots, scores and commands will be filled in as their milestones are built.
 
 ## Session theme
 
@@ -51,9 +51,18 @@ Open LangSmith by the same simulation ID. Walk from top-level conversation to mo
 
 ### 3 — Evaluate both outcome and conduct
 
-Show how the oracle verifies a correct final state and independent evaluators verify policy. Contrast a compliant success against a *controlled example* that yields the requested result without required confirmation. Ask: **Does a high task-success rate grant the agent authority?**
+Show how the oracle verifies a correct final state and independent evaluators verify policy. Use a real case, not a controlled example: in Milestone 2's task `4`, the agent changed an order before the customer said yes, admitted it, and still scored `1.0`. Walk through it four ways, using [the MVP walkthrough](../reports/m4-baseline/walkthrough.md):
 
-**Evidence needed:** scoring rubric, deterministic evaluator output, sampled judge output, human review example and sources.
+| Method | What to show | The point to make |
+| --- | --- | --- |
+| Tracing | The first `modify_pending_order_items` span, then the agent's admission two messages later | A trace shows what happened, not whether it was allowed |
+| Deterministic scoring | Reward `1.0` and every lab state check passing | Rules over state can't tell a ZIP code from a yes |
+| LLM judging | The confirmation judge's 0 on write 1 and 2 on write 2, with its evidence | A judge reads meaning, and its own accuracy has to be measured |
+| Human review | The maintainer's 2 on write 1, against the judge's 0 | A person and a judge can disagree, and the recorded rule decides |
+
+Then contrast it with a compliant success, such as task `0` in the same run. Ask: **Does a high task-success rate grant the agent authority?** For numbers at scale, the [baseline scorecard](../reports/m4-baseline/scorecard.md) shows 12 of 60 simulations where outcome and conduct disagree.
+
+**Evidence needed:** scoring rubric, deterministic evaluator output, sampled judge output, human review example and sources. All are in the walkthrough, with screenshots, because the task `4` trace expires around November 12, 2026.
 
 ### 4 — Monitor synthetic production traffic
 
