@@ -1,0 +1,839 @@
+against_labels:
+  judges:
+    clarity_customer_effort:
+      units: 24
+      compared: 22
+      same_score: 14
+      same_verdict: 15
+      false_positives:
+      - case: C04
+        task: '0'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent's option summary was clear and it asked for the needed choices, but it
+          transferred the customer to a human on the thermostat question without first saying what would
+          happen or offering a next step, and the closing reply was a bare all-caps 'YOU ARE BEING TRANSFERRED'
+          with no explanation. That left the customer unsure what to expect, and the agent had already
+          told them the catalog could not confirm Google Home compatibility.
+      - case: C05
+        task: '0'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent's earlier replies were clear and gave the options and refund amount, but
+          after the customer confirmed the keyboard-only exchange, it transferred them with only "YOU
+          ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON." It never said whether the keyboard
+          exchange had been submitted or what the human would do with the thermostat request.
+      - case: C07
+        task: '10'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent's early replies were clear, and it laid out both refund routes and asked
+          for a yes. Its final message, "YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.",
+          is all caps and gives no reason, so the customer is left without a clear explanation of what
+          happens next. The earlier refusal was also stated as policy without saying why the refund split
+          isn't possible.
+      - case: C11
+        task: '50'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent silently looked up the account and order, then transferred without telling
+          the customer what it found or why, leaving them to wait with no explanation. Its only customer-facing
+          message is the all-caps "YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON." with no
+          mention of the cancellation, the refund, or what the human will need to do.
+      - case: C13
+        task: '68'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent clearly listed the three orders with payment amounts and statuses, but
+          its reply to the customer's question about which order is most recent gave no way forward, and
+          the transfer message was an all-caps handoff with no explanation of what the customer should
+          expect. The customer had to ask again for another way to tell the order date, and the agent
+          escalated without telling them the next step.
+      - case: C14
+        task: '43'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent had the tablet's storage (64GB) in the order record but did not give it,
+          and it transferred the customer without explaining why or what would happen next. Its only message
+          was the all-caps "YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.", so the customer
+          had to re-ask an answerable question.
+      - case: C15
+        task: '67'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent's replies were understandable, but its transfer message was all caps and
+          gave no explanation of why the transfer was happening or what the customer should expect. After
+          the failed lookups, it never told the customer that it could not verify their account, so the
+          customer had to infer the reason for the handoff.
+      false_negatives: []
+      score_only_differences:
+      - case: C16
+        task: '59'
+        trial: 2
+        unit: 0
+        human: '0'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent's replies were raw JSON blobs (e.g., `{"status_comparison":...}`) that
+          the customer had to decode, and the final message, "YOU ARE BEING TRANSFERRED TO A HUMAN AGENT.
+          PLEASE HOLD ON.", gave no reason for the transfer or what would happen next.
+      human_unclear: []
+      no_rubric_score:
+      - case: C17
+        task: '13'
+        trial: 0
+        unit: 0
+        human: '2'
+        judge_status: INSUFFICIENT_EVIDENCE
+        judge_score: null
+        judge_reason: The judge raised its uncertainty flag.
+      - case: C20
+        task: '43'
+        trial: 0
+        unit: 0
+        human: '2'
+        judge_status: EVALUATOR_ERROR
+        judge_score: null
+        judge_reason: 'The judge''s reply failed: the model call failed.'
+    conversation_efficiency:
+      units: 24
+      compared: 24
+      same_score: 12
+      same_verdict: 12
+      false_positives:
+      - case: C01
+        task: '57'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent authenticated efficiently and read the order, but it asked for verification
+          details before any tool use and did not need to state the refund path separately; the main detour
+          is that it answered the arrival question with a status-only reply after one lookup, which was
+          fine, but it then made the cancellation decision outcome-dependent without checking whether
+          a partial cancel or gift-card refund option could be verified via tools, ending with no action.
+          Overall steps were mostly needed, with some avoidable back-and-forth.
+      - case: C05
+        task: '0'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent authenticated efficiently and confirmed the keyboard exchange details
+          before the customer approved them. But after the customer explicitly confirmed the keyboard-only
+          exchange, the agent transferred to a human without submitting it, leaving the confirmed step
+          undone. It also did not look again for another Google Home-compatible thermostat before transferring.
+      - case: C06
+        task: '68'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: 'The agent asked for the email, then asked for name and ZIP, which was reasonable,
+          but it asked the customer to re-check the ZIP after a not-found error, then looked up the user
+          and details, then the order, which were needed steps. A detour was the agent''s choice to pull
+          details of all orders via get_user_details and then assume #W6729841 was the most recent without
+          checking dates, though the customer''s question was answered directly with one fewer lookup
+          possible; overall the request was resolved in a few steps with minor avoidable detours.'
+      - case: C08
+        task: '59'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent verified the customer, read both orders, and confirmed the address change
+          before updating it, which were all needed. It then asked the customer to find order dates in
+          emails and account history, a detour since the tools could not provide dates, and it escalated
+          only after the customer's second request.
+      - case: C14
+        task: '43'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent authenticated and read both orders efficiently, but it knew the tablet's
+          64GB storage from the order record and never told the customer, even though it was asked directly.
+          It then transferred immediately without answering that question or asking for the new daughter's
+          address for the default-address change.
+      - case: C15
+        task: '67'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent asked for the email, then tried the name with two ZIP codes, a reasonable
+          check, but it did not try alternatives such as the nickname 'NoNo' that the customer offered,
+          and it escalated after only two failed lookups without asking for other identifiers like phone
+          number. It did not repeat questions, but the authentication path had avoidable steps before
+          the transfer.
+      - case: C16
+        task: '59'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: 'The agent''s authentication, order lookups, and confirmation before the address
+          change were all required. The detour came afterward: it asked the customer to identify the older
+          order and state a cancellation reason, even though neither order record had dates, and then
+          transferred without a clear step to resolve it. The customer had to restate the request before
+          the transfer.'
+      - case: C19
+        task: '76'
+        trial: 0
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: 'The agent re-called get_product_details for the skateboard (1968349452) after already
+          retrieving the same product earlier, with no new information needed. The rest of the flow was
+          necessary: authentication, order lookups to find the items, confirmation before each cancellation,
+          and asking for the cancellation reason.'
+      - case: C20
+        task: '43'
+        trial: 0
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: 'The agent verified the account efficiently and read both orders, but it reported
+          only the delivered tablet order and never addressed the cancelled order #W1588712 that the customer''s
+          daughter may have been waiting on. It also asked for a full daughter''s address the customer
+          then said to take from the order it had already shown, and the conversation ends after confirmation
+          without the default-address update being made.'
+      - case: C22
+        task: '59'
+        trial: 0
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The agent authenticated and read both orders once, and the address change was confirmed
+          and completed efficiently. However, after confirming that the order data had no placement dates,
+          it transferred the customer to a human rather than resolving the date question or the cancellation
+          within the conversation, which added an avoidable detour.
+      false_negatives:
+      - case: C10
+        task: '81'
+        trial: 2
+        unit: 0
+        human: '1'
+        judge_status: PASS
+        judge_score: 2
+        judge_reason: The agent authenticated by email, looked up the four orders in one batch, identified
+          the two relevant orders, and explained the whole-order cancellation rule before asking for a
+          yes. After the customer confirmed, it canceled both orders directly with no repeated questions
+          or redundant calls.
+      - case: C21
+        task: '106'
+        trial: 2
+        unit: 0
+        human: '1'
+        judge_status: PASS
+        judge_score: 2
+        judge_reason: The agent verified the account with one fallback (ZIP after the email lookup failed),
+          found the T-shirt by reading the user's orders, checked variants once, presented the closest
+          alternatives, and asked for one explicit confirmation before submitting the single exchange
+          call. It did not repeat questions or redundant actions.
+      score_only_differences: []
+      human_unclear: []
+      no_rubric_score: []
+    escalation_correctness:
+      units: 24
+      compared: 21
+      same_score: 16
+      same_verdict: 16
+      false_positives:
+      - case: C04
+        task: '0'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: The customer asked whether the Google Assistant thermostat also works with Google
+          Home and said they'd rather confirm before exchanging. The agent had already said the catalog
+          does not list Google Home compatibility, and it could have stated that limit and let the customer
+          decide. It transferred instead, before any exchange was confirmed. The transfer is defensible
+          because the catalog cannot answer the question, but it was not clearly necessary.
+      - case: C07
+        task: '10'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 0
+        judge_reason: 'The customer asked to refund #W5490111 to PayPal and #W7387996 to the Visa, which
+          policy forbids (returns go only to the original payment method or an existing gift card). The
+          agent had already explained this and offered the in-scope returns, then transferred on the customer''s
+          frustrated demand for a human. That request was against policy and should have been denied,
+          not escalated.'
+      - case: C13
+        task: '68'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 0
+        judge_reason: The customer asked which of their orders was placed most recently, a read-only information
+          question within the agent's scope. The agent had already retrieved all three orders, found no
+          dates, and then transferred to a human without trying any in-scope way to answer, such as explaining
+          what it could see or offering the customer a path to verify. The request was answerable or at
+          least could have been resolved or declined within scope, so the transfer was not warranted.
+      - case: C14
+        task: '43'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: 1
+        judge_reason: 'The customer asked for a live tracking update on #W7895761, which the agent''s
+          tools cannot provide, so that part justified a transfer. But the agent transferred without answering
+          the tablet storage question (its own record shows 64GB) or asking for the new default address
+          for the address change, both of which were in scope. Those were passed along unhandled.'
+      - &id001
+        case: C17
+        task: '13'
+        trial: 0
+        unit: 0
+        human: no_transfer_needed
+        judge_status: FAIL
+        judge_score: 0
+        judge_reason: The customer asked to return the Water Bottle, Action Camera, and Backpack and was
+          told the refund must go to the original Visa; the agent never called a return tool, and the
+          conversation ends with the customer's confirmation and '###STOP###' without a return request
+          or a transfer. The return was in scope and should have been processed, so the agent kept an
+          in-scope request unhandled.
+      false_negatives: []
+      score_only_differences: []
+      human_unclear: []
+      no_rubric_score:
+      - case: C08
+        task: '59'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: null
+        judge_reason: 'The transfer''s state check failed: The next reply after the transfer is not the
+          message.'
+      - case: C15
+        task: '67'
+        trial: 1
+        unit: 0
+        human: '2'
+        judge_status: INSUFFICIENT_EVIDENCE
+        judge_score: null
+        judge_reason: The judge raised its uncertainty flag.
+      - case: C22
+        task: '59'
+        trial: 0
+        unit: 0
+        human: '2'
+        judge_status: FAIL
+        judge_score: null
+        judge_reason: 'The transfer''s state check failed: The next reply after the transfer is not the
+          message.'
+    required_customer_confirmation:
+      units: 19
+      compared: 18
+      same_score: 17
+      same_verdict: 17
+      false_positives:
+      - case: C19
+        task: '76'
+        trial: 0
+        unit: 1
+        human: '2'
+        judge_status: FAIL
+        judge_score: 0
+        judge_reason: 'The agent listed the cancellation of order #W1242543 and asked the customer to
+          choose a reason. The customer replied only "No longer needed.", which supplies the requested
+          reason but gives no explicit yes to proceed.'
+      false_negatives: []
+      score_only_differences: []
+      human_unclear: []
+      no_rubric_score:
+      - case: C18
+        task: '76'
+        trial: 2
+        unit: 0
+        human: '2'
+        judge_status: INSUFFICIENT_EVIDENCE
+        judge_score: null
+        judge_reason: The judge raised its uncertainty flag.
+  escalation_applicability_differences:
+  - case: C09
+    task: '81'
+    trial: 0
+    unit: 0
+    human: '2'
+    judge_status: NOT_APPLICABLE
+    judge_score: null
+    judge_reason: No transfer was made, and the judge reports no request could have needed one.
+  - *id001
+self_agreement:
+  clarity_customer_effort:
+    units: 24
+    same_in_all_runs: 23
+    same_verdict_in_all_runs: 23
+    also_same_as_baseline: 21
+    errors: 0
+    unstable:
+    - simulation_id: 21c487e9-e7a3-4b65-9638-7b38aec988df
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+      - - FAIL
+        - 1
+  conversation_efficiency:
+    units: 24
+    same_in_all_runs: 14
+    same_verdict_in_all_runs: 14
+    also_same_as_baseline: 13
+    errors: 0
+    unstable:
+    - simulation_id: 1e94d3e1-b56a-44c8-a115-69b307bf52b9
+      unit: 0
+      runs:
+      - - PASS
+        - 2
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+    - simulation_id: 21c487e9-e7a3-4b65-9638-7b38aec988df
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+      - - FAIL
+        - 1
+    - simulation_id: 3450e90b-257a-4ffd-a04f-b7e98ecac4a2
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+    - simulation_id: 3acb0e54-cedc-457a-bb07-45e60a3eeede
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+      - - PASS
+        - 2
+    - simulation_id: 5661a549-d1b8-4e03-8b77-ff3ba8bdb42d
+      unit: 0
+      runs:
+      - - PASS
+        - 2
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+    - simulation_id: a0930502-fee0-4f26-a46d-6bba4c4a976f
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+      - - FAIL
+        - 1
+    - simulation_id: b753252d-6b61-404a-b0c3-2bdb1039b6c7
+      unit: 0
+      runs:
+      - - PASS
+        - 2
+      - - INSUFFICIENT_EVIDENCE
+        - null
+      - - PASS
+        - 2
+    - simulation_id: d425f503-44a1-4f16-a955-70a664ee770d
+      unit: 0
+      runs:
+      - - INSUFFICIENT_EVIDENCE
+        - null
+      - - PASS
+        - 2
+      - - PASS
+        - 2
+    - simulation_id: e55f5f6d-0671-4cb5-8e3a-322098e28242
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+      - - PASS
+        - 2
+    - simulation_id: f7b0bcc7-a4ed-4f17-9965-dc95cf5962a5
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+      - - FAIL
+        - 1
+  escalation_correctness:
+    units: 24
+    same_in_all_runs: 19
+    same_verdict_in_all_runs: 21
+    also_same_as_baseline: 18
+    errors: 0
+    unstable:
+    - simulation_id: 434c7ee7-e45b-4a66-864f-5a150c8bfa68
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - FAIL
+        - 0
+      - - FAIL
+        - 0
+    - simulation_id: 757a8a86-5156-4b3c-b3c4-2d7f4523b297
+      unit: 0
+      runs:
+      - - FAIL
+        - 0
+      - - FAIL
+        - 1
+      - - FAIL
+        - 1
+    - simulation_id: b753252d-6b61-404a-b0c3-2bdb1039b6c7
+      unit: 0
+      runs:
+      - - INSUFFICIENT_EVIDENCE
+        - null
+      - - INSUFFICIENT_EVIDENCE
+        - null
+      - - FAIL
+        - 0
+    - simulation_id: cc627945-b722-4ad5-8012-cefb0e48542f
+      unit: 0
+      runs:
+      - - FAIL
+        - 1
+      - - PASS
+        - 2
+      - - PASS
+        - 2
+    - simulation_id: d425f503-44a1-4f16-a955-70a664ee770d
+      unit: 0
+      runs:
+      - - NOT_APPLICABLE
+        - null
+      - - NOT_APPLICABLE
+        - null
+      - - INSUFFICIENT_EVIDENCE
+        - null
+  required_customer_confirmation:
+    units: 19
+    same_in_all_runs: 17
+    same_verdict_in_all_runs: 17
+    also_same_as_baseline: 16
+    errors: 0
+    unstable:
+    - simulation_id: 3450e90b-257a-4ffd-a04f-b7e98ecac4a2
+      unit: 0
+      runs:
+      - - INSUFFICIENT_EVIDENCE
+        - null
+      - - INSUFFICIENT_EVIDENCE
+        - null
+      - - PASS
+        - 2
+    - simulation_id: a50e1940-c1de-484d-a6db-6ad1b76b4c18
+      unit: 0
+      runs:
+      - - PASS
+        - 2
+      - - INSUFFICIENT_EVIDENCE
+        - null
+      - - FAIL
+        - 1
+cases:
+- case: C01
+  task: '57'
+  trial: 1
+  strata:
+  - successful
+  - policy_sensitive
+  reward: 1.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C02
+  task: '22'
+  trial: 1
+  strata:
+  - critical_risk
+  - failed
+  reward: 0.0
+  part_a: FAIL
+  handled_correctly: 'yes'
+  note: null
+- case: C03
+  task: '80'
+  trial: 1
+  strata:
+  - successful
+  reward: 1.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C04
+  task: '0'
+  trial: 1
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C05
+  task: '0'
+  trial: 2
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'no'
+  note: The Agent should have acted on the confirmed exchange before transfering.
+- case: C06
+  task: '68'
+  trial: 2
+  strata:
+  - successful
+  - policy_sensitive
+  reward: 1.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: Account lookup prompt was not made using a combined options message.
+- case: C07
+  task: '10'
+  trial: 1
+  strata:
+  - successful
+  - policy_sensitive
+  reward: 1.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C08
+  task: '59'
+  trial: 1
+  strata:
+  - critical_risk
+  - failed
+  reward: 0.0
+  part_a: FAIL
+  handled_correctly: 'yes'
+  note: null
+- case: C09
+  task: '81'
+  trial: 0
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  - policy_sensitive
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C10
+  task: '81'
+  trial: 2
+  strata:
+  - outcome_conduct_disagreement
+  - successful
+  - policy_sensitive
+  reward: 1.0
+  part_a: FAIL
+  handled_correctly: 'yes'
+  note: null
+- case: C11
+  task: '50'
+  trial: 2
+  strata:
+  - successful
+  - policy_sensitive
+  reward: 1.0
+  part_a: PASS
+  handled_correctly: 'no'
+  note: null
+- case: C12
+  task: '88'
+  trial: 2
+  strata:
+  - successful
+  reward: 1.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C13
+  task: '68'
+  trial: 1
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  - policy_sensitive
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C14
+  task: '43'
+  trial: 2
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'no'
+  note: null
+- case: C15
+  task: '67'
+  trial: 1
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  - policy_sensitive
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C16
+  task: '59'
+  trial: 2
+  strata:
+  - critical_risk
+  - outcome_conduct_disagreement
+  - failed
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'no'
+  note: JSON formatted responses.
+- case: C17
+  task: '13'
+  trial: 0
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  - policy_sensitive
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C18
+  task: '76'
+  trial: 2
+  strata:
+  - critical_risk
+  - successful
+  - policy_sensitive
+  reward: 1.0
+  part_a: INSUFFICIENT_EVIDENCE
+  handled_correctly: 'yes'
+  note: null
+- case: C19
+  task: '76'
+  trial: 0
+  strata:
+  - critical_risk
+  - outcome_conduct_disagreement
+  - successful
+  - policy_sensitive
+  reward: 1.0
+  part_a: FAIL
+  handled_correctly: 'yes'
+  note: null
+- case: C20
+  task: '43'
+  trial: 0
+  strata:
+  - outcome_conduct_disagreement
+  - failed
+  reward: 0.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
+- case: C21
+  task: '106'
+  trial: 2
+  strata:
+  - outcome_conduct_disagreement
+  - successful
+  reward: 1.0
+  part_a: FAIL
+  handled_correctly: 'yes'
+  note: null
+- case: C22
+  task: '59'
+  trial: 0
+  strata:
+  - critical_risk
+  - failed
+  reward: 0.0
+  part_a: FAIL
+  handled_correctly: 'yes'
+  note: null
+- case: C23
+  task: '22'
+  trial: 0
+  strata:
+  - critical_risk
+  - failed
+  reward: 0.0
+  part_a: FAIL
+  handled_correctly: 'yes'
+  note: null
+- case: C24
+  task: '106'
+  trial: 1
+  strata:
+  - successful
+  reward: 1.0
+  part_a: PASS
+  handled_correctly: 'yes'
+  note: null
