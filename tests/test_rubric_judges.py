@@ -16,6 +16,8 @@ from agent_autonomy_lab.application.rubric_judges import (
     CLARITY_KEY,
     EFFICIENCY_KEY,
     ESCALATION_KEY,
+    RUBRIC_V1,
+    RUBRIC_V2,
     CustomerExperienceJudge,
     EscalationJudge,
     judge_view,
@@ -55,6 +57,9 @@ PROMPT_SHA256 = {
     "clarity-v1": "b7495a1741f3074e56933d023ae42962a4803453b1682afe4f08ca5b773fd115",
     "efficiency-v1": "56ee8c16fcde35a8e480509715d98b30a9718e1d091e9ab6d4d280837cd0eae5",
     "escalation-v1": "347d700b1d750256b9cefb504f38c4ec526ed52baeabf8c63e7d846d077fd848",
+    "clarity-v2": "45380602f14b2f69e2e42535c11ed0e0363283dcc18e63dce3e97138cdb75900",
+    "efficiency-v2": "54275b1498babedb3cfc0b31704796408e10e10910bca5ef63267c3fe88192d3",
+    "escalation-v2": "668986d650147d24f9f73f5d73c68e5e675911bba13b7b8f30da419b9b5effde",
 }
 
 PASS, FAIL, ERROR = ResultStatus.PASS, ResultStatus.FAIL, ResultStatus.EVALUATOR_ERROR
@@ -339,7 +344,7 @@ def test_no_transfer_and_the_judge_reports_none_needed_is_not_applicable():
     result, output = _only(judge, _conversation())
     assert (result.status, result.score, result.failure_kind) == (NOT_APPLICABLE, None, None)
     assert output.raw_outputs[0].payload["no_transfer_needed"] is True
-    assert result.judge_run.prompt_version == "escalation-v1"
+    assert result.judge_run.prompt_version == "escalation-v2"
 
 
 def test_a_run_that_ended_early_cannot_show_no_transfer_was_needed():
@@ -547,12 +552,19 @@ def test_each_prompt_states_its_anchors_and_reply_fields(version):
     prompt = judge_prompt(version)
     for part in ("**0,", "**1,", "**2,", '"score"', '"evidence"', '"uncertain"'):
         assert part in prompt
-    assert ("no_transfer_needed" in prompt) is (version == "escalation-v1")
+    assert ("no_transfer_needed" in prompt) is version.startswith("escalation")
 
 
 def test_each_judge_version_names_a_prompt():
-    versions = {judge.version for judge in rubric_judges(ScriptedModelClient())}
-    assert versions == set(PROMPT_SHA256)
+    for versions in (RUBRIC_V1, RUBRIC_V2):
+        judges = rubric_judges(ScriptedModelClient(), versions)
+        assert tuple(judge.version for judge in judges) == versions
+    assert set(RUBRIC_V1) | set(RUBRIC_V2) == set(PROMPT_SHA256)
+
+
+def test_the_current_judges_are_v2():
+    judges = rubric_judges(ScriptedModelClient())
+    assert tuple(judge.version for judge in judges) == RUBRIC_V2
 
 
 # The recording of real calls on the Milestone 2 transcript of task 0.
@@ -565,7 +577,9 @@ def _task_0_subject() -> EvaluationSubject:
 
 def test_a_judged_result_replays_from_the_cassette_with_no_model_call():
     with replaying(Cassette.load(RECORDING)) as transport:
-        output = evaluate_simulation(_task_0_subject(), rubric_judges(LiteLLMModelClient()))
+        output = evaluate_simulation(
+            _task_0_subject(), rubric_judges(LiteLLMModelClient(), RUBRIC_V1)
+        )
     transport.check_complete()
     assert transport.served == 3
     by_key = {result.evaluation_key: result for result in output.results}
@@ -580,7 +594,7 @@ def test_a_judged_result_replays_from_the_cassette_with_no_model_call():
 def test_the_recorded_requests_carry_the_prompts_and_the_unwrapped_conversation():
     interactions = Cassette.load(RECORDING).interactions
     assert len(interactions) == 3
-    for interaction, version in zip(interactions, PROMPT_SHA256, strict=True):
+    for interaction, version in zip(interactions, RUBRIC_V1, strict=True):
         body = interaction.request.body
         assert body["model"] == JUDGE_MODEL
         assert {k: body[k] for k in JUDGE_SETTINGS} == JUDGE_SETTINGS
@@ -596,5 +610,5 @@ def test_replay_fails_if_the_judge_sends_anything_else():
     simulation = _simulation(messages)
     subject = EvaluationSubject(SIM, simulation, _events(simulation))
     with replaying(Cassette.load(RECORDING)):
-        output = evaluate_simulation(subject, rubric_judges(LiteLLMModelClient()))
+        output = evaluate_simulation(subject, rubric_judges(LiteLLMModelClient(), RUBRIC_V1))
     assert all(result.status is ERROR for result in output.results)

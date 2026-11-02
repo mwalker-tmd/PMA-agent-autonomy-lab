@@ -19,6 +19,11 @@ the baseline, and the repeats, with no model call, and writes the counts the rep
         ../tau2-bench/data/simulations/m4-baseline \\
         --recordings ../tau2-bench/data/simulations/m4-adjudication
     uv run python -m agent_autonomy_lab.entrypoints.adjudicate compare
+
+A rubric fix is a new prompt version. ``rescore`` runs the three current rubric judges once on
+every baseline simulation from its saved run, into its own file, and leaves the baseline's
+report as it was. ``repeat --rubrics-only --out FILE`` repeats them on the sample, and
+``compare --rescored FILE --rescored-repeats FILE`` reports before and after.
 """
 
 import argparse
@@ -35,19 +40,22 @@ from agent_autonomy_lab.adapters.litellm import RecordingTransport, litellm_tran
 from agent_autonomy_lab.adapters.models import LiteLLMModelClient
 from agent_autonomy_lab.application.adjudication import (
     JUDGE_KEYS,
+    RUBRIC_LABELS,
     SAMPLE_SEED,
     SAMPLE_SIZE,
     compare_labels,
     executed_a_write,
     judge_units,
+    metric_counts,
     select_sample,
     self_agreement,
+    with_rescored_rubrics,
     worksheet_case,
     worksheet_data,
 )
 from agent_autonomy_lab.application.confirmation_judge import ConfirmationEvaluator
 from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulation
-from agent_autonomy_lab.application.rubric_judges import rubric_judges
+from agent_autonomy_lab.application.rubric_judges import RUBRIC_V1, rubric_judges
 from agent_autonomy_lab.domain.simulations import Message
 from agent_autonomy_lab.entrypoints.check_access import saved_subjects
 from agent_autonomy_lab.entrypoints.judge_rubrics import CallUsage
@@ -59,6 +67,8 @@ SAMPLE = Path("reports/m4-baseline/adjudication-sample.yaml")
 LABELS = Path("reports/m4-baseline/adjudication-labels.yaml")
 REPEATS = Path("reports/m4-baseline/adjudication-repeats.jsonl")
 SUMMARY = Path("reports/m4-baseline/adjudication-summary.yaml")
+RESCORED = Path("reports/m4-baseline/adjudication-rescore-rubric-v2.jsonl")
+RESCORED_REPEATS = Path("reports/m4-baseline/adjudication-repeats-rubric-v2.jsonl")
 RUNS = 3
 
 
@@ -124,7 +134,11 @@ def repeat(args: argparse.Namespace) -> int:
     for run in range(RUNS):
         recorder = RecordingTransport()
         client = LiteLLMModelClient()
-        judges = (ConfirmationEvaluator(client), *rubric_judges(client))
+        judges = (
+            rubric_judges(client)
+            if args.rubrics_only
+            else (ConfirmationEvaluator(client), *rubric_judges(client, RUBRIC_V1))
+        )
         with litellm_transport(recorder):
             for case in cases:
                 name = f"task-{case['task_id']}-trial-{case['trial']}-attempt-0"
@@ -158,6 +172,53 @@ def repeat(args: argparse.Namespace) -> int:
     return 0
 
 
+def rescore(args: argparse.Namespace) -> int:
+    if args.out.exists():
+        raise SystemExit(f"{args.out} exists; remove it to re-score")
+    if args.recording.exists():
+        raise SystemExit(f"{args.recording} exists; remove it to re-score")
+    args.recording.parent.mkdir(parents=True, exist_ok=True)
+    recorder = RecordingTransport()
+    judges = rubric_judges(LiteLLMModelClient())
+    usage = CallUsage()
+    lines = []
+    with litellm_transport(recorder):
+        for row in _load_rows(args.report).values():
+            name = f"task-{row['task_id']}-trial-{row['trial']}-attempt-{row['attempt']}"
+            path = args.save_dir / name / "simulation.json"
+            ((_, subject),) = saved_subjects([str(path)])
+            output = evaluate_simulation(subject, judges)
+            usage.add(raw.payload["call"] for raw in output.raw_outputs if "call" in raw.payload)
+            lines.append(
+                {
+                    "simulation_id": row["simulation_id"],
+                    "task_id": row["task_id"],
+                    "trial": row["trial"],
+                    "results": [result.to_dict() for result in output.results],
+                }
+            )
+    text = "".join(json.dumps(line, ensure_ascii=False) + "\n" for line in lines)
+    args.out.write_text(text, encoding="utf-8")
+    sha = recorder.cassette({"adjudication_rescore": True}).save(args.recording)
+    print(json.dumps({**usage.as_dict(), "recording_sha256": sha}, indent=2))
+    return 0
+
+
+def _rescored_section(args: argparse.Namespace, rows, labels, cases) -> dict:
+    lines = [json.loads(line) for line in args.rescored.read_text("utf-8").splitlines()]
+    after = {
+        line["simulation_id"]: with_rescored_rubrics(rows[line["simulation_id"]], line["results"])
+        for line in lines
+    }
+    repeats = [json.loads(line) for line in args.rescored_repeats.read_text("utf-8").splitlines()]
+    return {
+        "against_labels": compare_labels(labels, cases, after),
+        "self_agreement": self_agreement(repeats, after),
+        "all_60_before": {key: metric_counts(list(rows.values()), key) for key in RUBRIC_LABELS},
+        "all_60_after": {key: metric_counts(list(after.values()), key) for key in RUBRIC_LABELS},
+    }
+
+
 def compare(args: argparse.Namespace) -> int:
     rows = _load_rows(args.report)
     cases = yaml.safe_load(args.sample.read_text(encoding="utf-8"))["cases"]
@@ -181,6 +242,8 @@ def compare(args: argparse.Namespace) -> int:
             for case in cases
         ],
     }
+    if args.rescored:
+        summary["after_rubric_fixes"] = _rescored_section(args, rows, labels, cases)
     text = yaml.safe_dump(summary, sort_keys=False, allow_unicode=True, width=100)
     args.out.write_text(text, encoding="utf-8")
     for key in JUDGE_KEYS:
@@ -204,13 +267,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     again.add_argument("--recordings", type=Path, required=True)
     again.add_argument("--sample", type=Path, default=SAMPLE)
     again.add_argument("--out", type=Path, default=REPEATS)
+    again.add_argument("--rubrics-only", action="store_true", help="the current rubric judges")
     again.set_defaults(run=repeat)
+    fresh = commands.add_parser("rescore", help="re-score all simulations with changed rubrics")
+    fresh.add_argument("save_dir", type=Path, help="the baseline's save directory")
+    fresh.add_argument("--recording", type=Path, required=True)
+    fresh.add_argument("--report", type=Path, default=REPORT)
+    fresh.add_argument("--out", type=Path, default=RESCORED)
+    fresh.set_defaults(run=rescore)
     versus = commands.add_parser("compare", help="compare the judges with the labels")
     versus.add_argument("--sample", type=Path, default=SAMPLE)
     versus.add_argument("--labels", type=Path, default=LABELS)
     versus.add_argument("--repeats", type=Path, default=REPEATS)
     versus.add_argument("--report", type=Path, default=REPORT)
     versus.add_argument("--out", type=Path, default=SUMMARY)
+    versus.add_argument("--rescored", type=Path)
+    versus.add_argument("--rescored-repeats", type=Path, default=RESCORED_REPEATS)
     versus.set_defaults(run=compare)
     args = parser.parse_args(argv)
     return args.run(args)

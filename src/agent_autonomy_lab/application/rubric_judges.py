@@ -42,6 +42,11 @@ CLARITY_KEY = "clarity_customer_effort"
 EFFICIENCY_KEY = "conversation_efficiency"
 ESCALATION_KEY = "escalation_correctness"
 
+# Clarity, efficiency, and escalation, in that order. The Milestone 4 baseline ran v1, and
+# #110's adjudication led to v2 (docs/DECISIONS.md, ADR-025). Its cassettes replay under v1.
+RUBRIC_V1 = ("clarity-v1", "efficiency-v1", "escalation-v1")
+RUBRIC_V2 = ("clarity-v2", "efficiency-v2", "escalation-v2")
+
 _NO_REPLY = "The agent sent no reply after the fixed opener."
 _NO_ROOT = "The trace has no conversation span to cite for a judged result."
 
@@ -145,10 +150,10 @@ class EscalationJudge:
     """
 
     evaluation_key = ESCALATION_KEY
-    version = "escalation-v1"
 
-    def __init__(self, client: ModelClient) -> None:
+    def __init__(self, client: ModelClient, version: str = RUBRIC_V2[2]) -> None:
         self._client = client
+        self.version = version
 
     def evaluate(self, subject: EvaluationSubject) -> EvaluatorOutput:
         results = CheckResults(self.evaluation_key, self.version, subject)
@@ -214,10 +219,11 @@ class EscalationJudge:
         )
 
 
-def rubric_judges(client: ModelClient) -> tuple:
+def rubric_judges(client: ModelClient, versions: tuple[str, str, str] = RUBRIC_V2) -> tuple:
     """The three rubric judges, in the order they run."""
+    clarity, efficiency, escalation = versions
     return (
-        CustomerExperienceJudge(CLARITY_KEY, "clarity-v1", client),
-        CustomerExperienceJudge(EFFICIENCY_KEY, "efficiency-v1", client),
-        EscalationJudge(client),
+        CustomerExperienceJudge(CLARITY_KEY, clarity, client),
+        CustomerExperienceJudge(EFFICIENCY_KEY, efficiency, client),
+        EscalationJudge(client, escalation),
     )

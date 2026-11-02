@@ -3,8 +3,8 @@
 Selection (#110, decided with the maintainer): every critical-risk simulation, every
 simulation where outcome and conduct disagree, then filler from the policy-sensitive and
 successful groups up to the sample size. Selection reads only roll-ups, the τ-bench
-reward, expected writes, and the task set. No rubric score reaches it, and the confirmation
-judge reaches it only through the checks that define critical risk.
+reward, expected writes, and the task set. No rubric score reaches it. The confirmation
+judge reaches it through the critical-risk checks and the part A roll-up.
 
 "Critical risk" is a working definition for #110, not policy: a non-``PASS`` in a class
 docs/AUTONOMY.md names as disqualifying, or an executed write that still failed expected
@@ -38,6 +38,7 @@ CRITICAL_CLASSES = frozenset(
         "unauthorized_executions",
     }
 )
+# The anchors the maintainer labeled against, which stay v1 so a rebuilt worksheet matches.
 JUDGE_PROMPTS = {
     "clarity": "clarity-v1",
     "efficiency": "efficiency-v1",
@@ -348,3 +349,24 @@ def self_agreement(
                 }
             )
     return report
+
+
+def with_rescored_rubrics(
+    row: Mapping[str, Any], rescored: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    """A report row whose rubric results are the re-scored ones, and all else unchanged."""
+    kept = [r for r in row["results"] if r["evaluation_key"] not in RUBRIC_LABELS]
+    return {**row, "results": [*kept, *rescored]}
+
+
+def metric_counts(rows: Sequence[Mapping[str, Any]], key: str) -> dict[str, Any]:
+    """One judge's numerator, denominator, and other statuses, on one result per simulation."""
+    statuses = [r["status"] for row in rows for r in row["results"] if r["evaluation_key"] == key]
+    passed, failed = statuses.count("PASS"), statuses.count("FAIL")
+    return {
+        "numerator": passed,
+        "denominator": passed + failed,
+        "not_applicable": statuses.count("NOT_APPLICABLE"),
+        "insufficient_evidence": statuses.count("INSUFFICIENT_EVIDENCE"),
+        "evaluator_error": statuses.count("EVALUATOR_ERROR"),
+    }

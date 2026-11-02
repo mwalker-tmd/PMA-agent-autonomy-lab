@@ -5,9 +5,14 @@ import pytest
 import yaml
 
 from agent_autonomy_lab.application.adjudication import (
+    JUDGE_PROMPTS,
     REQUIRED_POLICY_TASKS,
+    compare_labels,
+    metric_counts,
     rubric_text,
     select_sample,
+    self_agreement,
+    with_rescored_rubrics,
     worksheet_case,
     worksheet_data,
 )
@@ -147,7 +152,7 @@ def test_a_worksheet_shows_replies_without_the_wrapper():
 
 
 def test_the_rubric_text_leaves_out_the_reply_format():
-    for version in ("clarity-v1", "efficiency-v1", "escalation-v1", "confirmation-v1"):
+    for version in JUDGE_PROMPTS.values():
         text = rubric_text(version)
         assert "**2," in text
         assert "Reply with one JSON object" not in text
@@ -199,3 +204,147 @@ def test_the_command_writes_a_blind_page_and_keeps_strata_in_the_sample(tmp_path
         assert case["simulation_id"] not in html
     for stratum in ("critical_risk", "outcome_conduct_disagreement", '"strata"'):
         assert stratum not in html
+
+
+def _label(**fields):
+    base = {
+        "case_id": "C01",
+        "clarity": "2",
+        "efficiency": "2",
+        "escalation": "2",
+        "confirmation_by_write": [],
+        "handled_correctly": "yes",
+        "note": None,
+    }
+    return {**base, **fields}
+
+
+def _judged(key, status, score=None, target=None):
+    return {
+        "evaluation_key": key,
+        "status": status,
+        "score": score,
+        "reason": "because",
+        "target": target,
+    }
+
+
+CASE = {"case_id": "C01", "task_id": "4", "trial": 0, "simulation_id": "sim"}
+
+
+def _compared(label, *results):
+    report = compare_labels([label], [CASE], {"sim": {"results": list(results)}})
+    return report["judges"], report["escalation_applicability_differences"]
+
+
+def test_a_judge_fail_the_maintainer_scored_2_is_a_false_positive():
+    judges, _ = _compared(_label(), _judged("clarity_customer_effort", "FAIL", 1))
+    entry = judges["clarity_customer_effort"]
+    assert (entry["compared"], len(entry["false_positives"]), entry["same_verdict"]) == (1, 1, 0)
+
+
+def test_a_judge_pass_the_maintainer_scored_low_is_a_false_negative():
+    judges, _ = _compared(_label(efficiency="1"), _judged("conversation_efficiency", "PASS", 2))
+    assert len(judges["conversation_efficiency"]["false_negatives"]) == 1
+
+
+def test_two_failing_scores_agree_on_the_verdict_but_not_the_score():
+    judges, _ = _compared(_label(clarity="0"), _judged("clarity_customer_effort", "FAIL", 1))
+    entry = judges["clarity_customer_effort"]
+    assert (entry["same_verdict"], entry["same_score"]) == (1, 0)
+    assert len(entry["score_only_differences"]) == 1
+
+
+def test_no_transfer_needed_and_a_2_agree_but_count_as_an_applicability_difference():
+    judges, differences = _compared(
+        _label(escalation="no_transfer_needed"), _judged("escalation_correctness", "PASS", 2)
+    )
+    assert judges["escalation_correctness"]["same_verdict"] == 1
+    assert len(differences) == 1
+
+
+def test_a_judge_not_applicable_matches_no_transfer_needed():
+    judges, differences = _compared(
+        _label(escalation="no_transfer_needed"),
+        _judged("escalation_correctness", "NOT_APPLICABLE"),
+    )
+    assert judges["escalation_correctness"]["same_score"] == 1
+    assert differences == []
+
+
+def test_a_result_with_no_rubric_score_is_not_compared():
+    judges, _ = _compared(
+        _label(),
+        _judged("escalation_correctness", "FAIL"),
+        _judged("clarity_customer_effort", "EVALUATOR_ERROR"),
+    )
+    assert judges["escalation_correctness"]["compared"] == 0
+    assert len(judges["escalation_correctness"]["no_rubric_score"]) == 1
+    assert len(judges["clarity_customer_effort"]["no_rubric_score"]) == 1
+
+
+def test_a_label_of_cant_tell_is_not_compared():
+    judges, _ = _compared(_label(clarity="unclear"), _judged("clarity_customer_effort", "PASS", 2))
+    entry = judges["clarity_customer_effort"]
+    assert (entry["compared"], len(entry["human_unclear"])) == (0, 1)
+
+
+def test_writes_are_matched_by_their_order():
+    judges, _ = _compared(
+        _label(confirmation_by_write=["2", "0"]),
+        _judged("required_customer_confirmation", "PASS", 2, target="a"),
+        _judged("required_customer_confirmation", "FAIL", 0, target="b"),
+    )
+    assert judges["required_customer_confirmation"]["same_score"] == 2
+
+
+def _repeat(run, status, score, key="clarity_customer_effort"):
+    return {
+        "simulation_id": "sim",
+        "run": run,
+        "evaluation_key": key,
+        "unit": 0,
+        "status": status,
+        "score": score,
+    }
+
+
+def test_self_agreement_counts_repeats_that_match_and_those_that_do_not():
+    rows = {"sim": {"results": [_judged("clarity_customer_effort", "PASS", 2)]}}
+    same = self_agreement([_repeat(n, "PASS", 2) for n in range(3)], rows)
+    assert same["clarity_customer_effort"]["same_in_all_runs"] == 1
+    assert same["clarity_customer_effort"]["also_same_as_baseline"] == 1
+    mixed = self_agreement(
+        [_repeat(0, "PASS", 2), _repeat(1, "FAIL", 1), _repeat(2, "PASS", 2)], rows
+    )
+    assert mixed["clarity_customer_effort"]["same_in_all_runs"] == 0
+    assert len(mixed["clarity_customer_effort"]["unstable"]) == 1
+
+
+def test_rescoring_replaces_only_the_rubric_results():
+    row = {
+        "results": [
+            _judged("clarity_customer_effort", "FAIL", 1),
+            _judged("required_customer_confirmation", "PASS", 2, target="a"),
+        ]
+    }
+    after = with_rescored_rubrics(row, [_judged("clarity_customer_effort", "PASS", 2)])
+    statuses = {r["evaluation_key"]: r["status"] for r in after["results"]}
+    assert statuses == {
+        "required_customer_confirmation": "PASS",
+        "clarity_customer_effort": "PASS",
+    }
+
+
+def test_metric_counts_leave_other_statuses_out_of_the_denominator():
+    rows = [
+        {"results": [_judged("clarity_customer_effort", status)]}
+        for status in ("PASS", "FAIL", "NOT_APPLICABLE", "EVALUATOR_ERROR", "INSUFFICIENT_EVIDENCE")
+    ]
+    assert metric_counts(rows, "clarity_customer_effort") == {
+        "numerator": 1,
+        "denominator": 2,
+        "not_applicable": 1,
+        "insufficient_evidence": 1,
+        "evaluator_error": 1,
+    }

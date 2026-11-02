@@ -58,7 +58,7 @@ def test_the_command_reports_results_usage_and_a_recording(recording_to, tmp_pat
     (row,) = report["simulations"]
     assert row["task_id"] == "0"
     assert row["unwrapped_replies"] > 0
-    assert row["results"][0]["judge_run"]["prompt_version"] == "clarity-v1"
+    assert row["results"][0]["judge_run"]["prompt_version"] == "clarity-v2"
     assert len(Cassette.load(recording).interactions) == 3
     assert report["recording_sha256"]
 
