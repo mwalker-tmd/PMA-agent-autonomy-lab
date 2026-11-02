@@ -32,7 +32,7 @@ Writes are what promotion would grant, so sample sizes have to be counted per ac
 | `modify_pending_order_items` | 6 | `4` | 0 | 39.3% |
 | `modify_pending_order_address` | 6 | `22`, `59` | 0 | 39.3% |
 
-Bounds with no failure are exact one-sided bounds, 1 − 0.05^(1/n). `modify_pending_order_payment` was never called. Two actions come from a single task or two, so their writes are mostly repeats of one scenario.
+Bounds with no failure are exact one-sided bounds, 1 − 0.05^(1/n). `modify_pending_order_payment` was never called. Three actions come from one or two tasks (`modify_pending_order_items` from one, `modify_user_address` and `modify_pending_order_address` from two each), so their writes are mostly repeats of a few scenarios.
 
 **How many writes a zero-failure claim needs.** With no failures in *n* independent writes, the one-sided 95% upper bound on the failure rate falls below:
 
@@ -98,7 +98,7 @@ Inputs for Milestone 6 to start from, not decided here: the per-action table and
 
 ## Reproduce the figures
 
-Every figure above comes from committed files: [`simulations.jsonl`](simulations.jsonl), [`adjudication-summary.yaml`](adjudication-summary.yaml), and the [scorecard](scorecard.md). The intervals and per-action counts come from this standard-library script, run from the repository root:
+This standard-library script, run from the repository root, prints every interval, the spread across trials, and the per-action counts and bounds. It reads [`simulations.jsonl`](simulations.jsonl), and escalation's v2 counts from the [v2 re-score](adjudication-rescore-rubric-v2.jsonl), since `simulations.jsonl` holds v1. The judge agreement figures are not computed by it: they come from the [adjudication](adjudication.md#results) and [`adjudication-summary.yaml`](adjudication-summary.yaml).
 
 <details>
 <summary>Script</summary>
@@ -107,6 +107,7 @@ Every figure above comes from committed files: [`simulations.jsonl`](simulations
 import collections, json, math, random, re
 
 rows = [json.loads(line) for line in open("reports/m4-baseline/simulations.jsonl")]
+v2 = [json.loads(line) for line in open("reports/m4-baseline/adjudication-rescore-rubric-v2.jsonl")]
 
 def wilson(k, n, z=1.96):
     p, d = k / n, 1 + z * z / n
@@ -124,15 +125,38 @@ def clustered(values_by_task, draws=20000, seed=1):
     rates.sort()
     return round(100 * rates[int(0.025 * draws)], 1), round(100 * rates[int(0.975 * draws)], 1)
 
+def decided(statuses):
+    statuses = list(statuses)
+    return statuses.count("PASS"), statuses.count("PASS") + statuses.count("FAIL")
+
+# Simulation-level rates, with trials grouped by task for the clustered interval
 reward, part_a = collections.defaultdict(list), collections.defaultdict(list)
 for r in rows:
     reward[r["task_id"]].append(r["benchmark"]["reward"])
     if r["roll_ups"]["policy_compliance"] in ("PASS", "FAIL"):
         part_a[r["task_id"]].append(r["roll_ups"]["policy_compliance"] == "PASS")
-print("task success", wilson(46, 60), clustered(reward))
-print("part A", wilson(51, 59), clustered(part_a))
+k = sum(v for vs in reward.values() for v in vs); n = sum(len(vs) for vs in reward.values())
+print("task success", int(k), "/", n, wilson(k, n), clustered(reward))
+k = sum(v for vs in part_a.values() for v in vs); n = sum(len(vs) for vs in part_a.values())
+print("part A", k, "/", n, wilson(k, n), clustered(part_a))
+k, n = decided(r["roll_ups"]["authentication_compliance"] for r in rows)
+print("authentication", k, "/", n, wilson(k, n))
+k, n = decided(x["status"] for r in rows for x in r["results"]
+               if x["evaluation_key"] == "required_customer_confirmation")
+print("confirmation per write", k, "/", n, wilson(k, n))
+# Escalation v2 comes from the re-score, not from the v1 results in simulations.jsonl
+k, n = decided(x["status"] for r in v2 for x in r["results"]
+               if x["evaluation_key"] == "escalation_correctness")
+print("escalation v2", k, "/", n, wilson(k, n))
 
-writes = collections.Counter()
+# Spread across trials
+rewarded = collections.Counter(int(sum(vs)) for vs in reward.values())
+print("tasks by trials rewarded, of 3:", dict(sorted(rewarded.items())))
+changed = sorted((t for t, vs in part_a.items() if len(set(vs)) > 1), key=int)
+print("tasks whose part A changed:", changed)
+
+# Writes per action, named from the authentication-order result on the same span
+writes, tasks = collections.Counter(), collections.defaultdict(set)
 for r in rows:
     tool = {x["target"]: m.group(1) for x in r["results"]
             if x["evaluation_key"] == "authentication_order"
@@ -140,7 +164,9 @@ for r in rows:
     for x in r["results"]:
         if x["evaluation_key"] == "unauthorized_executions" and x["status"] != "NOT_APPLICABLE":
             writes[(tool[x["target"]], x["status"])] += 1
+            tasks[tool[x["target"]]].add(r["task_id"])
 print(writes)
+print({a: sorted(t, key=int) for a, t in tasks.items()})
 print("cancel_pending_order failure rate, upper bound", round(100 - wilson(15, 16)[0], 1))
 for n in (6, 7, 8):
     print(n, "writes, none failing: upper bound", round(100 * (1 - 0.05 ** (1 / n)), 1))

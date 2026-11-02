@@ -398,7 +398,7 @@
   - **No rate generalizes** past the 20 chosen tasks, one model in both roles, and synthetic traffic.
   - **Milestone 6 must size its own evidence.** If Milestone 5's traffic doesn't produce enough writes per action, Milestone 6 needs a targeted run.
 - Artifacts affected: [the proposal](../reports/m4-baseline/sample-size-proposal.md), [AUTONOMY.md](AUTONOMY.md#earned-authority-evidence-and-provisional-thresholds), [EVALUATION.md](EVALUATION.md#operational-efficiency), and step 6.6 in [DEVELOPMENT.md](../DEVELOPMENT.md#milestone-6--implement-earned-autonomy).
-- Verification or reconsideration trigger: The proposal's script reproduces every figure from [`simulations.jsonl`](../reports/m4-baseline/simulations.jsonl). Reconsider when Milestone 5's traffic gives per-action counts, or when Milestone 6 defines thresholds.
+- Verification or reconsideration trigger: The proposal's script reproduces its intervals, spread across trials, and per-action counts from [`simulations.jsonl`](../reports/m4-baseline/simulations.jsonl) and, for escalation v2, the [re-score](../reports/m4-baseline/adjudication-rescore-rubric-v2.jsonl); its judge agreement figures come from the [adjudication](../reports/m4-baseline/adjudication.md#results). Reconsider when Milestone 5's traffic gives per-action counts, or when Milestone 6 defines thresholds.
 
 ## Open questions to resolve deliberately
 
