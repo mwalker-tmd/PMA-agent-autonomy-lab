@@ -410,7 +410,8 @@ def sample_judgments(
                         _judge_cell(after_units.get((key, unit))),
                     )
                 )
-        note = _one_line(label.get("note")) or "none"
+        # The maintainer's words as recorded, quoted so nothing is added to them.
+        note = f'"{_one_line(label["note"])}"' if label.get("note") else "none."
         parts.append(
             "\n".join(
                 (
@@ -418,7 +419,7 @@ def sample_judgments(
                     "",
                     f"Reward {row['benchmark']['reward']:g}, part A "
                     f"`{row['roll_ups']['policy_compliance']}`. Handled correctly, per the "
-                    f"maintainer: {label['handled_correctly']}. Note: {note}. "
+                    f"maintainer: {label['handled_correctly']}. Note: {note} "
                     f"Thread `{row['thread_id']}`.",
                     "",
                     _table(("Judge", "Maintainer", "v1", "v2"), table),

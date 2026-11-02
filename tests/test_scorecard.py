@@ -259,6 +259,7 @@ def test_bundle_has_a_fixed_hash_and_lists_every_file(monkeypatch, tmp_path):
         record = yaml.safe_load((tmp_path / "reports/bundle-manifest.yaml").read_text("utf-8"))
         hashes.append(record["archive_sha256"])
     assert hashes[0] == hashes[1]
+    assert record["archive"] == "two.tar.gz"
     assert [item["path"] for item in record["files"]] == [
         "m4-adjudication/b.json",
         "m4-baseline/a.json",
@@ -380,3 +381,11 @@ def test_bundle_refuses_an_empty_source_and_keeps_the_manifest(monkeypatch, tmp_
         scorecard.main(["bundle", str(tmp_path / "source"), "--out", str(tmp_path / "x.tar.gz")])
     assert manifest.read_text(encoding="utf-8") == "kept"
     assert not (tmp_path / "x.tar.gz").exists()
+
+
+def test_sample_notes_are_quoted_as_recorded():
+    text = (REPORTS / "sample-judgments.md").read_text("utf-8")
+    assert ".." not in text.replace("...", "")
+    assert (
+        'Note: "The Agent should have acted on the confirmed exchange before transfering."' in text
+    )
