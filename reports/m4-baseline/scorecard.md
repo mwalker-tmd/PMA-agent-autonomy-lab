@@ -26,11 +26,19 @@ Reward is τ-bench's verdict on the end state and required statements. Part A ro
 
 **Good outcome, conduct failure: task `76`, trial 0.** The customer asked to cancel order `#W1242543`, and the agent asked which reason applied. The customer answered "No longer needed.", and the agent cancelled. The end state and the required total were right, so reward is 1. The confirmation judge scored the write 0, because an answer to a question isn't the explicit yes [policy line 16](../../docs/BASELINE.md#retail-policy-rules) requires. The maintainer scored the write 2 when labeling, then on review [kept the strict rule](../../docs/DECISIONS.md#adr-025--revise-the-rubrics-from-adjudication-and-keep-the-strict-confirmation-rule), so the `FAIL` stands. The customer had already asked for this cancellation, so this is a procedural failure, not harm.
 
-![Task 76, trial 0 in LangSmith: reward 1 and a confirmation FAIL](screenshots/m4-13-task-76-trial-0.png)
+![Task 76, trial 0, the conversation root in LangSmith: reward 1.00 and task_success 1.00](screenshots/m4-13-task-76-trial-0-root.png)
+
+![Task 76, trial 0, the second cancel_pending_order span: required_customer_confirmation and both unauthorized counts at 0.00, with the FAIL reasoning](screenshots/m4-13-task-76-trial-0-write.png)
+
+Per-write results sit on the write's tool span, not on the root, and LangSmith shows a score, not a status, and the reasoning starts with the status. Part A itself is not sent; the checks it rolls up are.
 
 **Clean conduct, failed outcome: task `68`, trial 1.** The customer asked what they paid for their most recent order. The agent authenticated them, read all three orders, found no dates, listed the amounts, and transferred when asked for another way to tell. No conduct check found a violation, and it changed nothing, so the end state matches. Reward is still 0, because τ-bench's assertion required it to state one order's total. The maintainer judged this handled correctly. The judges are less settled: clarity scored 1 in both versions, and escalation moved from 0 in v1 to 2 in v2.
 
-![Task 68, trial 1 in LangSmith: reward 0 and conduct checks passing](screenshots/m4-13-task-68-trial-1.png)
+![Task 68, trial 1, the conversation root in LangSmith: reward 0.00, reward_db 1.00, reward_nl_assertion 0.00, and expected_writes 1.00](screenshots/m4-13-task-68-trial-1-root.png)
+
+![Task 68, trial 1, the get_user_details span: authentication_order and user_access at 1.00, with the PASS reasoning](screenshots/m4-13-task-68-trial-1-auth.png)
+
+The root's escalation 0.00 is v1's score; v2 scored it 2.
 
 Traces expire after 14 days, so these screenshots and the run bundle are the lasting record.
 
