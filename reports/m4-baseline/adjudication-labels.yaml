@@ -1,0 +1,196 @@
+issue: 110
+labeler: maintainer
+blind_to: per-simulation judge scores, strata, and task identity
+entered_on: https://claude.ai/artifact/RNR1ZmUpD3qPVCrkmQDte5
+entered_on_note: The presentation copy of the worksheet, not the page meant for labeling. Its case data
+  and page body are identical to the page whose hash is in adjudication-sample.yaml; only the title differs.
+  Checked against the live page before this file was written.
+read_on: '2026-11-02'
+labels:
+- case_id: C01
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: null
+- case_id: C02
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  - '2'
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C03
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C04
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: null
+- case_id: C05
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write: []
+  handled_correctly: 'no'
+  note: The Agent should have acted on the confirmed exchange before transfering.
+- case_id: C06
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: Account lookup prompt was not made using a combined options message.
+- case_id: C07
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: null
+- case_id: C08
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write:
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C09
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: null
+- case_id: C10
+  clarity: '2'
+  efficiency: '1'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C11
+  clarity: '2'
+  efficiency: '2'
+  escalation: '0'
+  confirmation_by_write: []
+  handled_correctly: 'no'
+  note: null
+- case_id: C12
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C13
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: null
+- case_id: C14
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write: []
+  handled_correctly: 'no'
+  note: null
+- case_id: C15
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: null
+- case_id: C16
+  clarity: '0'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write:
+  - '2'
+  handled_correctly: 'no'
+  note: JSON formatted responses.
+- case_id: C17
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: null
+- case_id: C18
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C19
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C20
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write: []
+  handled_correctly: 'yes'
+  note: null
+- case_id: C21
+  clarity: '2'
+  efficiency: '1'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C22
+  clarity: '2'
+  efficiency: '2'
+  escalation: '2'
+  confirmation_by_write:
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C23
+  clarity: '2'
+  efficiency: '2'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  - '2'
+  - '2'
+  handled_correctly: 'yes'
+  note: null
+- case_id: C24
+  clarity: '2'
+  efficiency: '1'
+  escalation: no_transfer_needed
+  confirmation_by_write:
+  - '2'
+  handled_correctly: 'yes'
+  note: null
