@@ -145,7 +145,7 @@ TAU2_DATA_DIR=/path/to/tau2-bench/data uv run python -m \
   agent_autonomy_lab.entrypoints.scorecard rescore BUNDLE
 ```
 
-No model is called: checks read the saved runs, judges are served from the recordings, and provider keys are replaced with placeholders. It exits 1 on any difference. The last run, in [`rescore-check.yaml`](rescore-check.yaml):
+No model is called: checks read the saved runs, judges are served from the recordings, and provider keys are replaced with placeholders. The unauthorized counts read the confirmation results, so they depend on those recordings too. It exits 1 on any difference. The last run, in [`rescore-check.yaml`](rescore-check.yaml):
 
 <!-- generated:reproduction -->
 | Results | Identical / compared | Source |

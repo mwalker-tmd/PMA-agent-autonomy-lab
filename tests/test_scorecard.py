@@ -287,3 +287,58 @@ def test_hash_check_finds_a_changed_missing_or_extra_file(tmp_path):
         "extra": ["m4-baseline/b"],
         "changed": ["m4-baseline/a"],
     }
+
+
+def _clean_check():
+    part = {"decided": 1, "decided_citing_evidence": 1, "ids_cited": 1, "ids_found": 1}
+    return {
+        "bundle_files": {"missing": [], "extra": [], "changed": []},
+        "baseline": {"differences": [], "recordings_unserved": 0, "evidence": dict(part)},
+        "rubric_v2": {
+            "differences": [],
+            "recordings_unserved": 0,
+            "requests_with_no_recording": 0,
+            "evidence_in_rebuilt_trace": dict(part),
+        },
+        "repeats": {},
+    }
+
+
+def test_a_clean_check_passes():
+    assert scorecard._passed(_clean_check())
+
+
+@pytest.mark.parametrize(
+    "break_it",
+    [
+        lambda c: c["bundle_files"]["changed"].append("x"),
+        lambda c: c["bundle_files"]["extra"].append("x"),
+        lambda c: c["baseline"]["differences"].append("x"),
+        lambda c: c["baseline"]["evidence"].update(ids_found=0),
+        lambda c: c["baseline"]["evidence"].update(decided_citing_evidence=0),
+        lambda c: c["rubric_v2"]["evidence_in_rebuilt_trace"].update(ids_found=0),
+        lambda c: c["rubric_v2"].update(requests_with_no_recording=1),
+        lambda c: c["baseline"].update(recordings_unserved=1),
+    ],
+)
+def test_any_gap_fails_the_check(break_it):
+    check = _clean_check()
+    break_it(check)
+    assert not scorecard._passed(check)
+
+
+def test_rescore_stops_when_the_bundle_lacks_a_file(monkeypatch, capsys, tmp_path):
+    monkeypatch.chdir(REPO)
+    monkeypatch.setenv("TAU2_DATA_DIR", str(tmp_path))
+    for name in ("m4-baseline", "m4-adjudication"):
+        (tmp_path / name).mkdir()
+    out = tmp_path / "check.yaml"
+    assert scorecard.main(["rescore", str(tmp_path), "--out", str(out)]) == 1
+    assert "lacks" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_evidence_refuses_an_unknown_simulation(monkeypatch, tmp_path):
+    monkeypatch.chdir(REPO)
+    with pytest.raises(SystemExit, match="no task nope"):
+        scorecard.main(["evidence", str(tmp_path), "--task", "nope", "--trial", "0"])
