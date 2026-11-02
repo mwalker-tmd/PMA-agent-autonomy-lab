@@ -147,7 +147,7 @@ Most `NOT_APPLICABLE` results cite nothing, as there's nothing to prove. Neither
 
 ## Reproduce it
 
-Results and recordings are in `m4-baseline-bundle.tar.gz`, attached to the `v0.4.0-m4` release when [#114](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/114) publishes it. Only manifests and scores are committed, and [`bundle-manifest.yaml`](bundle-manifest.yaml) holds every file's hash. With τ-bench cloned at the pinned commit:
+Results and recordings are in `m4-baseline-bundle.tar.gz`, attached to the [`v0.4.0-m4` release](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/releases/tag/v0.4.0-m4). Only manifests and scores are committed, and [`bundle-manifest.yaml`](bundle-manifest.yaml) holds every file's hash. With τ-bench cloned at the pinned commit:
 
 ```
 mkdir BUNDLE && tar -xzf m4-baseline-bundle.tar.gz -C BUNDLE
