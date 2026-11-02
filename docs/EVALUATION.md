@@ -33,6 +33,8 @@ A single aggregate quality score would hide unacceptable tradeoffs. Example: cha
 
 **Always report denominators.** Some checks are `NOT_APPLICABLE`, some have `INSUFFICIENT_EVIDENCE`, and some runs are `INVALID`; none of these belongs in a passing denominator. Inability to observe a critical precondition should default-deny the action and count as an evidence gap in evaluation.
 
+The [baseline scorecard](../reports/m4-baseline/scorecard.md) reports these metrics from a recorded run, with its limits.
+
 ## Metric contract
 
 This section gives each scorecard metric its exact source and denominator, before any evaluator is written. It is a specification: nothing here has run. Field names were checked against the Milestone 2 run of record and [`trace-event/1`](ARCHITECTURE.md#fields) at τ-bench `0c69df4`.

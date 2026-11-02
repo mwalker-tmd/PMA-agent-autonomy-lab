@@ -349,6 +349,10 @@ uv run python -m agent_autonomy_lab.entrypoints.compare_outcomes \
 
 An `INVALID` run is retried once, and its row stays. Hook C's counts are compared with the exchanges and with τ-bench's reward, because [it fails silently](DECISIONS.md#adr-016--instrument-live-runs-at-the-lab-agent-wrapper-and-saved-runs-by-export). The batch is sequential, because the transport is process-wide. Keep the machine awake during a long run: the [baseline](../reports/m4-baseline/manifest.yaml) took 109 minutes by the clock and 57 awake.
 
+### Re-scoring a batch
+
+[`scorecard rescore`](../src/agent_autonomy_lab/entrypoints/scorecard.py) reruns every check and judge on a batch's saved runs and fails on any difference, with no model call. Checks read `simulation.json` and `trace_events.jsonl`. Judges are served from their cassettes by matching each request, because a call that failed before a response existed has no recording: an in-order replay would stop there, while this one fails that call alone, as the run did. The [baseline scorecard](../reports/m4-baseline/scorecard.md#reproduce-it) has the commands.
+
 ### Injecting a tool failure
 
 The Milestone 2 baseline had no tool errors, so a failure has to be provoked to show it can be inspected. `--inject-fault` makes one live run fail the first call to one read tool:

@@ -56,7 +56,7 @@ from agent_autonomy_lab.application.adjudication import (
 from agent_autonomy_lab.application.confirmation_judge import ConfirmationEvaluator
 from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulation
 from agent_autonomy_lab.application.rubric_judges import RUBRIC_V1, rubric_judges
-from agent_autonomy_lab.domain.evaluation import EvaluationSubject
+from agent_autonomy_lab.domain.evaluation import EvaluationSubject, EvaluatorOutput
 from agent_autonomy_lab.domain.simulations import Message
 from agent_autonomy_lab.entrypoints.check_access import saved_subjects
 from agent_autonomy_lab.entrypoints.judge_rubrics import CallUsage
@@ -133,6 +133,25 @@ def _load_rows(report: Path) -> dict[str, dict]:
     return {row["simulation_id"]: row for row in rows}
 
 
+def repeat_lines(case: dict, run: int, output: EvaluatorOutput) -> list[dict]:
+    """One line per judged unit of one sampled case in one repeat."""
+    rows = [result.to_dict() for result in output.results]
+    return [
+        {
+            "case_id": case["case_id"],
+            "simulation_id": case["simulation_id"],
+            "run": run,
+            "evaluation_key": key,
+            "unit": unit,
+            "status": result["status"],
+            "score": result.get("score"),
+            "reason": result.get("reason"),
+            "evaluator_version": result["evaluator_version"],
+        }
+        for (key, unit), result in judge_units(rows).items()
+    ]
+
+
 def repeat(args: argparse.Namespace) -> int:
     if args.out.exists():
         raise SystemExit(f"{args.out} exists; remove it to run the repeats again")
@@ -157,21 +176,7 @@ def repeat(args: argparse.Namespace) -> int:
                 usage.add(
                     raw.payload["call"] for raw in output.raw_outputs if "call" in raw.payload
                 )
-                rows = [result.to_dict() for result in output.results]
-                for (key, unit), result in judge_units(rows).items():
-                    lines.append(
-                        {
-                            "case_id": case["case_id"],
-                            "simulation_id": case["simulation_id"],
-                            "run": run,
-                            "evaluation_key": key,
-                            "unit": unit,
-                            "status": result["status"],
-                            "score": result.get("score"),
-                            "reason": result.get("reason"),
-                            "evaluator_version": result["evaluator_version"],
-                        }
-                    )
+                lines.extend(repeat_lines(case, run, output))
         recording = args.recordings / f"run-{run}.cassette.json"
         hashes[recording.name] = recorder.cassette({"adjudication_repeat": run}).save(recording)
     text = "".join(json.dumps(line, ensure_ascii=False) + "\n" for line in lines)
