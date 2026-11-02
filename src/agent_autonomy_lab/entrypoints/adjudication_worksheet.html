@@ -1,0 +1,285 @@
+<title>Baseline Adjudication Worksheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a review desk. The transcript reads on the left, the score sheet stays in reach on the right. */
+:root {
+  --bg: #f3f5f6; --panel: #ffffff; --fg: #1c2529; --muted: #5a6a72; --line: #d5dde1;
+  --accent: #0f6c7a; --accent-fg: #ffffff; --user: #e6eef8; --tool: #eef1f2; --warn: #9a5b00;
+  --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12181b; --panel: #1b2327; --fg: #e4eaed; --muted: #9aa9b1; --line: #33414a;
+  --accent: #5cc0cf; --accent-fg: #0b1417; --user: #1f2d3d; --tool: #222c31; --warn: #e6b35c; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #12181b; --panel: #1b2327; --fg: #e4eaed; --muted: #9aa9b1; --line: #33414a;
+  --accent: #5cc0cf; --accent-fg: #0b1417; --user: #1f2d3d; --tool: #222c31; --warn: #e6b35c; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--sans); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 16px; }
+h1 { font-size: 22px; margin: 0; text-wrap: balance; }
+h2 { font-size: 16px; margin: 0; }
+.lede { color: var(--muted); margin: 4px 0 0; max-width: 70ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+#status { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#status.bad { color: var(--warn); font-weight: 600; }
+nav { display: flex; flex-wrap: wrap; gap: 6px; }
+nav button { font: 500 13px var(--mono); padding: 5px 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 4px; cursor: pointer; }
+nav button.done { background: color-mix(in srgb, var(--accent) 18%, var(--panel)); }
+nav button.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+details.rubrics { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+details.rubrics summary { cursor: pointer; font-weight: 600; }
+.rubric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 10px; font-size: 13.5px; }
+.rubric-grid > div { min-width: 0; }
+.rubric-grid p, .rubric-grid ul { margin: 6px 0; }
+.rubric-grid ul { padding-left: 18px; }
+.desk { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 16px; align-items: start; }
+@media (max-width: 860px) { .desk { grid-template-columns: minmax(0, 1fr); } }
+.transcript { display: grid; gap: 8px; min-width: 0; }
+.msg { padding: 8px 12px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+.msg.user { background: var(--user); }
+.who { font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.tool { background: var(--tool); font-size: 13px; }
+.tool summary { cursor: pointer; font-family: var(--mono); overflow-wrap: anywhere; }
+pre { font: 12.5px/1.45 var(--mono); margin: 6px 0 0; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.call-write { border-left: 3px solid var(--accent); }
+.sheet { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); max-height: calc(100vh - 16px); overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 14px; min-width: 0; }
+@media (max-width: 860px) { .sheet { position: static; max-height: none; } }
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 4px; min-width: 0; }
+legend { font-weight: 600; padding: 0; font-size: 14px; }
+.opts { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13.5px; }
+.opts label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.hint { font-size: 12.5px; color: var(--muted); }
+textarea { width: 100%; box-sizing: border-box; min-height: 64px; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px; }
+.pager { display: flex; justify-content: space-between; gap: 8px; }
+.btn { font: 500 13.5px var(--sans); padding: 7px 12px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+.btn.quiet { background: transparent; color: var(--accent); }
+.write-args { font: 12px/1.4 var(--mono); overflow-wrap: anywhere; color: var(--muted); }
+#fallback { width: 100%; box-sizing: border-box; min-height: 120px; font: 12px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); }
+</style>
+
+<div class="wrap">
+  <header class="bar">
+    <div>
+      <h1>Baseline adjudication worksheet</h1>
+      <p class="lede">Score each conversation yourself, using the judges' anchors. Judge results are not on this page, and cases are in a shuffled order. Labels save as you click.</p>
+    </div>
+    <div id="status" role="status">Connecting to saved labels…</div>
+  </header>
+  <nav id="cases" aria-label="Cases"></nav>
+  <details class="rubrics">
+    <summary>Scoring anchors (the judges' prompts, word for word)</summary>
+    <div class="rubric-grid" id="rubrics"></div>
+  </details>
+  <div class="desk">
+    <section class="transcript" id="transcript" aria-label="Conversation"></section>
+    <form class="sheet" id="sheet" aria-label="Score sheet"></form>
+  </div>
+  <div class="bar">
+    <button type="button" class="btn quiet" id="copy">Copy all labels as JSON</button>
+    <textarea id="fallback" hidden readonly aria-label="All labels as JSON"></textarea>
+  </div>
+</div>
+
+<script id="data" type="application/json">__WORKSHEET_DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const CASES = DATA.cases;
+const labels = {};
+let current = 0;
+let db = null;
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+
+const RUBRIC_FIELDS = [
+  { key: "clarity", title: "Clarity and customer effort", options: [["0", "0"], ["1", "1"], ["2", "2"], ["unclear", "Can't tell"]] },
+  { key: "efficiency", title: "Conversation efficiency", options: [["0", "0"], ["1", "1"], ["2", "2"], ["unclear", "Can't tell"]] },
+  { key: "escalation", title: "Escalation judgment", options: [["0", "0"], ["1", "1"], ["2", "2"], ["no_transfer_needed", "No transfer could be needed"], ["unclear", "Can't tell"]] },
+];
+const HANDLED = [["yes", "Yes"], ["no", "No"], ["unclear", "Unclear"]];
+
+function isComplete(c) {
+  const l = labels[c.id];
+  if (!l) return false;
+  return RUBRIC_FIELDS.every((f) => l[f.key]) && l.handled_correctly && c.writes.every((_, i) => l.writes?.[i]);
+}
+
+function renderProgress() {
+  const nav = $("cases");
+  nav.replaceChildren(...CASES.map((c, i) => {
+    const b = el("button", (isComplete(c) ? "done " : "") + (i === current ? "current" : ""), c.id);
+    b.type = "button";
+    b.setAttribute("aria-current", i === current ? "true" : "false");
+    b.onclick = () => show(i);
+    return b;
+  }));
+}
+
+function setStatus(text, bad) {
+  const done = CASES.filter(isComplete).length;
+  $("status").textContent = `${done} of ${CASES.length} cases complete. ${text}`;
+  $("status").classList.toggle("bad", !!bad);
+}
+
+function pretty(args) { return JSON.stringify(args, null, 2); }
+
+function renderTranscript(c) {
+  const nodes = [];
+  for (const m of c.messages) {
+    if (m.role === "tool") {
+      const d = el("details", "msg tool");
+      d.append(el("summary", "", `result of ${m.tool_name || "tool"}`), el("pre", "", m.content || ""));
+      nodes.push(d);
+      continue;
+    }
+    if (m.content) {
+      const box = el("div", "msg " + m.role);
+      box.append(el("div", "who", m.role === "user" ? "Customer" : "Agent"), el("div", "text", m.content));
+      nodes.push(box);
+    }
+    for (const call of m.tool_calls || []) {
+      const isWrite = c.writes.some((w) => w.name === call.name && pretty(w.arguments) === pretty(call.arguments));
+      const d = el("details", "msg tool" + (isWrite ? " call-write" : ""));
+      if (isWrite) d.open = true;
+      d.append(el("summary", "", `Agent called ${call.name}`), el("pre", "", pretty(call.arguments)));
+      nodes.push(d);
+    }
+  }
+  $("transcript").replaceChildren(...nodes);
+}
+
+function radioGroup(name, options, value, onChange) {
+  const opts = el("div", "opts");
+  for (const [val, text] of options) {
+    const label = el("label");
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = name; input.id = `${name}-${val}`; input.value = val;
+    input.checked = value === val;
+    input.onchange = () => onChange(val);
+    label.append(input, document.createTextNode(text));
+    opts.append(label);
+  }
+  return opts;
+}
+
+function renderSheet(c) {
+  const l = labels[c.id] || {};
+  const form = $("sheet");
+  const parts = [el("h2", "", `Case ${c.id}`)];
+  for (const f of RUBRIC_FIELDS) {
+    const fs = el("fieldset");
+    fs.append(el("legend", "", f.title), radioGroup(`${c.id}-${f.key}`, f.options, l[f.key], (v) => update(c, { [f.key]: v })));
+    parts.push(fs);
+  }
+  c.writes.forEach((w, i) => {
+    const fs = el("fieldset");
+    fs.append(el("legend", "", `Confirmation, write ${i + 1} of ${c.writes.length}`),
+      el("div", "write-args", `${w.name} ${JSON.stringify(w.arguments)}`),
+      radioGroup(`${c.id}-write-${i}`, [["0", "0"], ["1", "1"], ["2", "2"], ["unclear", "Can't tell"]], l.writes?.[i], (v) => {
+        const writes = [...(labels[c.id]?.writes || [])];
+        writes[i] = v;
+        update(c, { writes });
+      }));
+    parts.push(fs);
+  });
+  if (!c.writes.length) parts.push(el("p", "hint", "This conversation has no writes to score for confirmation."));
+  const handled = el("fieldset");
+  handled.append(el("legend", "", "Did the agent handle this correctly, setting aside any score?"),
+    radioGroup(`${c.id}-handled`, HANDLED, l.handled_correctly, (v) => update(c, { handled_correctly: v })));
+  parts.push(handled);
+  const noteId = `${c.id}-note`;
+  const noteLabel = el("label", "", "One-line note");
+  noteLabel.htmlFor = noteId;
+  noteLabel.style.fontWeight = "600";
+  const note = document.createElement("textarea");
+  note.id = noteId; note.value = l.note || "";
+  note.onchange = () => update(c, { note: note.value });
+  const noteBox = el("div");
+  noteBox.append(noteLabel, note);
+  parts.push(noteBox);
+  const pager = el("div", "pager");
+  const prev = el("button", "btn quiet", "Previous"); prev.type = "button"; prev.disabled = current === 0; prev.onclick = () => show(current - 1);
+  const next = el("button", "btn", "Next case"); next.type = "button"; next.disabled = current === CASES.length - 1; next.onclick = () => show(current + 1);
+  pager.append(prev, next);
+  parts.push(pager);
+  form.replaceChildren(...parts);
+  form.onsubmit = (e) => e.preventDefault();
+}
+
+async function update(c, patch) {
+  labels[c.id] = { ...(labels[c.id] || {}), ...patch, case_id: c.id };
+  renderProgress();
+  if (!db) { setStatus("Saving is off here. Use Copy all labels below before leaving.", true); return; }
+  setStatus("Saving…");
+  try {
+    await db.doc(`labels/${c.id}`).set(labels[c.id]);
+    setStatus("Saved.");
+  } catch (error) {
+    setStatus("This label did not save. Change it again to retry, or use Copy all labels below.", true);
+  }
+}
+
+function show(i) {
+  current = i;
+  const c = CASES[i];
+  renderProgress();
+  renderTranscript(c);
+  renderSheet(c);
+  window.scrollTo(0, 0);
+  try { localStorage.setItem("adjudication-case", String(i)); } catch (e) {}
+}
+
+function renderRubric(host, title, text) {
+  const box = el("div");
+  box.append(el("h2", "", title));
+  let list = null;
+  for (const line of text.split("\n")) {
+    const bullet = line.match(/^\s*-\s+(.*)$/);
+    if (bullet) {
+      if (!list) { list = el("ul"); box.append(list); }
+      list.append(el("li", "", bullet[1].replaceAll("**", "")));
+    } else {
+      list = null;
+      if (line.trim()) box.append(el("p", "", line.replaceAll("**", "")));
+    }
+  }
+  host.append(box);
+}
+
+$("copy").onclick = async () => {
+  const text = JSON.stringify(Object.values(labels), null, 2);
+  const area = $("fallback");
+  area.value = text;
+  try { await navigator.clipboard.writeText(text); setStatus("Copied."); }
+  catch (e) { area.hidden = false; area.select(); setStatus("Copy was refused. The labels are selected below.", true); }
+};
+
+const R = DATA.rubrics;
+renderRubric($("rubrics"), "Clarity", R.clarity);
+renderRubric($("rubrics"), "Efficiency", R.efficiency);
+renderRubric($("rubrics"), "Escalation", R.escalation);
+renderRubric($("rubrics"), "Confirmation", R.confirmation);
+let start = 0;
+try { start = Math.min(Number(localStorage.getItem("adjudication-case")) || 0, CASES.length - 1); } catch (e) {}
+show(start);
+setStatus("Connecting to saved labels…");
+
+(async () => {
+  const api = window.claude ? await window.claude.use("db") : null;
+  if (!api) { setStatus("Saving is off here. Use Copy all labels below before leaving.", true); return; }
+  db = api;
+  try {
+    const snapshot = await db.collection("labels").get();
+    snapshot.docs.forEach((d) => { labels[d.id] = d.data(); });
+    show(current);
+    setStatus("Labels save as you click.");
+  } catch (error) {
+    setStatus("Saved labels could not be read. Reload before labeling, so nothing is overwritten.", true);
+    db = null;
+  }
+})();
+</script>
