@@ -221,8 +221,14 @@ def _passed(check: dict) -> bool:
     if files["missing"] or files["extra"] or files["changed"]:
         return False
     baseline, rubric = check["baseline"], check["rubric_v2"]
+    evidence = (baseline["evidence"], rubric["evidence_in_rebuilt_trace"])
     return not (
-        baseline["differences"]
+        any(
+            part["decided_citing_evidence"] != part["decided"]
+            or part["ids_found"] != part["ids_cited"]
+            for part in evidence
+        )
+        or baseline["differences"]
         or rubric["differences"]
         or baseline["recordings_unserved"]
         or rubric["recordings_unserved"]
@@ -247,6 +253,12 @@ def rescore(args: argparse.Namespace) -> int:
     save_dir, recordings = args.bundle / BASELINE_DIR, args.bundle / RECORDINGS_DIR
     manifest = yaml.safe_load((REPORTS / "bundle-manifest.yaml").read_text("utf-8"))
     files = _check_hashes(args.bundle, manifest)
+    if files["missing"]:
+        print(
+            f"the bundle lacks {len(files['missing'])} files: {files['missing'][:5]}",
+            file=sys.stderr,
+        )
+        return 1
     rows = _jsonl(REPORTS / "simulations.jsonl")
     check = {
         "bundle_files": files,
@@ -349,7 +361,9 @@ def render(args: argparse.Namespace) -> int:
 def evidence(args: argparse.Namespace) -> int:
     """One simulation's results, each with the saved spans its evidence IDs name."""
     rows = _jsonl(REPORTS / "simulations.jsonl")
-    row = next(r for r in rows if r["task_id"] == args.task and r["trial"] == args.trial)
+    row = next((r for r in rows if r["task_id"] == args.task and r["trial"] == args.trial), None)
+    if row is None:
+        raise SystemExit(f"the baseline has no task {args.task}, trial {args.trial}")
     directory = _run_dir(args.bundle / BASELINE_DIR, row)
     events = {str(event.event_id): event for event in _saved_events(directory)}
     results = [
