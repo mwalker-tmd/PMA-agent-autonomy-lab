@@ -1,5 +1,6 @@
 # Baseline manifest (M4-11, #109), written by run_batch. Values come from the run; the
-# edits after it are listed under post_run_edits. Results are unadjudicated until #110.
+# edits after it are listed under post_run_edits. The rubric results here are v1; #110 adjudicated
+# them and re-scored with v2, in adjudication.md and adjudication-rescore-rubric-v2.jsonl.
 # See docs/DECISIONS.md ADR-024 and DEVELOPMENT.md section 5 for the template.
 
 experiment_id: m4-baseline
@@ -981,3 +982,4 @@ post_run_edits:
   and run_batch now leaves those out.'
 - cost.billed_usd and notes.billing added from the maintainer's dashboard readings.
 - notes.lab_commit added.
+- The header now points to the adjudication in #110. No value changed.
