@@ -56,6 +56,7 @@ from agent_autonomy_lab.application.adjudication import (
 from agent_autonomy_lab.application.confirmation_judge import ConfirmationEvaluator
 from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulation
 from agent_autonomy_lab.application.rubric_judges import RUBRIC_V1, rubric_judges
+from agent_autonomy_lab.domain.evaluation import EvaluationSubject
 from agent_autonomy_lab.domain.simulations import Message
 from agent_autonomy_lab.entrypoints.check_access import saved_subjects
 from agent_autonomy_lab.entrypoints.judge_rubrics import CallUsage
@@ -78,6 +79,15 @@ def saved_messages(save_dir: Path, row: dict) -> tuple[Message, ...]:
     _, simulations = saved_simulations(str(save_dir / name / "simulation.json"))
     (simulation,) = simulations
     return simulation.messages
+
+
+def sampled_subject(save_dir: Path, row: dict) -> EvaluationSubject:
+    """The saved run of one report row, refused if it is not that row's simulation."""
+    name = f"task-{row['task_id']}-trial-{row['trial']}-attempt-{row['attempt']}"
+    ((_, subject),) = saved_subjects([str(save_dir / name / "simulation.json")])
+    if subject.simulation_id != row["simulation_id"]:
+        raise ValueError(f"{name} holds {subject.simulation_id}, not {row['simulation_id']}")
+    return subject
 
 
 def render_worksheet(cases: Sequence[dict]) -> str:
@@ -128,6 +138,7 @@ def repeat(args: argparse.Namespace) -> int:
         raise SystemExit(f"{args.out} exists; remove it to run the repeats again")
     args.recordings.mkdir(parents=True, exist_ok=True)
     cases = yaml.safe_load(args.sample.read_text(encoding="utf-8"))["cases"]
+    report = _load_rows(args.report)
     usage = CallUsage()
     hashes = {}
     lines = []
@@ -141,9 +152,7 @@ def repeat(args: argparse.Namespace) -> int:
         )
         with litellm_transport(recorder):
             for case in cases:
-                name = f"task-{case['task_id']}-trial-{case['trial']}-attempt-0"
-                path = args.save_dir / name / "simulation.json"
-                ((_, subject),) = saved_subjects([str(path)])
+                subject = sampled_subject(args.save_dir, report[case["simulation_id"]])
                 output = evaluate_simulation(subject, judges)
                 usage.add(
                     raw.payload["call"] for raw in output.raw_outputs if "call" in raw.payload
@@ -184,10 +193,7 @@ def rescore(args: argparse.Namespace) -> int:
     lines = []
     with litellm_transport(recorder):
         for row in _load_rows(args.report).values():
-            name = f"task-{row['task_id']}-trial-{row['trial']}-attempt-{row['attempt']}"
-            path = args.save_dir / name / "simulation.json"
-            ((_, subject),) = saved_subjects([str(path)])
-            output = evaluate_simulation(subject, judges)
+            output = evaluate_simulation(sampled_subject(args.save_dir, row), judges)
             usage.add(raw.payload["call"] for raw in output.raw_outputs if "call" in raw.payload)
             lines.append(
                 {
@@ -267,6 +273,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     again.add_argument("--recordings", type=Path, required=True)
     again.add_argument("--sample", type=Path, default=SAMPLE)
     again.add_argument("--out", type=Path, default=REPEATS)
+    again.add_argument("--report", type=Path, default=REPORT)
     again.add_argument("--rubrics-only", action="store_true", help="the current rubric judges")
     again.set_defaults(run=repeat)
     fresh = commands.add_parser("rescore", help="re-score all simulations with changed rubrics")
