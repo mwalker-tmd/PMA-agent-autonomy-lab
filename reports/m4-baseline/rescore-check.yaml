@@ -11,6 +11,9 @@ baseline:
     compared: 256
     identical: 256
   differences: []
+  roll_ups:
+    compared: 60
+    identical: 60
   requests_served: 228
   requests_with_no_recording: 1
   requests_with_no_recording_in:

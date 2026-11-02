@@ -31,6 +31,7 @@ from agent_autonomy_lab.adapters.litellm import Cassette, file_sha256, replaying
 from agent_autonomy_lab.adapters.models import LiteLLMModelClient
 from agent_autonomy_lab.adapters.tau2.reference_writes import GoldReplayReferenceWrites
 from agent_autonomy_lab.application.adjudication import with_rescored_rubrics
+from agent_autonomy_lab.application.batch_report import ROLL_UPS
 from agent_autonomy_lab.application.confirmation_judge import ConfirmationEvaluator
 from agent_autonomy_lab.application.evaluate_simulation import evaluate_simulation
 from agent_autonomy_lab.application.gate_checks import evaluate_with_unauthorized_counts
@@ -100,7 +101,7 @@ def _subject(directory: Path, row: dict) -> EvaluationSubject:
 def _replay_baseline(save_dir: Path, rows: Sequence[dict]) -> dict[str, Any]:
     references = GoldReplayReferenceWrites()
     comparisons, coverage = [], []
-    served = unmatched = unserved = 0
+    served = unmatched = unserved = roll_ups_compared = roll_ups_identical = 0
     unmatched_where = []
     for row in rows:
         directory = _run_dir(save_dir, row)
@@ -110,7 +111,17 @@ def _replay_baseline(save_dir: Path, rows: Sequence[dict]) -> dict[str, Any]:
             output = evaluate_with_unauthorized_counts(subject, evaluators)
         where = f"task {row['task_id']} trial {row['trial']}"
         replayed = [result.to_dict() for result in output.results]
-        comparisons.append(compare_results(row["results"], replayed, where))
+        comparison = compare_results(row["results"], replayed, where)
+        roll_ups = {
+            name: statuses[subject.simulation_id].value
+            for name, read in ROLL_UPS.items()
+            if subject.simulation_id in (statuses := read(output.results))
+        }
+        if roll_ups != row["roll_ups"]:
+            comparison["differences"].append(f"{where}: roll-ups")
+        comparisons.append(comparison)
+        roll_ups_compared += 1
+        roll_ups_identical += roll_ups == row["roll_ups"]
         known = (str(event.event_id) for event in subject.events)
         coverage.append(evidence_coverage(row["results"], known))
         served, unserved = served + transport.served, unserved + transport.unserved
@@ -119,6 +130,7 @@ def _replay_baseline(save_dir: Path, rows: Sequence[dict]) -> dict[str, Any]:
             unmatched_where.append(where)
     return {
         **merge_comparisons(comparisons),
+        "roll_ups": {"compared": roll_ups_compared, "identical": roll_ups_identical},
         "requests_served": served,
         "requests_with_no_recording": unmatched,
         "requests_with_no_recording_in": unmatched_where,
@@ -192,13 +204,16 @@ def _replay_repeats(save_dir: Path, recordings: Path, rows: Sequence[dict]) -> d
     return report
 
 
+def _bundle_files_in(root: Path, name: str) -> list[Path]:
+    return [
+        path for path in (root / name).rglob("*") if path.is_file() and path.name != ".DS_Store"
+    ]
+
+
 def _bundle_files(root: Path) -> list[Path]:
     """The files in the bundle, in a fixed order, with no OS clutter."""
     found = [
-        path
-        for name in (BASELINE_DIR, RECORDINGS_DIR)
-        for path in (root / name).rglob("*")
-        if path.is_file() and path.name != ".DS_Store"
+        path for name in (BASELINE_DIR, RECORDINGS_DIR) for path in _bundle_files_in(root, name)
     ]
     return sorted(found, key=lambda path: path.relative_to(root).as_posix())
 
@@ -222,8 +237,10 @@ def _passed(check: dict) -> bool:
         return False
     baseline, rubric = check["baseline"], check["rubric_v2"]
     evidence = (baseline["evidence"], rubric["evidence_in_rebuilt_trace"])
+    roll_ups = baseline["roll_ups"]
     return not (
-        any(
+        roll_ups["identical"] != roll_ups["compared"]
+        or any(
             part["decided_citing_evidence"] != part["decided"]
             or part["ids_found"] != part["ids_cited"]
             for part in evidence
@@ -276,6 +293,13 @@ def bundle(args: argparse.Namespace) -> int:
     """A byte-stable archive: sorted paths, with no time or owner in it, so its hash repeats."""
     if args.out.exists():
         raise SystemExit(f"{args.out} exists; a bundle is never overwritten")
+    empty = [
+        name for name in (BASELINE_DIR, RECORDINGS_DIR) if not _bundle_files_in(args.source, name)
+    ]
+    if empty:
+        raise SystemExit(
+            f"{args.source} has no files under {', '.join(empty)}; nothing was written"
+        )
     files = _bundle_files(args.source)
 
     def clean(info: tarfile.TarInfo) -> tarfile.TarInfo:
@@ -323,7 +347,7 @@ def _rendered() -> dict[Path, str]:
             card.read_text(encoding="utf-8"),
             {
                 "outcome-conduct": outcome_conduct_table(rows),
-                "metrics": metrics_table(rows, manifest),
+                "metrics": metrics_table(rows),
                 "judges": judges_table(rows, list(rescored.values())),
                 "contrasts": contrast_table(rows, CONTRASTS),
                 "checks": checks_table(rows),

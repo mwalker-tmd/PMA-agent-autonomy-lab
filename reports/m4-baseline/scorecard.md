@@ -48,8 +48,8 @@ Traces expire after 14 days, so these screenshots and the run bundle are the las
 | Kind | Metric | Numerator / denominator | Not applicable | Insufficient | Error | Invalid |
 | --- | --- | --- | --- | --- | --- | --- |
 | Outcome | Task success (τ-bench reward) | 46 / 60 | 0 | 0 | 0 | 0 |
-| Outcome | Reward component DB | 48 / 60 | n/a | n/a | n/a | n/a |
-| Outcome | Reward component NL_ASSERTION | 21 / 27 | n/a | n/a | n/a | n/a |
+| Outcome | Reward component DB | 48 / 60 | 0 | 0 | 0 | 0 |
+| Outcome | Reward component NL_ASSERTION | 21 / 27 | 33 | 0 | 0 | 0 |
 | Conduct | Policy compliance, part A (per simulation) | 51 / 59 | 0 | 1 | 0 | 0 |
 | Conduct | Authentication compliance (per simulation) | 58 / 58 | 2 | 0 | 0 | 0 |
 | Conduct | Confirmation compliance (per simulation) | 33 / 34 | 25 | 1 | 0 | 0 |
@@ -141,6 +141,8 @@ uv run python -m agent_autonomy_lab.entrypoints.scorecard evidence BUNDLE \
 
 Most `NOT_APPLICABLE` results cite nothing, as there's nothing to prove. Neither do the 2 undecided unauthorized counts on task `76`, trial 2, whose reasons name the undecided confirmation result they depend on. The `evidence` command reads the results as run, so it shows v1 for the rubrics.
 
+**The judges' raw outputs were not saved by this run.** A judged result's `raw_output_id` names a record that the baseline's commit didn't write, as the [manifest notes](manifest.yaml). Each judge's reply is in the run's `judges.cassette.json`, and the re-score reproduces every judged result from it. Later runs save the records.
+
 **v2's IDs point at a different copy of the trace.** The re-score rebuilt each trace from the saved run, so its IDs are found in that rebuilt trace, not in `trace_events.jsonl` or LangSmith. It's the same conversation, and each row's `thread_id` and `root_run_id` lead to the trace that was sent.
 
 ## Reproduce it
@@ -160,6 +162,7 @@ No model is called: checks read the saved runs, judges are served from the recor
 | --- | --- | --- |
 | Baseline, deterministic | 1901 / 1901 | Saved runs |
 | Baseline, judges | 256 / 256 | `judges.cassette.json` of each run |
+| Baseline, roll-ups per simulation | 60 / 60 | The results above |
 | Rubric v2, all simulations | 180 / 180 | `rescore-rubric-v2` |
 | Repeats, v1 | 273 / 273 | `run-0` to `run-2` |
 | Repeats, v2 | 216 / 216 | `rubric-v2/run-0` to `run-2` |

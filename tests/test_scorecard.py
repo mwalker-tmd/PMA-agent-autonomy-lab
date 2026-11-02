@@ -23,6 +23,7 @@ from agent_autonomy_lab.application.scorecard import (
     checks_table,
     comparable,
     compare_results,
+    component_counts,
     evidence_coverage,
     judges_table,
     metrics_table,
@@ -121,8 +122,8 @@ def scorecard_checks(table):
 
 
 def test_each_metric_row_shows_its_denominator_and_non_scored_counts():
-    rows, manifest = _rows(), _manifest()
-    tables = (metrics_table(rows, manifest), checks_table(rows), judges_table(rows, rows))
+    rows = _rows()
+    tables = (metrics_table(rows), checks_table(rows), judges_table(rows, rows))
     for table in tables:
         assert "Numerator / denominator" in table
         for name in ("Not applicable", "Insufficient", "Error", "Invalid"):
@@ -293,7 +294,12 @@ def _clean_check():
     part = {"decided": 1, "decided_citing_evidence": 1, "ids_cited": 1, "ids_found": 1}
     return {
         "bundle_files": {"missing": [], "extra": [], "changed": []},
-        "baseline": {"differences": [], "recordings_unserved": 0, "evidence": dict(part)},
+        "baseline": {
+            "differences": [],
+            "recordings_unserved": 0,
+            "evidence": dict(part),
+            "roll_ups": {"compared": 1, "identical": 1},
+        },
         "rubric_v2": {
             "differences": [],
             "recordings_unserved": 0,
@@ -314,6 +320,7 @@ def test_a_clean_check_passes():
         lambda c: c["bundle_files"]["changed"].append("x"),
         lambda c: c["bundle_files"]["extra"].append("x"),
         lambda c: c["baseline"]["differences"].append("x"),
+        lambda c: c["baseline"]["roll_ups"].update(identical=0),
         lambda c: c["baseline"]["evidence"].update(ids_found=0),
         lambda c: c["baseline"]["evidence"].update(decided_citing_evidence=0),
         lambda c: c["rubric_v2"]["evidence_in_rebuilt_trace"].update(ids_found=0),
@@ -342,3 +349,34 @@ def test_evidence_refuses_an_unknown_simulation(monkeypatch, tmp_path):
     monkeypatch.chdir(REPO)
     with pytest.raises(SystemExit, match="no task nope"):
         scorecard.main(["evidence", str(tmp_path), "--task", "nope", "--trial", "0"])
+
+
+def test_reward_components_count_unchecked_tasks_as_not_applicable():
+    components = component_counts(_rows())
+    for name, part in _manifest()["task_success_components"].items():
+        assert {k: components[name][k] for k in part} == part
+    assert components["NL_ASSERTION"]["not_applicable"] == 33
+    assert components["DB"]["not_applicable"] == 0
+    assert "n/a" not in metrics_table(_rows())
+
+
+def test_an_invalid_run_leaves_the_component_denominator():
+    row = {
+        "run_class": "invalid",
+        "benchmark": {"db_match": None, "reward_breakdown": {"DB": 0.0}},
+    }
+    assert component_counts([row])["DB"]["invalid"] == 1
+    assert component_counts([row])["DB"]["denominator"] == 0
+
+
+def test_bundle_refuses_an_empty_source_and_keeps_the_manifest(monkeypatch, tmp_path):
+    (tmp_path / "reports").mkdir()
+    manifest = tmp_path / "reports/bundle-manifest.yaml"
+    manifest.write_text("kept", encoding="utf-8")
+    monkeypatch.setattr(scorecard, "REPORTS", tmp_path / "reports")
+    (tmp_path / "source/m4-baseline").mkdir(parents=True)
+    (tmp_path / "source/m4-baseline/a.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(SystemExit, match="m4-adjudication"):
+        scorecard.main(["bundle", str(tmp_path / "source"), "--out", str(tmp_path / "x.tar.gz")])
+    assert manifest.read_text(encoding="utf-8") == "kept"
+    assert not (tmp_path / "x.tar.gz").exists()

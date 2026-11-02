@@ -152,6 +152,41 @@ def rollup_counts(rows: Iterable[Mapping[str, Any]], name: str) -> dict[str, int
     }
 
 
+def component_counts(rows: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, int]]:
+    """Each reward component's counts, with a component the task does not check as not applicable.
+
+    τ-bench gives ``NL_ASSERTION: 1.0`` to a task with no assertions, which checked nothing, so
+    only a run that shows the check was made enters the denominator (docs/EVALUATION.md).
+    """
+    components: dict[str, dict[str, int]] = {}
+    for row in rows:
+        benchmark = row["benchmark"]
+        checked = {
+            "DB": benchmark.get("db_match") is not None,
+            "NL_ASSERTION": bool(benchmark.get("nl_assertions")),
+        }
+        for name, score in (benchmark.get("reward_breakdown") or {}).items():
+            part = components.setdefault(
+                name,
+                {
+                    "numerator": 0,
+                    "denominator": 0,
+                    "not_applicable": 0,
+                    "insufficient_evidence": 0,
+                    "evaluator_error": 0,
+                    "invalid": 0,
+                },
+            )
+            if row["run_class"] == "invalid":
+                part["invalid"] += 1
+            elif not checked.get(name, True):
+                part["not_applicable"] += 1
+            else:
+                part["denominator"] += 1
+                part["numerator"] += score == 1.0
+    return components
+
+
 def _table(header: Sequence[str], rows: Iterable[Sequence[Any]]) -> str:
     lines = ["| " + " | ".join(header) + " |", "| " + " | ".join("---" for _ in header) + " |"]
     lines += ["| " + " | ".join(str(cell) for cell in row) + " |" for row in rows]
@@ -171,14 +206,13 @@ def _count_cells(counts: Mapping[str, int]) -> tuple:
     )
 
 
-def metrics_table(rows: Sequence[Mapping[str, Any]], manifest: Mapping[str, Any]) -> str:
+def metrics_table(rows: Sequence[Mapping[str, Any]]) -> str:
     """The outcome and conduct metrics, one row each, with no combined figure."""
     table: list[tuple] = []
     for label, key in _OUTCOME_METRICS:
         table.append(("Outcome", label, *_count_cells(status_counts(rows, key))))
-    for name, part in manifest["task_success_components"].items():
-        cells = (f"{part['numerator']} / {part['denominator']}", "n/a", "n/a", "n/a", "n/a")
-        table.append(("Outcome", f"Reward component {name}", *cells))
+    for name, part in component_counts(rows).items():
+        table.append(("Outcome", f"Reward component {name}", *_count_cells(part)))
     for label, name in _ROLL_UPS:
         table.append(("Conduct", label, *_count_cells(rollup_counts(rows, name))))
     for label, key in _CONDUCT_METRICS:
@@ -307,6 +341,7 @@ def reproduction_table(check: Mapping[str, Any]) -> str:
         (
             ("Baseline, deterministic", line(baseline["deterministic"]), "Saved runs"),
             ("Baseline, judges", line(baseline["judged"]), "`judges.cassette.json` of each run"),
+            ("Baseline, roll-ups per simulation", line(baseline["roll_ups"]), "The results above"),
             ("Rubric v2, all simulations", line(rubric["judged"]), "`rescore-rubric-v2`"),
             ("Repeats, v1", line(repeats["v1"]), "`run-0` to `run-2`"),
             ("Repeats, v2", line(repeats["v2"]), "`rubric-v2/run-0` to `run-2`"),
