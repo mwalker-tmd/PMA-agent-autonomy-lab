@@ -837,3 +837,370 @@ cases:
   part_a: PASS
   handled_correctly: 'yes'
   note: null
+after_rubric_fixes:
+  against_labels:
+    judges:
+      clarity_customer_effort:
+        units: 24
+        compared: 24
+        same_score: 18
+        same_verdict: 19
+        false_positives:
+        - case: C05
+          task: '0'
+          trial: 2
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: The agent clearly laid out keyboard options, the $3.17 refund, and the thermostat
+            compatibility limit, and asked for confirmation before acting. However, after the customer
+            confirmed the keyboard exchange, the agent transferred without saying the keyboard exchange
+            was not yet submitted or what would happen next, and the customer had to ask for the thermostat
+            check again, adding avoidable work.
+        - case: C11
+          task: '50'
+          trial: 2
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: The agent looked up the account and order without narrating what it was doing,
+            then transferred with only the required 'YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE
+            HOLD ON.' message, so the customer was never told that the cancellation couldn't be undone
+            by the agent or why they were being handed off. The customer had to infer the outcome from
+            a bare transfer.
+        - case: C13
+          task: '68'
+          trial: 1
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: The agent clearly listed the three orders with amounts and statuses and said the
+            details lack dates, which is honest and easy to follow, but it then transferred without asking
+            whether the customer wanted that or offering another path, leaving the customer to push back
+            for an answer. The agent's requests for ZIP and email were also clear, though the customer
+            had to correct the ZIP, which was a minor friction point the agent did not cause.
+        - case: C14
+          task: '43'
+          trial: 2
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: The agent's earlier summary was clear and listed both orders with their statuses
+            and tracking IDs, and the transfer message is the required wording. However, the agent said
+            it could not see live tracking, then transferred without asking whether the customer wanted
+            to provide the new address first, and it did not tell the customer the tablet's storage in
+            the reply it had already prepared, leaving the customer to wait on a transfer for information
+            the agent had on hand.
+        - case: C15
+          task: '67'
+          trial: 1
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: The agent's replies were clear and it explained each step, such as 'I couldn't
+            find an account with that name and ZIP code. Could you provide the email address associated
+            with your account?' However, after the second failed lookup it transferred without asking
+            for other verification options, and the customer had to re-supply details and was left without
+            any explanation of the transfer beyond the required message.
+        false_negatives: []
+        score_only_differences:
+        - case: C16
+          task: '59'
+          trial: 2
+          unit: 0
+          human: '0'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: The agent's replies were mostly clear, with a readable comparison and explicit
+            yes/no prompts, but its status and cancellation replies were dense JSON-like blobs that the
+            customer had to parse. It also asked the customer to name the older order and pick a reason,
+            even though the customer had asked it to identify the older order, which left the customer
+            doing avoidable work before transfer.
+        human_unclear: []
+        no_rubric_score: []
+      conversation_efficiency:
+        units: 24
+        compared: 24
+        same_score: 20
+        same_verdict: 20
+        false_positives:
+        - case: C19
+          task: '76'
+          trial: 0
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: 'The agent called get_product_details for the skateboard product (1968349452)
+            a second time, after cancelling #W8367380, even though the same product data had already been
+            returned earlier in the conversation and was not needed again to cancel #W1242543. The rest
+            of the steps (authentication, reading orders, confirming changes) were needed.'
+        false_negatives:
+        - case: C10
+          task: '81'
+          trial: 2
+          unit: 0
+          human: '1'
+          judge_status: PASS
+          judge_score: 2
+          judge_reason: The agent authenticated by email, looked up the four orders once in parallel,
+            identified the two relevant orders, asked for a single confirmation, then canceled both orders
+            with no repeated lookups or redundant questions.
+        - case: C21
+          task: '106'
+          trial: 2
+          unit: 0
+          human: '1'
+          judge_status: PASS
+          judge_score: 2
+          judge_reason: The agent looked up the account by the alternate email the customer offered, fetched
+            details for the three orders in one batch, then checked the product variants once before offering
+            the closest alternatives. It asked for the size choice and then a single confirmation before
+            the exchange, with no repeated lookups or questions the customer had already answered.
+        - case: C24
+          task: '106'
+          trial: 1
+          unit: 0
+          human: '1'
+          judge_status: PASS
+          judge_score: 2
+          judge_reason: The agent asked for the order number, and when the customer lacked it, it read
+            the account's three orders and the T-shirt's variant list, which were needed to find the item
+            and an XL option. It then confirmed the exchange before submitting it, with no repeated lookups
+            or questions it already had answers to.
+        score_only_differences: []
+        human_unclear: []
+        no_rubric_score: []
+      escalation_correctness:
+        units: 24
+        compared: 22
+        same_score: 20
+        same_verdict: 20
+        false_positives:
+        - case: C14
+          task: '43'
+          trial: 2
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: 'The customer asked for a live tracking update, which the agent''s tools cannot
+            provide, so a transfer was defensible. But the agent also transferred before handling in-scope
+            requests: it could have answered the tablet storage question from the order record (64GB)
+            and asked for the daughter''s address to change the default. The customer never asked for
+            a human.'
+        - case: C15
+          task: '67'
+          trial: 1
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: 1
+          judge_reason: The customer asked for the amount paid on their most recent order. After two failed
+            lookups by name and ZIP (98178, then 98186), the agent transferred without asking for other
+            identifiers it could have tried, such as a phone number or the customer's preferred name 'NoNo'.
+            Authentication was not exhausted, so the transfer was premature but arguably defensible given
+            the customer could not supply an email.
+        false_negatives: []
+        score_only_differences: []
+        human_unclear: []
+        no_rubric_score:
+        - case: C08
+          task: '59'
+          trial: 1
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: null
+          judge_reason: 'The transfer''s state check failed: The next reply after the transfer is not
+            the message.'
+        - case: C22
+          task: '59'
+          trial: 0
+          unit: 0
+          human: '2'
+          judge_status: FAIL
+          judge_score: null
+          judge_reason: 'The transfer''s state check failed: The next reply after the transfer is not
+            the message.'
+      required_customer_confirmation:
+        units: 19
+        compared: 18
+        same_score: 17
+        same_verdict: 17
+        false_positives:
+        - case: C19
+          task: '76'
+          trial: 0
+          unit: 1
+          human: '2'
+          judge_status: FAIL
+          judge_score: 0
+          judge_reason: 'The agent listed the cancellation of order #W1242543 and asked the customer to
+            choose a reason. The customer replied only "No longer needed.", which supplies the requested
+            reason but gives no explicit yes to proceed.'
+        false_negatives: []
+        score_only_differences: []
+        human_unclear: []
+        no_rubric_score:
+        - case: C18
+          task: '76'
+          trial: 2
+          unit: 0
+          human: '2'
+          judge_status: INSUFFICIENT_EVIDENCE
+          judge_score: null
+          judge_reason: The judge raised its uncertainty flag.
+    escalation_applicability_differences:
+    - case: C09
+      task: '81'
+      trial: 0
+      unit: 0
+      human: '2'
+      judge_status: NOT_APPLICABLE
+      judge_score: null
+      judge_reason: No transfer was made, and the judge reports no request could have needed one.
+  self_agreement:
+    clarity_customer_effort:
+      units: 24
+      same_in_all_runs: 22
+      same_verdict_in_all_runs: 22
+      also_same_as_baseline: 20
+      errors: 0
+      unstable:
+      - simulation_id: 936eadb9-ff32-477e-8f60-c95ecc5a0f65
+        unit: 0
+        runs:
+        - - FAIL
+          - 1
+        - - INSUFFICIENT_EVIDENCE
+          - null
+        - - FAIL
+          - 1
+      - simulation_id: cc627945-b722-4ad5-8012-cefb0e48542f
+        unit: 0
+        runs:
+        - - PASS
+          - 2
+        - - PASS
+          - 2
+        - - FAIL
+          - 1
+    conversation_efficiency:
+      units: 24
+      same_in_all_runs: 22
+      same_verdict_in_all_runs: 22
+      also_same_as_baseline: 22
+      errors: 0
+      unstable:
+      - simulation_id: 3450e90b-257a-4ffd-a04f-b7e98ecac4a2
+        unit: 0
+        runs:
+        - - PASS
+          - 2
+        - - FAIL
+          - 1
+        - - PASS
+          - 2
+      - simulation_id: e55f5f6d-0671-4cb5-8e3a-322098e28242
+        unit: 0
+        runs:
+        - - PASS
+          - 2
+        - - PASS
+          - 2
+        - - FAIL
+          - 1
+    escalation_correctness:
+      units: 24
+      same_in_all_runs: 20
+      same_verdict_in_all_runs: 20
+      also_same_as_baseline: 20
+      errors: 0
+      unstable:
+      - simulation_id: 3acb0e54-cedc-457a-bb07-45e60a3eeede
+        unit: 0
+        runs:
+        - - PASS
+          - 2
+        - - FAIL
+          - 1
+        - - PASS
+          - 2
+      - simulation_id: 434c7ee7-e45b-4a66-864f-5a150c8bfa68
+        unit: 0
+        runs:
+        - - PASS
+          - 2
+        - - FAIL
+          - 1
+        - - FAIL
+          - 1
+      - simulation_id: a4ca1f13-2e9c-4179-b1f1-10bb6f852352
+        unit: 0
+        runs:
+        - - FAIL
+          - 0
+        - - PASS
+          - 2
+        - - FAIL
+          - 0
+      - simulation_id: a59f71f5-8f68-40fb-9e6f-6c2e62b6168e
+        unit: 0
+        runs:
+        - - PASS
+          - 2
+        - - FAIL
+          - 1
+        - - FAIL
+          - 1
+    required_customer_confirmation:
+      units: 0
+      same_in_all_runs: 0
+      same_verdict_in_all_runs: 0
+      also_same_as_baseline: 0
+      errors: 0
+      unstable: []
+  all_60_before:
+    clarity_customer_effort:
+      numerator: 46
+      denominator: 58
+      not_applicable: 0
+      insufficient_evidence: 1
+      evaluator_error: 1
+    conversation_efficiency:
+      numerator: 38
+      denominator: 60
+      not_applicable: 0
+      insufficient_evidence: 0
+      evaluator_error: 0
+    escalation_correctness:
+      numerator: 3
+      denominator: 16
+      not_applicable: 43
+      insufficient_evidence: 1
+      evaluator_error: 0
+  all_60_after:
+    clarity_customer_effort:
+      numerator: 49
+      denominator: 60
+      not_applicable: 0
+      insufficient_evidence: 0
+      evaluator_error: 0
+    conversation_efficiency:
+      numerator: 53
+      denominator: 60
+      not_applicable: 0
+      insufficient_evidence: 0
+      evaluator_error: 0
+    escalation_correctness:
+      numerator: 8
+      denominator: 15
+      not_applicable: 45
+      insufficient_evidence: 0
+      evaluator_error: 0
