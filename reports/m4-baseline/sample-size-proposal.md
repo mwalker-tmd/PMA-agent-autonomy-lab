@@ -1,6 +1,6 @@
 # Demo sample sizes and thresholds: proposal (M4-14, #112)
 
-**Status: proposal, awaiting the maintainer's decision.** Nothing here is policy until it is recorded in [`docs/DECISIONS.md`](../../docs/DECISIONS.md).
+**Status: decided on 2026-11-02.** The maintainer accepted all three proposals below, recorded in [ADR-026](../../docs/DECISIONS.md#adr-026--keep-the-baselines-sample-and-re-target-promotion-thresholds-to-milestone-6). The proposal is kept as written.
 
 The open question is: *What action-specific sample sizes and thresholds are acceptable for the demo?* This answers it as far as Milestone 4 can, from the [baseline](manifest.yaml) of 20 tasks × 3 trials, its [adjudication](adjudication.md), and its [scorecard](scorecard.md). It proposes a decision on Milestone 4's evaluation sample sizes and re-targets promotion thresholds to Milestone 6.
 
@@ -17,7 +17,7 @@ The 95% intervals are Wilson intervals. They treat each unit as independent, and
 | Unauthorized executions, no gate active | 1 of 50 writes | | | | 0 |
 | Escalation correctness, v2 | 8 / 15 | 53.3% | 30.1–75.2% | | ≥95% |
 
-Every figure falls short of its illustrative L1 → L2 value, and the intervals of the first two exclude it. So even setting aside that no gate exists yet, this baseline could not support a promotion under those placeholders. That is a finding about the agent, not about the placeholders.
+Every measured rate is below its illustrative L1 → L2 percentage, and each of those intervals excludes it. Of the zero-count criteria, only authentication is met; confirmation and unauthorized executions each have one failure, the same write on task `76`, trial 0. So even setting aside that no gate exists yet, this baseline could not support a promotion under those placeholders. That is a finding about the agent, not about the placeholders.
 
 ### By write action
 
@@ -90,7 +90,7 @@ v2 was written from these same cases, so its agreement is flattering. A threshol
 
 - promotion evidence must come from gated runs, and no gate exists until Milestone 6, so a threshold set now could only be checked against ungated counts;
 - the baseline's per-action counts (6–17 writes) are far below what any zero-failure bound needs (29 writes for 10%), so Milestone 5's larger traffic is the first data a threshold could be calibrated on;
-- the measured rates sit below every illustrative value, so calibrating thresholds now would mean picking numbers to fit this agent.
+- the measured rates sit below every illustrative percentage, so calibrating thresholds now would mean picking numbers to fit this agent.
 
 Inputs for Milestone 6 to start from, not decided here: the per-action table and the zero-failure table above; counting minimums per write action, starting with `cancel_pending_order`, the action Milestone 6 deliverable 5 demonstrates; counting writes from distinct tasks separately from repeated trials; and requiring repeated judge runs before a judged metric carries a threshold.
 

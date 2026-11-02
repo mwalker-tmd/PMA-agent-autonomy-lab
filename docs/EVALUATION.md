@@ -306,7 +306,7 @@ The verdict is an evaluator result, not a trace event: a verdict computed after 
 
 ### Operational efficiency
 
-Aggregated by [`batch_report.py`](../src/agent_autonomy_lab/application/batch_report.py) ([#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/109)), from Trajectory and Trace plus the billing record. These are measured values, not pass or fail: Milestone 4 sets no service threshold ([#112](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/112)).
+Aggregated by [`batch_report.py`](../src/agent_autonomy_lab/application/batch_report.py) ([#109](https://github.com/mwalker-tmd/PMA-agent-autonomy-lab/issues/109)), from Trajectory and Trace plus the billing record. These are measured values, not pass or fail: Milestone 4 sets no service threshold ([ADR-026](DECISIONS.md#adr-026--keep-the-baselines-sample-and-re-target-promotion-thresholds-to-milestone-6)).
 
 | Measure | Data fields | Numerator | Denominator |
 | --- | --- | --- | --- |
