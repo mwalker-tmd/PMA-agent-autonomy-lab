@@ -194,3 +194,157 @@ def worksheet_data(cases: Sequence[Mapping[str, Any]]) -> str:
     rubrics = {name: rubric_text(version) for name, version in JUDGE_PROMPTS.items()}
     text = json.dumps({"cases": list(cases), "rubrics": rubrics}, ensure_ascii=False)
     return text.replace("</", "<\\/")
+
+
+# The comparison below runs only after the labels are committed.
+RUBRIC_LABELS = {
+    "clarity_customer_effort": "clarity",
+    "conversation_efficiency": "efficiency",
+    "escalation_correctness": "escalation",
+}
+CONFIRMATION_KEY = "required_customer_confirmation"
+JUDGE_KEYS = (*RUBRIC_LABELS, CONFIRMATION_KEY)
+NO_TRANSFER_NEEDED = "no_transfer_needed"
+UNCLEAR = "unclear"
+
+
+def judge_units(results: Sequence[Mapping[str, Any]]) -> dict[tuple[str, int], Mapping[str, Any]]:
+    """Each judge's results by key and unit; a unit is 0, or the write's place in order."""
+    units: dict[tuple[str, int], Mapping[str, Any]] = {}
+    writes = 0
+    for result in results:
+        key = result["evaluation_key"]
+        if key in RUBRIC_LABELS:
+            units[(key, 0)] = result
+        elif key == CONFIRMATION_KEY and result.get("target"):
+            units[(key, writes)] = result
+            writes += 1
+    return units
+
+
+def _judge_verdict(result: Mapping[str, Any]) -> str | None:
+    """``pass``, ``fail``, or ``None`` if no rubric score decided this result."""
+    if result["status"] == "NOT_APPLICABLE" and result["evaluation_key"] in RUBRIC_LABELS:
+        return "pass"
+    if result["status"] not in ("PASS", "FAIL") or result.get("score") is None:
+        return None
+    return "pass" if result["status"] == "PASS" else "fail"
+
+
+def _human_value(label: Mapping[str, Any], key: str, unit: int) -> str:
+    if key == CONFIRMATION_KEY:
+        return label["confirmation_by_write"][unit]
+    return label[RUBRIC_LABELS[key]]
+
+
+def compare_labels(
+    labels: Sequence[Mapping[str, Any]],
+    cases: Sequence[Mapping[str, Any]],
+    rows: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Judges against labels. A problem is the positive class, so a false positive is a
+    judge ``FAIL`` the maintainer scored 2, and a false negative is the reverse.
+
+    A human "no transfer needed" and a score of 2 agree on the agent's judgment. Whether the
+    case belongs in the escalation denominator is counted apart, as ``applicability``.
+    """
+    by_case = {case["case_id"]: case for case in cases}
+    report = {
+        key: {
+            "units": 0,
+            "compared": 0,
+            "same_score": 0,
+            "same_verdict": 0,
+            "false_positives": [],
+            "false_negatives": [],
+            "score_only_differences": [],
+            "human_unclear": [],
+            "no_rubric_score": [],
+        }
+        for key in JUDGE_KEYS
+    }
+    applicability = []
+    for label in labels:
+        case = by_case[label["case_id"]]
+        row = rows[case["simulation_id"]]
+        for (key, unit), result in judge_units(row["results"]).items():
+            entry = report[key]
+            entry["units"] += 1
+            human = _human_value(label, key, unit)
+            item = {
+                "case": label["case_id"],
+                "task": case["task_id"],
+                "trial": case["trial"],
+                "unit": unit,
+                "human": human,
+                "judge_status": result["status"],
+                "judge_score": result.get("score"),
+                "judge_reason": result.get("reason"),
+            }
+            if key == "escalation_correctness":
+                judge_out = result["status"] == "NOT_APPLICABLE"
+                if judge_out != (human == NO_TRANSFER_NEEDED) and human != UNCLEAR:
+                    applicability.append(item)
+            verdict = _judge_verdict(result)
+            if verdict is None:
+                entry["no_rubric_score"].append(item)
+                continue
+            if human == UNCLEAR:
+                entry["human_unclear"].append(item)
+                continue
+            entry["compared"] += 1
+            human_score = 2 if human == NO_TRANSFER_NEEDED else int(human)
+            judge_score = 2 if result["status"] == "NOT_APPLICABLE" else result["score"]
+            entry["same_score"] += human_score == judge_score
+            human_verdict = "pass" if human_score == 2 else "fail"
+            if verdict == human_verdict:
+                entry["same_verdict"] += 1
+                if human_score != judge_score:
+                    entry["score_only_differences"].append(item)
+            elif verdict == "fail":
+                entry["false_positives"].append(item)
+            else:
+                entry["false_negatives"].append(item)
+    return {"judges": report, "escalation_applicability_differences": applicability}
+
+
+def self_agreement(
+    repeats: Sequence[Mapping[str, Any]], rows: Mapping[str, Mapping[str, Any]]
+) -> dict[str, Any]:
+    """How often each judge repeats itself, by status and score, on the same input."""
+    grouped: dict[tuple[str, str, int], list[Mapping[str, Any]]] = {}
+    for repeat in repeats:
+        unit = (repeat["evaluation_key"], repeat["simulation_id"], repeat["unit"])
+        grouped.setdefault(unit, []).append(repeat)
+    report: dict[str, Any] = {
+        key: {
+            "units": 0,
+            "same_in_all_runs": 0,
+            "same_verdict_in_all_runs": 0,
+            "also_same_as_baseline": 0,
+            "errors": 0,
+            "unstable": [],
+        }
+        for key in JUDGE_KEYS
+    }
+    for (key, simulation_id, unit), runs in sorted(grouped.items()):
+        entry = report[key]
+        entry["units"] += 1
+        outcomes = {(run["status"], run.get("score")) for run in runs}
+        verdicts = {run["status"] for run in runs}
+        entry["errors"] += sum(run["status"] == "EVALUATOR_ERROR" for run in runs)
+        entry["same_verdict_in_all_runs"] += len(verdicts) == 1
+        baseline = judge_units(rows[simulation_id]["results"]).get((key, unit))
+        if len(outcomes) == 1:
+            entry["same_in_all_runs"] += 1
+            if baseline and {(baseline["status"], baseline.get("score"))} == outcomes:
+                entry["also_same_as_baseline"] += 1
+        if len(outcomes) > 1:
+            entry["unstable"].append(
+                {
+                    "simulation_id": simulation_id,
+                    "unit": unit,
+                    "runs": [[run["status"], run.get("score")] for run in runs],
+                }
+            )
+    return report
