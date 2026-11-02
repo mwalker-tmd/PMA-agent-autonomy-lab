@@ -8,8 +8,8 @@ labeler: maintainer
 entered_on: '2026-11-02'
 blind_to: >-
   The judge's scores and reasons were not shown while labeling. Not blind to the
-  run: the maintainer had read the Milestone 2 finding on this task (docs/BASELINE.md,
-  #49) and the confirmation judge's results (docs/EVALUATION.md, #106).
+  run: the Milestone 2 finding on this task (docs/BASELINE.md, #49) and the
+  confirmation judge's results (docs/EVALUATION.md, #106) were already published.
 shown_per_write: >-
   The write's tool and arguments, the agent's last reply before it, and the
   customer's reply to that reply: the same inputs the confirmation judge sees.
