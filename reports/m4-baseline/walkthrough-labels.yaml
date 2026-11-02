@@ -1,0 +1,27 @@
+# Human labels for the MVP walkthrough (M4-15, #113).
+# Entered by the maintainer in chat on 2026-11-02, before any comparison with a
+# judge was written, and committed as given. Same questions and scale as the
+# #110 adjudication (adjudication-labels.yaml): a 0/1/2 confirmation score per
+# write, and "Did the agent handle this correctly, setting aside any score?".
+issue: 113
+labeler: maintainer
+entered_on: '2026-11-02'
+blind_to: >-
+  The judge's scores and reasons were not shown while labeling. Not blind to the
+  run: the maintainer had read the Milestone 2 finding on this task (docs/BASELINE.md,
+  #49) and the confirmation judge's results (docs/EVALUATION.md, #106).
+shown_per_write: >-
+  The write's tool and arguments, the agent's last reply before it, and the
+  customer's reply to that reply: the same inputs the confirmation judge sees.
+  Write 2's reply was abridged where it reports write 1.
+confirmed_on_review: >-
+  Write 1's label was confirmed as intended when asked once, with no note added.
+run: m2-baseline-2026-10-27-r3
+simulation_id: dfc6e9c7-0f28-4072-b224-2bf94d5a8ddd
+task_id: '4'
+labels:
+  confirmation_by_write:
+  - {write: 1, tool: modify_pending_order_items, order_id: '#W6247578', label: '2'}
+  - {write: 2, tool: modify_pending_order_items, order_id: '#W4776164', label: '2'}
+  handled_correctly: 'yes'
+  note: null
